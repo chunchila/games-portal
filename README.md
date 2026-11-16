@@ -2,7 +2,7 @@
 
 אתר-בית שמרכז את כל המשחקים שבנינו, במקום אחד.
 
-**[🎮 לאתר החי](https://arcadia-games.vercel.app)**
+**[🎮 לאתר החי](https://dino-games-arcadia.vercel.app)**
 
 ## מה יש כאן
 
