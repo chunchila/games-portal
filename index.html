@@ -4,22 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ארקדיה | כל המשחקים במקום אחד</title>
-<meta name="description" content="ארקדיה - בית לכל המשחקים שבנינו: מילים, פאזלים, ארקייד, טייקון ועוד. כנסו ושחקו.">
+<meta name="description" content="ארקדיה - בית לכל ה-27 משחקים שבנינו: מילים, פאזלים, ארקייד, טייקון, משחקי ילדים ועוד. כנסו ושחקו.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0d1a;
-    --surface: rgba(255,255,255,0.04);
-    --surface-2: rgba(255,255,255,0.07);
+    --bg: #070912;
+    --surface: rgba(255,255,255,0.045);
+    --surface-2: rgba(255,255,255,0.08);
     --border: rgba(255,255,255,0.09);
-    --text: #f1f3ff;
-    --muted: #9aa3c7;
+    --text: #f2f4ff;
+    --muted: #98a1c6;
     --accent: #7c6cff;
     --accent-2: #22d3ee;
-    --radius: 20px;
+    --accent-3: #f472b6;
+    --radius: 22px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { scroll-behavior: smooth; }
@@ -30,61 +31,100 @@
     min-height: 100vh;
     overflow-x: hidden;
   }
+  ::selection { background: rgba(124,108,255,.4); }
 
-  /* Animated background */
+  /* Animated aurora background */
   .bg-blob {
-    position: fixed; border-radius: 50%; filter: blur(110px);
-    opacity: .35; pointer-events: none; z-index: 0;
-    animation: drift 22s ease-in-out infinite alternate;
+    position: fixed; border-radius: 50%; filter: blur(120px);
+    opacity: .4; pointer-events: none; z-index: 0;
+    animation: drift 26s ease-in-out infinite alternate;
+    will-change: transform;
   }
-  .bg-blob.b1 { width: 60vmax; height: 60vmax; background: #3b2f8f; top: -25vmax; right: -20vmax; }
-  .bg-blob.b2 { width: 50vmax; height: 50vmax; background: #0e4a5e; bottom: -20vmax; left: -15vmax; animation-delay: -8s; }
-  .bg-blob.b3 { width: 35vmax; height: 35vmax; background: #6d1f5e; top: 40%; left: 30%; opacity: .18; animation-delay: -14s; }
+  .bg-blob.b1 { width: 62vmax; height: 62vmax; background: #352a8f; top: -28vmax; right: -22vmax; }
+  .bg-blob.b2 { width: 52vmax; height: 52vmax; background: #0b4a60; bottom: -22vmax; left: -16vmax; animation-delay: -9s; }
+  .bg-blob.b3 { width: 38vmax; height: 38vmax; background: #6d1f5e; top: 42%; left: 28%; opacity: .2; animation-delay: -16s; }
   @keyframes drift {
     from { transform: translate(0,0) scale(1); }
-    to   { transform: translate(6vmax, 4vmax) scale(1.12); }
+    to   { transform: translate(7vmax, 5vmax) scale(1.15); }
+  }
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
   }
 
-  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 18px 80px; }
+  .wrap { position: relative; z-index: 1; max-width: 1140px; margin: 0 auto; padding: 0 18px 90px; }
 
-  /* Hero */
-  header.hero { text-align: center; padding: 64px 0 8px; }
+  /* ===== Hero ===== */
+  header.hero { text-align: center; padding: clamp(48px, 9vw, 88px) 0 6px; position: relative; }
+  .hero .joystick {
+    font-size: 40px; display: inline-block;
+    animation: bob 3.2s ease-in-out infinite;
+    filter: drop-shadow(0 10px 24px rgba(124,108,255,.45));
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-7deg);} 50% { transform: translateY(-10px) rotate(7deg);} }
   .hero .logo {
-    font-size: clamp(52px, 13vw, 96px);
+    font-size: clamp(58px, 14vw, 108px);
     font-weight: 900;
-    line-height: 1.05;
-    background: linear-gradient(120deg, #a8b6ff 0%, #7c6cff 30%, #22d3ee 65%, #7cf5d3 100%);
+    line-height: 1.02;
+    background: linear-gradient(115deg, #c3ccff 0%, #7c6cff 28%, #22d3ee 60%, #7cf5d3 88%);
+    background-size: 180% 100%;
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
-    letter-spacing: -1px;
+    letter-spacing: -1.5px;
+    animation: sheen 9s ease-in-out infinite alternate;
+    filter: drop-shadow(0 6px 40px rgba(124,108,255,.35));
   }
+  @keyframes sheen { from { background-position: 0% 0; } to { background-position: 100% 0; } }
   .hero .logo-en {
     font-size: clamp(12px, 2.6vw, 16px);
-    letter-spacing: 14px;
+    letter-spacing: 15px;
     font-weight: 600;
     color: var(--muted);
-    margin-top: 2px;
-    padding-right: 14px; /* optical centering vs letter-spacing */
+    margin-top: 4px;
+    padding-right: 15px; /* optical centering vs letter-spacing */
   }
   .hero p.tagline {
-    margin-top: 16px;
+    margin: 18px auto 0;
+    max-width: 560px;
     color: var(--muted);
-    font-size: clamp(15px, 3.6vw, 19px);
+    font-size: clamp(15px, 3.8vw, 19px);
     font-weight: 400;
+    line-height: 1.7;
   }
   .hero p.tagline b { color: var(--text); font-weight: 700; }
-  .hero .joystick { font-size: 34px; display: inline-block; animation: bob 3s ease-in-out infinite; }
-  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg);} 50% { transform: translateY(-8px) rotate(6deg);} }
 
-  /* Controls */
+  .hero-stats {
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;
+    margin-top: 26px;
+  }
+  .stat-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--muted);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .stat-pill b { color: var(--text); font-weight: 800; font-size: 15px; }
+  .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* ===== Controls ===== */
   .controls {
     position: sticky; top: 0; z-index: 20;
     padding: 14px 0 10px;
-    margin: 26px -18px 6px;
+    margin: 30px -18px 6px;
     padding-inline: 18px;
-    background: linear-gradient(to bottom, rgba(10,13,26,.96) 75%, rgba(10,13,26,0));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: linear-gradient(to bottom, rgba(7,9,18,.97) 75%, rgba(7,9,18,0));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   .search-row { display: flex; gap: 10px; align-items: center; }
   .search-box {
@@ -92,10 +132,10 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 12px 16px;
+    padding: 13px 16px;
     transition: border-color .2s, box-shadow .2s;
   }
-  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,108,255,.18); }
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,108,255,.2); }
   .search-box svg { flex: none; opacity: .6; }
   .search-box input {
     flex: 1; background: none; border: none; outline: none;
@@ -108,13 +148,13 @@
     border: 1px solid var(--border);
     color: var(--muted);
     border-radius: 16px;
-    padding: 12px 14px;
+    padding: 13px 15px;
     font-family: inherit; font-size: 14px; font-weight: 600;
     cursor: pointer;
     display: flex; align-items: center; gap: 7px;
     transition: all .2s;
   }
-  .sort-btn.active { color: #0a0d1a; background: linear-gradient(120deg, #7cf5d3, #22d3ee); border-color: transparent; }
+  .sort-btn.active { color: #070912; background: linear-gradient(120deg, #7cf5d3, #22d3ee); border-color: transparent; }
 
   .chips {
     display: flex; gap: 8px; overflow-x: auto;
@@ -138,7 +178,7 @@
   .chip .n { opacity: .55; font-size: 12px; margin-inline-start: 4px; font-weight: 500; }
   .chip:hover { background: var(--surface-2); color: var(--text); }
   .chip.active {
-    color: #0a0d1a;
+    color: #070912;
     background: var(--chip-color, var(--text));
     border-color: transparent;
     box-shadow: 0 4px 18px -4px var(--chip-color, transparent);
@@ -147,87 +187,108 @@
 
   .result-count { color: var(--muted); font-size: 13px; padding: 6px 4px 0; min-height: 22px; }
 
-  /* Grid + cards */
+  /* ===== Grid + cards ===== */
   .grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 14px;
-    margin-top: 14px;
+    gap: 18px;
+    margin-top: 16px;
   }
-  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 980px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
 
   .card {
     position: relative;
-    display: flex; align-items: center; gap: 15px;
+    display: flex; flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
     text-decoration: none; color: inherit;
     overflow: hidden;
-    transition: transform .22s cubic-bezier(.34,1.56,.64,1), border-color .22s, background .22s, box-shadow .22s;
-    animation: pop .45s cubic-bezier(.34,1.4,.64,1) backwards;
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1), border-color .28s, box-shadow .28s;
+    animation: pop .5s cubic-bezier(.34,1.4,.64,1) backwards;
   }
-  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.97); } }
-  .card::before {
+  @keyframes pop { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-6px);
+    border-color: var(--cat-color);
+    box-shadow: 0 22px 46px -16px var(--cat-glow-strong), 0 0 0 1px var(--cat-color);
+  }
+  .card:active { transform: translateY(-2px) scale(.99); }
+
+  .thumb {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: linear-gradient(140deg, var(--cat-glow), rgba(255,255,255,0.02));
+    border-bottom: 1px solid var(--border);
+  }
+  .thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: top center;
+    display: block;
+    transform: scale(1.02);
+    transition: transform .5s cubic-bezier(.2,.7,.3,1);
+    opacity: 0;
+  }
+  .thumb img.loaded { opacity: 1; transition: transform .5s cubic-bezier(.2,.7,.3,1), opacity .45s ease; }
+  .card:hover .thumb img { transform: scale(1.07); }
+  .thumb::after {
     content: '';
     position: absolute; inset: 0;
-    background: radial-gradient(320px 140px at 85% 0%, var(--cat-glow), transparent 70%);
-    opacity: 0; transition: opacity .25s;
+    background: linear-gradient(to top, rgba(7,9,18,.55), transparent 45%);
     pointer-events: none;
   }
-  .card:hover, .card:focus-visible {
-    transform: translateY(-4px);
-    border-color: var(--cat-color);
-    background: var(--surface-2);
-    box-shadow: 0 14px 34px -12px var(--cat-glow);
+  .thumb .cat-tag {
+    position: absolute; top: 12px; inset-inline-start: 12px; z-index: 2;
+    font-size: 11.5px; font-weight: 700;
+    color: #070912;
+    background: var(--cat-color);
+    padding: 4px 11px; border-radius: 999px;
+    box-shadow: 0 4px 14px -3px var(--cat-glow-strong);
   }
-  .card:hover::before, .card:focus-visible::before { opacity: 1; }
-  .card:active { transform: translateY(-1px) scale(.985); }
-
-  .icon-tile {
-    flex: none;
-    width: 58px; height: 58px;
-    border-radius: 16px;
+  .thumb .play-fab {
+    position: absolute; bottom: 12px; inset-inline-end: 12px; z-index: 2;
+    width: 42px; height: 42px; border-radius: 50%;
     display: grid; place-items: center;
-    font-size: 30px;
-    background: linear-gradient(140deg, var(--cat-glow), rgba(255,255,255,0.03));
-    border: 1px solid var(--border);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    background: rgba(10,13,26,.72);
+    border: 1px solid rgba(255,255,255,.22);
+    color: #fff;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: all .25s;
   }
-  .card-body { flex: 1; min-width: 0; }
-  .card-body h3 { font-size: 17.5px; font-weight: 800; letter-spacing: -.2px; }
+  .card:hover .play-fab {
+    background: var(--cat-color);
+    color: #070912;
+    border-color: transparent;
+    transform: scale(1.12) rotate(-8deg);
+    box-shadow: 0 8px 22px -6px var(--cat-glow-strong);
+  }
+
+  .card-body { padding: 15px 17px 17px; }
+  .card-body h3 { font-size: 18px; font-weight: 800; letter-spacing: -.2px; }
   .card-body p {
     color: var(--muted); font-size: 13.5px; font-weight: 400;
-    margin-top: 3px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin-top: 4px; line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
   }
-  .card-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-  .cat-tag {
-    font-size: 11px; font-weight: 700;
-    color: var(--cat-color);
-    background: var(--cat-glow);
-    padding: 3px 9px; border-radius: 999px;
-    white-space: nowrap;
-  }
-  .go-arrow {
-    width: 30px; height: 30px; border-radius: 50%;
-    display: grid; place-items: center;
-    background: var(--surface-2); border: 1px solid var(--border);
-    color: var(--muted);
-    transition: all .2s;
-  }
-  .card:hover .go-arrow { background: var(--cat-color); color: #0a0d1a; border-color: transparent; transform: translateX(-3px); }
 
   .new-badge {
-    position: absolute; top: 0; inset-inline-start: 0;
+    position: absolute; top: 12px; inset-inline-end: 12px; z-index: 3;
     background: linear-gradient(120deg, #7cf5d3, #22d3ee);
     color: #062a2e;
-    font-size: 10.5px; font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 0 0 12px 0;
+    font-size: 11px; font-weight: 800;
+    padding: 4px 11px;
+    border-radius: 999px;
     letter-spacing: .4px;
+    box-shadow: 0 4px 16px -3px rgba(34,211,238,.6);
+    animation: glowpulse 2.6s ease-in-out infinite;
+  }
+  @keyframes glowpulse {
+    0%,100% { box-shadow: 0 4px 16px -3px rgba(34,211,238,.55); }
+    50%     { box-shadow: 0 4px 24px -2px rgba(34,211,238,.95); }
   }
 
   .empty {
@@ -241,23 +302,35 @@
   }
 
   footer {
-    margin-top: 64px; text-align: center; color: var(--muted);
+    margin-top: 72px; text-align: center; color: var(--muted);
     font-size: 13px; line-height: 1.9;
   }
   footer .foot-logo { font-weight: 800; color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bg-blob, .hero .joystick, .hero .logo, .new-badge { animation: none; }
+    .card { animation: none; }
+    html { scroll-behavior: auto; }
+  }
 </style>
 </head>
 <body>
   <div class="bg-blob b1"></div>
   <div class="bg-blob b2"></div>
   <div class="bg-blob b3"></div>
+  <div class="bg-grid"></div>
 
   <div class="wrap">
     <header class="hero">
       <span class="joystick">🕹️</span>
       <h1 class="logo">ארקדיה</h1>
       <div class="logo-en">ARCADIA</div>
-      <p class="tagline">כל המשחקים שבנינו, במקום אחד. <b id="total-count"></b> משחקים - בחרו ושחקו.</p>
+      <p class="tagline">כל המשחקים שבנינו, במקום אחד. <b id="total-count"></b> משחקים - מילים, פאזלים, ארקייד, טייקון ועולם שלם לילדים. בחרו ושחקו.</p>
+      <div class="hero-stats">
+        <span class="stat-pill"><span class="dot" style="background:#7c6cff"></span><b id="stat-games"></b>&nbsp;משחקים</span>
+        <span class="stat-pill"><span class="dot" style="background:#22d3ee"></span><b id="stat-cats"></b>&nbsp;קטגוריות</span>
+        <span class="stat-pill"><span class="dot" style="background:#7cf5d3"></span>חינם, בלי פרסומות</span>
+      </div>
     </header>
 
     <div class="controls">
@@ -290,43 +363,49 @@
 
 <script>
 const CATEGORIES = {
-  'מילים':            { color: '#4ade80', glow: 'rgba(74,222,128,.16)' },
-  'טריוויה':          { color: '#facc15', glow: 'rgba(250,204,21,.16)' },
-  'פאזל':             { color: '#a78bfa', glow: 'rgba(167,139,250,.16)' },
-  'ארקייד':           { color: '#f472b6', glow: 'rgba(244,114,182,.16)' },
-  'אסטרטגיה':         { color: '#60a5fa', glow: 'rgba(96,165,250,.16)' },
-  'קלפים':            { color: '#f87171', glow: 'rgba(248,113,113,.16)' },
-  'זיכרון':           { color: '#2dd4bf', glow: 'rgba(45,212,191,.16)' },
-  'טייקון וסימולציה': { color: '#fb923c', glow: 'rgba(251,146,60,.16)' },
-  'מיזוג':            { color: '#22d3ee', glow: 'rgba(34,211,238,.16)' },
-  'ילדים':            { color: '#a3e635', glow: 'rgba(163,230,53,.16)' },
+  'מילים':            { color: '#4ade80', glow: 'rgba(74,222,128,.16)',  strong: 'rgba(74,222,128,.45)' },
+  'טריוויה':          { color: '#facc15', glow: 'rgba(250,204,21,.16)',  strong: 'rgba(250,204,21,.45)' },
+  'פאזל':             { color: '#a78bfa', glow: 'rgba(167,139,250,.16)', strong: 'rgba(167,139,250,.45)' },
+  'ארקייד':           { color: '#f472b6', glow: 'rgba(244,114,182,.16)', strong: 'rgba(244,114,182,.45)' },
+  'אסטרטגיה':         { color: '#60a5fa', glow: 'rgba(96,165,250,.16)',  strong: 'rgba(96,165,250,.45)' },
+  'קלפים':            { color: '#f87171', glow: 'rgba(248,113,113,.16)', strong: 'rgba(248,113,113,.45)' },
+  'זיכרון':           { color: '#2dd4bf', glow: 'rgba(45,212,191,.16)',  strong: 'rgba(45,212,191,.45)' },
+  'טייקון וסימולציה': { color: '#fb923c', glow: 'rgba(251,146,60,.16)', strong: 'rgba(251,146,60,.45)' },
+  'מיזוג':            { color: '#22d3ee', glow: 'rgba(34,211,238,.16)',  strong: 'rgba(34,211,238,.45)' },
+  'ילדים':            { color: '#a3e635', glow: 'rgba(163,230,53,.16)',  strong: 'rgba(163,230,53,.45)' },
 };
 
 const GAMES = [
-  { name: 'וורדל',            emoji: '🟩', cat: 'מילים',            desc: 'פאזל המילים היומי - נחשו את המילה בשישה ניסיונות', url: 'https://wordle-hebrew.vercel.app', added: 1 },
-  { name: 'מילולי',           emoji: '🔀', cat: 'מילים',            desc: 'משחק ערבוב מילים - כמה מילים תצליחו להרכיב?', url: 'https://dino-games-2lnl3n14i-romans-projects-97b8739c.vercel.app/', added: 2 },
-  { name: 'בזק טריוויה',      emoji: '⚡', cat: 'טריוויה',          desc: 'שאלות טריוויה במירוץ נגד השעון', url: 'https://dino-games-p9oddk3d8-romans-projects-97b8739c.vercel.app/', added: 3 },
-  { name: 'חשבון בזק',        emoji: '🧮', cat: 'טריוויה',          desc: 'ספרינט חשבון - כמה תרגילים תפתרו בדקה?', url: 'https://dino-games-p7olmi32r-romans-projects-97b8739c.vercel.app/', added: 4 },
-  { name: 'זרימה',            emoji: '🌊', cat: 'פאזל',             desc: 'חברו את הנקודות בלי לחצות קווים', url: 'https://dino-games-kkd7dprep-romans-projects-97b8739c.vercel.app/', added: 5 },
-  { name: 'סודוקו מאסטר',     emoji: '9️⃣', cat: 'פאזל',            desc: 'סודוקו קלאסי בכל רמת קושי', url: 'https://dino-games-68u15mjtc-romans-projects-97b8739c.vercel.app/', added: 6 },
-  { name: 'מיון צבעים',       emoji: '🧪', cat: 'פאזל',             desc: 'מיינו את הנוזלים לבקבוקים הנכונים', url: 'https://dino-games-fhvqbpe24-romans-projects-97b8739c.vercel.app/', added: 7 },
-  { name: 'פיצוץ בלוקים',     emoji: '💥', cat: 'פאזל',             desc: 'פוצצו בלוקים ופנו את הלוח', url: 'https://dino-games-4xw0fel3r-romans-projects-97b8739c.vercel.app/', added: 8 },
-  { name: 'שובר הניאון',      emoji: '👾', cat: 'ארקייד',           desc: 'ארקייד ניאון - שברו את כל הלבנים', url: 'https://dino-games-nbx3ud7sr-romans-projects-97b8739c.vercel.app/', added: 9 },
-  { name: 'מלכודות!',         emoji: '🪤', cat: 'ארקייד',           desc: 'פלטפורמר מלכודות - שרדו את כל השלבים', url: 'https://malchodot.vercel.app/', added: 22 },
-  { name: 'דינוש הקפצן',      emoji: '🦕', cat: 'ארקייד',           desc: 'קפצו, התחמקו ושברו שיאים', url: 'https://dino-games-l3id4nr01-romans-projects-97b8739c.vercel.app/', added: 11 },
-  { name: 'ארבע בשורה',       emoji: '🔴', cat: 'אסטרטגיה',         desc: 'הקלאסיקה נגד המחשב - ארבעה ברצף מנצחים', url: 'https://dino-games-fbgfln1oo-romans-projects-97b8739c.vercel.app/', added: 12 },
-  { name: 'קרב היסודות',      emoji: '⚛️', cat: 'קלפים',            desc: 'דו-קרב קלפים של אש, מים, אדמה ואוויר', url: 'https://dino-games-m6eqvby8l-romans-projects-97b8739c.vercel.app/', added: 13 },
-  { name: 'אותות',            emoji: '🧠', cat: 'זיכרון',           desc: 'משחק זיכרון - עקבו אחרי הרצף ושחזרו אותו', url: 'https://dino-games-jzic2llcf-romans-projects-97b8739c.vercel.app/', added: 14 },
-  { name: 'כפר המטבעות',      emoji: '🪙', cat: 'טייקון וסימולציה', desc: 'בנו כפר שמדפיס מטבעות', url: 'https://dino-games-p7a02kugn-romans-projects-97b8739c.vercel.app/', added: 15 },
-  { name: 'לונה פארק טייקון', emoji: '🎡', cat: 'טייקון וסימולציה', desc: 'הקימו את לונה פארק החלומות שלכם', url: 'https://dino-games-qlz6gaur3-romans-projects-97b8739c.vercel.app/', added: 16 },
-  { name: 'פארק דינו',        emoji: '🦖', cat: 'טייקון וסימולציה', desc: 'משחק Idle Tycoon - פארק הדינוזאורים שלכם', url: 'https://dino-games-rmncfhtaw-romans-projects-97b8739c.vercel.app/', added: 17 },
-  { name: 'בית הקפה שלי',     emoji: '☕', cat: 'טייקון וסימולציה', desc: 'סימולציית בית קפה - מכמהן ועד אספרסו', url: 'https://dino-games-oyq7j0lvb-romans-projects-97b8739c.vercel.app/', added: 18 },
-  { name: 'דינו Merge',       emoji: '🧬', cat: 'מיזוג',            desc: 'גן האבולוציה - מזגו דינוזאורים וגלו מינים חדשים', url: 'https://dino-games-q4b7d1pa3-romans-projects-97b8739c.vercel.app/', added: 19 },
-  { name: 'בית הקפה מיזוג',   emoji: '🥐', cat: 'מיזוג',            desc: 'משחק מיזוג - מזגו מנות ובנו את בית הקפה', url: 'https://dino-games-p26azxrmz-romans-projects-97b8739c.vercel.app', added: 20 },
-  { name: 'ארץ הדינו',        emoji: '🌋', cat: 'ילדים',            desc: 'עולם של משחקים לילדים בעברית', url: 'https://dino-games-phi.vercel.app/', added: 21 },
+  { name: 'וורדל',            shot: 'shots/wordle.webp',      cat: 'מילים',            desc: 'פאזל המילים היומי - נחשו את המילה בשישה ניסיונות', url: 'https://wordle-hebrew.vercel.app', added: 1 },
+  { name: 'מילולי',           shot: 'shots/miluli.webp',      cat: 'מילים',            desc: 'משחק ערבוב מילים - כמה מילים תצליחו להרכיב?', url: 'https://dino-games-2lnl3n14i-romans-projects-97b8739c.vercel.app/', added: 2 },
+  { name: 'בזק טריוויה',      shot: 'shots/trivia.webp',      cat: 'טריוויה',          desc: 'שאלות טריוויה במירוץ נגד השעון', url: 'https://dino-games-p9oddk3d8-romans-projects-97b8739c.vercel.app/', added: 3 },
+  { name: 'חשבון בזק',        shot: 'shots/math.webp',        cat: 'טריוויה',          desc: 'ספרינט חשבון - כמה תרגילים תפתרו בדקה?', url: 'https://dino-games-p7olmi32r-romans-projects-97b8739c.vercel.app/', added: 4 },
+  { name: 'זרימה',            shot: 'shots/flow.webp',        cat: 'פאזל',             desc: 'חברו את הנקודות בלי לחצות קווים', url: 'https://dino-games-kkd7dprep-romans-projects-97b8739c.vercel.app/', added: 5 },
+  { name: 'סודוקו מאסטר',     shot: 'shots/sudoku.webp',      cat: 'פאזל',             desc: 'סודוקו קלאסי בכל רמת קושי', url: 'https://dino-games-68u15mjtc-romans-projects-97b8739c.vercel.app/', added: 6 },
+  { name: 'מיון צבעים',       shot: 'shots/colorsort.webp',   cat: 'פאזל',             desc: 'מיינו את הנוזלים לבקבוקים הנכונים', url: 'https://dino-games-fhvqbpe24-romans-projects-97b8739c.vercel.app/', added: 7 },
+  { name: 'פיצוץ בלוקים',     shot: 'shots/blocks.webp',      cat: 'פאזל',             desc: 'פוצצו בלוקים ופנו את הלוח', url: 'https://dino-games-4xw0fel3r-romans-projects-97b8739c.vercel.app/', added: 8 },
+  { name: 'שובר הניאון',      shot: 'shots/neon.webp',        cat: 'ארקייד',           desc: 'ארקייד ניאון - שברו את כל הלבנים', url: 'https://dino-games-nbx3ud7sr-romans-projects-97b8739c.vercel.app/', added: 9 },
+  { name: 'מלכודות!',         shot: 'shots/malchodot.webp',   cat: 'ארקייד',           desc: 'פלטפורמר מלכודות - שרדו את כל השלבים', url: 'https://malchodot.vercel.app/', added: 22 },
+  { name: 'דינוש הקפצן',      shot: 'shots/dinojump.webp',    cat: 'ארקייד',           desc: 'קפצו, התחמקו ושברו שיאים', url: 'https://dino-games-l3id4nr01-romans-projects-97b8739c.vercel.app/', added: 11 },
+  { name: 'ארבע בשורה',       shot: 'shots/four.webp',        cat: 'אסטרטגיה',         desc: 'הקלאסיקה נגד המחשב - ארבעה ברצף מנצחים', url: 'https://dino-games-fbgfln1oo-romans-projects-97b8739c.vercel.app/', added: 12 },
+  { name: 'קרב היסודות',      shot: 'shots/elements.webp',    cat: 'קלפים',            desc: 'דו-קרב קלפים של אש, מים, אדמה ואוויר', url: 'https://dino-games-m6eqvby8l-romans-projects-97b8739c.vercel.app/', added: 13 },
+  { name: 'אותות',            shot: 'shots/otot.webp',        cat: 'זיכרון',           desc: 'משחק זיכרון - עקבו אחרי הרצף ושחזרו אותו', url: 'https://dino-games-jzic2llcf-romans-projects-97b8739c.vercel.app/', added: 14 },
+  { name: 'כפר המטבעות',      shot: 'shots/coinvillage.webp', cat: 'טייקון וסימולציה', desc: 'בנו כפר שמדפיס מטבעות', url: 'https://dino-games-p7a02kugn-romans-projects-97b8739c.vercel.app/', added: 15 },
+  { name: 'לונה פארק טייקון', shot: 'shots/lunapark.webp',    cat: 'טייקון וסימולציה', desc: 'הקימו את לונה פארק החלומות שלכם', url: 'https://dino-games-qlz6gaur3-romans-projects-97b8739c.vercel.app/', added: 16 },
+  { name: 'פארק דינו',        shot: 'shots/dinopark.webp',    cat: 'טייקון וסימולציה', desc: 'משחק Idle Tycoon - פארק הדינוזאורים שלכם', url: 'https://dino-games-rmncfhtaw-romans-projects-97b8739c.vercel.app/', added: 17 },
+  { name: 'בית הקפה שלי',     shot: 'shots/cafe.webp',        cat: 'טייקון וסימולציה', desc: 'סימולציית בית קפה - מכמהן ועד אספרסו', url: 'https://dino-games-oyq7j0lvb-romans-projects-97b8739c.vercel.app/', added: 18 },
+  { name: 'דינו Merge',       shot: 'shots/dinomerge.webp',   cat: 'מיזוג',            desc: 'גן האבולוציה - מזגו דינוזאורים וגלו מינים חדשים', url: 'https://dino-games-q4b7d1pa3-romans-projects-97b8739c.vercel.app/', added: 19 },
+  { name: 'בית הקפה מיזוג',   shot: 'shots/cafemerge.webp',   cat: 'מיזוג',            desc: 'משחק מיזוג - מזגו מנות ובנו את בית הקפה', url: 'https://dino-games-p26azxrmz-romans-projects-97b8739c.vercel.app', added: 20 },
+  { name: 'ההרפתקה הגדולה',   shot: 'shots/k-adventure.webp', cat: 'ילדים',            desc: 'אוניקס והדרקונים - רוצו, קפצו וירו כדורי צל כדי להציל את ביצת הדרקון!', url: 'https://dino-games-phi.vercel.app/games/adventure/', added: 23 },
+  { name: 'זיכרון דינוזאורים', shot: 'shots/k-memory.webp',   cat: 'ילדים',            desc: 'מצאו זוגות של דינוזאורים', url: 'https://dino-games-phi.vercel.app/games/memory/', added: 24 },
+  { name: 'ספירת ביצים',      shot: 'shots/k-eggs.webp',      cat: 'ילדים',            desc: 'כמה ביצים יש? ספרו ובחרו את התשובה', url: 'https://dino-games-phi.vercel.app/games/eggs/', added: 25 },
+  { name: 'של מי הצל?',       shot: 'shots/k-shadow.webp',    cat: 'ילדים',            desc: 'נחשו את הדינוזאור לפי הצל שלו', url: 'https://dino-games-phi.vercel.app/games/shadow/', added: 26 },
+  { name: 'האכילו את הדינוזאור', shot: 'shots/k-feed.webp',   cat: 'ילדים',            desc: 'מי אוהב מה? האכילו כל דינוזאור במאכל שלו', url: 'https://dino-games-phi.vercel.app/games/feed/', added: 27 },
+  { name: 'גרום והסדרות',     shot: 'shots/k-sequence.webp',  cat: 'ילדים',            desc: 'מה בא אחר כך? השלימו את הסדרה', url: 'https://dino-games-phi.vercel.app/games/sequence/', added: 28 },
+  { name: 'מבוך הקריסטלים',   shot: 'shots/k-maze.webp',      cat: 'ילדים',            desc: 'מצאו את הדרך במבוך', url: 'https://dino-games-phi.vercel.app/games/maze/', added: 29 },
 ];
 
-const NEW_THRESHOLD = 19; // added rank >= this gets the "חדש" ribbon
+const NEW_THRESHOLD = 23; // added rank >= this gets the "חדש" ribbon
 const grid = document.getElementById('grid');
 const chipsEl = document.getElementById('chips');
 const searchInput = document.getElementById('search');
@@ -339,6 +418,8 @@ let query = '';
 let sortNew = false;
 
 document.getElementById('total-count').textContent = GAMES.length;
+document.getElementById('stat-games').textContent = GAMES.length;
+document.getElementById('stat-cats').textContent = new Set(GAMES.map(g => g.cat)).size;
 
 function buildChips() {
   const cats = ['הכל', ...Object.keys(CATEGORIES)];
@@ -349,7 +430,7 @@ function buildChips() {
     btn.className = 'chip' + (cat === activeCat ? ' active' : '');
     btn.innerHTML = `${cat}<span class="n">${n}</span>`;
     if (cat !== 'הכל') btn.style.setProperty('--chip-color', CATEGORIES[cat].color);
-    else btn.style.setProperty('--chip-color', '#f1f3ff');
+    else btn.style.setProperty('--chip-color', '#f2f4ff');
     btn.onclick = () => { activeCat = cat; buildChips(); render(); };
     chipsEl.appendChild(btn);
   });
@@ -378,19 +459,20 @@ function render() {
     a.rel = 'noopener';
     a.style.setProperty('--cat-color', c.color);
     a.style.setProperty('--cat-glow', c.glow);
+    a.style.setProperty('--cat-glow-strong', c.strong);
     a.style.animationDelay = Math.min(i * 45, 400) + 'ms';
     a.innerHTML = `
       ${g.added >= NEW_THRESHOLD ? '<span class="new-badge">חדש ✦</span>' : ''}
-      <div class="icon-tile">${g.emoji}</div>
+      <div class="thumb">
+        <img src="${g.shot}" alt="תצוגה מקדימה של ${g.name}" loading="lazy" width="760" height="473" onload="this.classList.add('loaded')">
+        <span class="cat-tag">${g.cat}</span>
+        <span class="play-fab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.54.84l10-6.5a1 1 0 0 0 0-1.68l-10-6.5A1 1 0 0 0 8 5.5Z"/></svg>
+        </span>
+      </div>
       <div class="card-body">
         <h3>${g.name}</h3>
         <p>${g.desc}</p>
-      </div>
-      <div class="card-side">
-        <span class="cat-tag">${g.cat}</span>
-        <span class="go-arrow">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg>
-        </span>
       </div>`;
     grid.appendChild(a);
   });
