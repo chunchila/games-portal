@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:coffee-shop-sim:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>בית הקפה שלי - סימולציה</title>
+<meta name="description" content="בית הקפה שלי - משחק סימולציה: נהלו בית קפה 14 יום. קנו מלאי, תמחרו נכון לפי מזג האוויר, והרוויחו הכי הרבה">
+<style>
+:root{--bg:#1a120b;--card:#2a1f14;--accent:#f59e0b;--accent2:#a78bfa;--good:#34d399;--bad:#fb7185;--text:#fdf6ec;--muted:#c4ab8e;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{margin:0;height:100%;}
+body{font-family:'Rubik',system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(1000px 700px at 85% -10%,#f59e0b22,transparent),
+             radial-gradient(800px 600px at -10% 110%,#a78bfa12,transparent),var(--bg);
+  display:flex;flex-direction:column;align-items:center;min-height:100%;
+  padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);}
+.wrap{width:100%;max-width:520px;display:flex;flex-direction:column;flex:1;}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 4px 4px;}
+.logo{font-weight:900;font-size:23px;background:linear-gradient(90deg,var(--accent),#fcd34d,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.pill{background:var(--card);border:1px solid #ffffff14;border-radius:999px;padding:5px 14px;font-weight:600;font-size:14px;}
+.screen{display:none;flex-direction:column;flex:1;animation:fade .3s ease;}
+.screen.active{display:flex;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:16px;padding:16px 0 36px;}
+.hero h1{font-size:46px;margin:0;line-height:1.15;background:linear-gradient(135deg,var(--accent),#fcd34d 50%,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{color:var(--muted);font-size:16px;max-width:340px;margin:0;line-height:1.65;}
+.btn{border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:16px;color:#2b1a02;
+  background:linear-gradient(135deg,var(--accent),#fcd34d);padding:14px 38px;font-size:18px;
+  box-shadow:0 8px 24px #f59e0b44,inset 0 1px 0 #ffffff88;transition:transform .12s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid #ffffff22;font-weight:600;padding:11px 20px;font-size:15px;}
+.hud{display:flex;gap:8px;margin:6px 0;}
+.hud .pill{flex:1;text-align:center;font-size:13px;}
+.card{background:var(--card);border:1px solid #ffffff12;border-radius:18px;padding:14px;margin:6px 0;}
+.weather{display:flex;align-items:center;gap:14px;}
+.weather .ico{font-size:42px;}
+.weather b{font-size:18px;}
+.weather span{color:var(--muted);font-size:13.5px;display:block;}
+.prod{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff0d;}
+.prod:last-child{border-bottom:0;}
+.prod .pi{font-size:30px;width:40px;text-align:center;}
+.prod .info{flex:1;}
+.prod .info b{display:block;font-size:15.5px;}
+.prod .info span{font-size:12px;color:var(--muted);}
+.stepper{display:flex;align-items:center;gap:8px;}
+.stepper button{width:32px;height:32px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff0c;color:var(--text);font-size:18px;font-weight:800;cursor:pointer;font-family:inherit;}
+.stepper button:active{transform:scale(.9);}
+.stepper .val{min-width:52px;text-align:center;font-weight:800;font-size:15px;}
+.stepper .val small{display:block;font-size:10px;color:var(--muted);font-weight:600;}
+.scroll{flex:1;overflow-y:auto;padding-bottom:8px;}
+.day-go{padding:10px 0 18px;}
+.day-go .btn{width:100%;}
+.report-row{display:flex;justify-content:space-between;padding:7px 2px;border-bottom:1px solid #ffffff0d;font-size:15px;}
+.report-row:last-of-type{border-bottom:0;}
+.total-row{display:flex;justify-content:space-between;padding:10px 2px 0;font-weight:900;font-size:17px;}
+.pos{color:var(--good);} .neg{color:var(--bad);}
+.overlay{position:fixed;inset:0;background:#140e08d9;backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;animation:fade .25s;}
+.overlay.show{display:flex;}
+.ov-card{background:linear-gradient(160deg,#2a1f14,#1a120b);border:1px solid #ffffff1c;border-radius:22px;padding:24px;width:100%;max-width:360px;box-shadow:0 24px 60px #000000aa;}
+.ov-card h2{margin:0 0 10px;font-size:22px;text-align:center;}
+.ov-card .btn{width:100%;margin-top:14px;}
+.end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding-bottom:40px;}
+.end h2{margin:0;font-size:28px;}
+.end .score-big{font-size:52px;font-weight:900;background:linear-gradient(135deg,var(--accent),#fcd34d);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.rank{font-size:20px;font-weight:800;color:var(--accent2);}
+.hint{color:var(--muted);font-size:13px;text-align:center;line-height:1.6;background:#ffffff08;border-radius:12px;padding:8px 12px;margin:6px 0;}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1100px 620px at 85% -10%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 62%),radial-gradient(900px 620px at -12% 112%,color-mix(in srgb,var(--accent2) 11%,transparent),transparent 62%),radial-gradient(#ffffff08 1px,transparent 1.4px) 0 0/32px 32px,var(--bg)}
+.logo{letter-spacing:-.5px}
+.pill{border-color:#ffffff21;box-shadow:inset 0 1px 0 #ffffff0f,0 4px 14px -6px #00000088;backdrop-filter:blur(8px)}
+.hero h1{letter-spacing:-1.5px}
+.btn{position:relative;overflow:hidden;transition:transform .15s cubic-bezier(.34,1.4,.4,1),box-shadow .25s,filter .2s}
+.btn:not(.ghost){box-shadow:0 10px 30px -8px color-mix(in srgb,var(--accent) 60%,transparent),inset 0 1px 0 #ffffff52}
+.btn:not(.ghost):hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 16px 42px -8px color-mix(in srgb,var(--accent) 72%,transparent),inset 0 1px 0 #ffffff70}
+.btn:not(.ghost):active{transform:translateY(1px) scale(.97)}
+.btn:not(.ghost)::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff2e 50%,transparent 65%);transform:translateX(130%);transition:transform .55s;pointer-events:none}
+.btn:not(.ghost):hover::after{transform:translateX(-130%)}
+.btn.ghost{transition:transform .15s,background .2s,border-color .2s}
+.btn.ghost:hover{background:#ffffff10;border-color:#ffffff3a;color:var(--text)}
+.overlay-msg{background:#04050ed2;backdrop-filter:blur(12px)}
+.ov-card{border-color:#ffffff26;box-shadow:0 30px 90px -18px #000,inset 0 1px 0 #ffffff12}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">☕ בית הקפה שלי</div>
+    <div class="pill">🏆 <span id="bestTop">₪0</span></div>
+  </header>
+
+  <section id="scrStart" class="screen active">
+    <div class="hero">
+      <h1>☕ בית הקפה שלי</h1>
+      <p>ירשתם בית קפה קטן ו-₪300. 14 יום להפוך אותו לאימפריה: בכל בוקר קונים מלאי, קובעים מחירים לפי התחזית - ורואים מה היום עושה.</p>
+      <button class="btn" id="btnStart">פותחים את הדלת ▶</button>
+      <div class="hint">טיפ: קר בבוקר? הקפה החם טס. חם בחוץ? תזניקו את הקר ותורידו מחיר.</div>
+    </div>
+  </section>
+
+  <section id="scrGame" class="screen">
+    <div class="hud">
+      <div class="pill">יום <span id="day">1</span>/14</div>
+      <div class="pill">💰 ₪<span id="cash">300</span></div>
+    </div>
+    <div class="scroll">
+      <div class="card weather" id="weatherCard"></div>
+      <div class="card" id="shopCard"></div>
+      <div class="hint" id="dayHint"></div>
+    </div>
+    <div class="day-go"><button class="btn" id="btnRun">☀️ פתחו את היום ▶</button></div>
+  </section>
+
+  <section id="scrEnd" class="screen">
+    <div class="end">
+      <h2>14 הימים נגמרו ☕</h2>
+      <div class="score-big" id="finalCash">₪0</div>
+      <div class="rank" id="rank"></div>
+      <div class="pill" id="endBest"></div>
+      <button class="btn" id="btnAgain">עונה חדשה 🔁</button>
+      <button class="btn ghost" id="btnShare">שתפו 📤</button>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ov-card">
+    <h2 id="ovTitle">סיכום יום 1</h2>
+    <div id="ovBody"></div>
+    <button class="btn" id="btnCloseOv">לילה טוב, מחר יום חדש 🌙</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const PRODUCTS=[
+ {id:'hot',e:'☕',n:'קפה חם',cost:3,base:14,defPrice:12},
+ {id:'iced',e:'🧋',n:'קפה קר',cost:4,base:12,defPrice:14},
+ {id:'cake',e:'🥐',n:'מאפה',cost:5,base:9,defPrice:11}
+];
+const WEATHERS=[
+ {id:'sunny',e:'☀️',n:'שמשי',d:'יום קלאסי - הכל מוכר',hot:1,iced:1.2,cake:1},
+ {id:'hot',e:'🔥',n:'חם מאוד',d:'כולם רוצים קר!',hot:.55,iced:1.8,cake:.9},
+ {id:'cold',e:'🥶',n:'קריר',d:'הקפה החם בביקוש',hot:1.8,iced:.5,cake:1.2},
+ {id:'rain',e:'🌧️',n:'גשום',d:'פחות עוברי אורח, אבל חמים בפנים',hot:1.3,iced:.6,cake:1.1},
+ {id:'perfect',e:'🌤️',n:'מושלם',d:'יום חלומי לקפה בחוץ',hot:1.1,iced:1.4,cake:1.15}
+];
+let day,cash,stock,prices,buys,weather;
+const best=+ArcadiaStorage.getItem('cafe_best')||0;
+$('bestTop').textContent='₪'+best;
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function start(){
+  day=1;cash=300;
+  stock={hot:0,iced:0,cake:0};
+  prices={hot:12,iced:14,cake:11};
+  renderDay();show('scrGame');
+}
+function rollWeather(){
+  const w=WEATHERS[Math.floor(Math.random()*WEATHERS.length)];
+  // day 1 always pleasant
+  return day===1?WEATHERS[4]:w;
+}
+function renderDay(){
+  weather=rollWeather();
+  buys={hot:0,iced:0,cake:0};
+  $('day').textContent=day;
+  $('cash').textContent=cash;
+  $('weatherCard').innerHTML=`<div class="ico">${weather.e}</div><div><b>התחזית: ${weather.n}</b><span>${weather.d}</span></div>`;
+  $('dayHint').textContent=day===1?'קנו מלאי, כוונו מחירים - ולחצו "פתחו את היום"':'';
+  renderShop();
+}
+function renderShop(){
+  const c=$('shopCard');
+  c.innerHTML='<b style="font-size:16px">🛒 מלאי ותמחור</b>';
+  for(const p of PRODUCTS){
+    const row=document.createElement('div');row.className='prod';
+    row.innerHTML=`
+      <div class="pi">${p.e}</div>
+      <div class="info"><b>${p.n}</b><span>במלאי: ${stock[p.id]+buys[p.id]} · עלות יחידה: ₪${p.cost}</span></div>
+      <div class="stepper">
+        <div><div class="val" id="price-${p.id}">₪${prices[p.id]}<small>מחיר</small></div></div>
+        <button data-a="p-" data-p="${p.id}">−</button>
+        <button data-a="p+" data-p="${p.id}">+</button>
+        <div class="val" id="buy-${p.id}">${buys[p.id]}<small>קנייה</small></div>
+        <button data-a="b-" data-p="${p.id}">−</button>
+        <button data-a="b+" data-p="${p.id}">+</button>
+      </div>`;
+    c.appendChild(row);
+  }
+  const spend=PRODUCTS.reduce((s,p)=>s+buys[p.id]*p.cost,0);
+  const info=document.createElement('div');
+  info.style.cssText='text-align:left;color:var(--muted);font-size:13px;padding-top:8px';
+  info.textContent=spend?`עלות הקנייה: ₪${spend} · יישארו: ₪${cash-spend}`:'לחצו + בעמודת "קנייה" כדי להזמין מלאי';
+  c.appendChild(info);
+}
+$('shopCard').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const p=PRODUCTS.find(x=>x.id===b.dataset.p);
+  if(b.dataset.a==='p+')prices[p.id]=Math.min(30,prices[p.id]+1);
+  if(b.dataset.a==='p-')prices[p.id]=Math.max(5,prices[p.id]-1);
+  if(b.dataset.a==='b+'){
+    const spend=PRODUCTS.reduce((s,x)=>s+buys[x.id]*x.cost,0);
+    if(spend+p.cost<=cash)buys[p.id]++;
+  }
+  if(b.dataset.a==='b-')buys[p.id]=Math.max(0,buys[p.id]-1);
+  renderShop();
+});
+$('btnRun').onclick=()=>{
+  // commit purchases
+  let spend=0;
+  for(const p of PRODUCTS){spend+=buys[p.id]*p.cost;stock[p.id]+=buys[p.id];}
+  cash-=spend;
+  // simulate day
+  const rows=[];let revenue=0;
+  for(const p of PRODUCTS){
+    const elasticity=Math.max(.15,Math.min(1.9,1.9-(prices[p.id]/p.defPrice)*.85));
+    const demand=Math.round(p.base*weather[p.id]*elasticity*(0.85+Math.random()*.3));
+    const sold=Math.min(demand,stock[p.id]);
+    const missed=demand-sold;
+    stock[p.id]-=sold;
+    const rev=sold*prices[p.id];
+    revenue+=rev;
+    rows.push({p,sold,missed,rev});
+  }
+  cash+=revenue;
+  const profit=revenue-spend;
+  $('cash').textContent=cash;
+  let html='';
+  for(const r of rows){
+    html+=`<div class="report-row"><span>${r.p.e} ${r.p.n}</span><span>נמכרו <b>${r.sold}</b>${r.missed>0?` <span class="neg">(החמצתם ${r.missed})</span>`:''} · ₪${r.rev}</span></div>`;
+  }
+  html+=`<div class="total-row"><span>רווח היום</span><span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}₪${profit}</span></div>`;
+  $('ovTitle').textContent='סיכום יום '+day+' '+weather.e;
+  $('ovBody').innerHTML=html;
+  $('overlay').classList.add('show');
+};
+$('btnCloseOv').onclick=()=>{
+  $('overlay').classList.remove('show');
+  if(day>=14)return end();
+  day++;renderDay();
+};
+function end(){
+  const nb=cash>best;
+  if(nb)ArcadiaStorage.setItem('cafe_best',cash);
+  $('finalCash').textContent='₪'+cash;
+  $('rank').textContent=cash>=1200?'👑 אימפריית קפה!':cash>=800?'🌟 רשת בדרך!':cash>=500?'☕ קפיטנריה מכובדת':cash>=300?'🙂 יצאתם בסוף פלוס':'😬 המפסד הזה...';
+  $('endBest').textContent=nb?'🏆 שיא חדש!':'השיא: ₪'+Math.max(best,cash);
+  $('bestTop').textContent='₪'+Math.max(best,cash);
+  show('scrEnd');
+}
+$('btnStart').onclick=start;
+$('btnAgain').onclick=start;
+$('btnShare').onclick=async()=>{
+  const txt='ניהלתי בית קפה 14 יום וסיימתי עם ₪'+cash+' ☕ תעשו את זה טוב יותר?';
+  if(navigator.share){try{await navigator.share({text:txt,url:location.href});}catch(e){}}
+  else{try{await navigator.clipboard.writeText(txt+' '+location.href);$('btnShare').textContent='הועתק! ✅';setTimeout(()=>$('btnShare').textContent='שתפו 📤',1800);}catch(e){}}
+};
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

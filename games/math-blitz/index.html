@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:math-blitz:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>חשבון בזק - ספרינט חשבון</title>
+<meta name="description" content="חשבון בזק - 60 שניות של תרגילי חשבון מתקשים. כמה תצליחו לפתור?">
+<style>
+:root{--bg:#0e0a1f;--card:#1a1435;--accent:#a78bfa;--accent2:#34d399;--bad:#fb7185;--text:#f3f0ff;--muted:#a79ed0;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{margin:0;height:100%;}
+body{font-family:'Rubik',system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(1000px 700px at 85% -10%,#a78bfa22,transparent),
+             radial-gradient(800px 600px at -10% 110%,#34d39912,transparent),var(--bg);
+  display:flex;flex-direction:column;align-items:center;min-height:100%;
+  padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);}
+.wrap{width:100%;max-width:520px;display:flex;flex-direction:column;flex:1;}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 6px;}
+.logo{font-weight:900;font-size:24px;background:linear-gradient(90deg,var(--accent),#d8b4fe,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.pill{background:var(--card);border:1px solid #ffffff14;border-radius:999px;padding:5px 14px;font-weight:600;font-size:14px;}
+.screen{display:none;flex-direction:column;flex:1;animation:fade .3s ease;}
+.screen.active{display:flex;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding:20px 0 40px;}
+.hero h1{font-size:50px;margin:0;background:linear-gradient(135deg,var(--accent),#d8b4fe 50%,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 30px #a78bfa33);}
+.hero p{color:var(--muted);font-size:17px;max-width:330px;margin:0;line-height:1.65;}
+.btn{border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:16px;color:#1e1145;
+  background:linear-gradient(135deg,var(--accent),#d8b4fe);padding:15px 42px;font-size:19px;
+  box-shadow:0 8px 24px #a78bfa44,inset 0 1px 0 #ffffff88;transition:transform .12s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid #ffffff22;font-weight:600;padding:12px 24px;font-size:15px;}
+.best-chip{color:var(--accent2);font-weight:700;font-size:14px;}
+.hud{display:flex;gap:8px;margin:8px 0;}
+.hud .pill{flex:1;text-align:center;}
+.timerbar{height:9px;background:#ffffff12;border-radius:99px;overflow:hidden;margin:4px 0 8px;}
+.timerbar b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .25s linear;}
+.timerbar b.low{background:linear-gradient(90deg,var(--bad),#ff9b6a);}
+.qcard{background:linear-gradient(160deg,var(--card),#150f2e);border:1px solid #ffffff12;border-radius:22px;padding:26px 18px;text-align:center;margin-top:6px;box-shadow:0 10px 30px #00000055;}
+.q{font-size:46px;font-weight:900;letter-spacing:1px;margin:0 0 14px;min-height:60px;direction:ltr;}
+.answer{display:inline-block;min-width:120px;border-bottom:3px solid var(--accent);font-size:40px;font-weight:900;color:var(--accent2);padding:0 12px;direction:ltr;}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;}
+.key{background:var(--card);border:1px solid #ffffff16;border-radius:14px;color:var(--text);font-size:26px;font-weight:800;padding:14px 0;cursor:pointer;font-family:inherit;transition:transform .1s;}
+.key:active{transform:scale(.93);background:#2a2050;}
+.key.action{color:var(--accent2);}
+.flash-good{animation:fg .35s;}
+@keyframes fg{0%{box-shadow:0 0 0 3px var(--accent2);}100%{}}
+.flash-bad{animation:fb .35s;}
+@keyframes fb{0%{box-shadow:0 0 0 3px var(--bad);transform:translateX(-6px);}50%{transform:translateX(5px);}100%{}}
+.end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding-bottom:40px;}
+.end h2{margin:0;font-size:26px;}
+.end .score-big{font-size:74px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent2),#6ee7b7);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.stats{display:flex;gap:10px;margin:8px 0;flex-wrap:wrap;justify-content:center;}
+.stat{background:var(--card);border:1px solid #ffffff12;border-radius:14px;padding:12px 18px;min-width:84px;}
+.stat b{display:block;font-size:22px;}
+.stat span{color:var(--muted);font-size:12.5px;}
+.newbest{color:var(--accent2);font-weight:800;}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1100px 620px at 85% -10%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 62%),radial-gradient(900px 620px at -12% 112%,color-mix(in srgb,var(--accent2) 11%,transparent),transparent 62%),radial-gradient(#ffffff08 1px,transparent 1.4px) 0 0/32px 32px,var(--bg)}
+.logo{letter-spacing:-.5px}
+.pill{border-color:#ffffff21;box-shadow:inset 0 1px 0 #ffffff0f,0 4px 14px -6px #00000088;backdrop-filter:blur(8px)}
+.hero h1{letter-spacing:-1.5px}
+.btn{position:relative;overflow:hidden;transition:transform .15s cubic-bezier(.34,1.4,.4,1),box-shadow .25s,filter .2s}
+.btn:not(.ghost){box-shadow:0 10px 30px -8px color-mix(in srgb,var(--accent) 60%,transparent),inset 0 1px 0 #ffffff52}
+.btn:not(.ghost):hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 16px 42px -8px color-mix(in srgb,var(--accent) 72%,transparent),inset 0 1px 0 #ffffff70}
+.btn:not(.ghost):active{transform:translateY(1px) scale(.97)}
+.btn:not(.ghost)::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff2e 50%,transparent 65%);transform:translateX(130%);transition:transform .55s;pointer-events:none}
+.btn:not(.ghost):hover::after{transform:translateX(-130%)}
+.btn.ghost{transition:transform .15s,background .2s,border-color .2s}
+.btn.ghost:hover{background:#ffffff10;border-color:#ffffff3a;color:var(--text)}
+.overlay-msg{background:#04050ed2;backdrop-filter:blur(12px)}
+.ov-card{border-color:#ffffff26;box-shadow:0 30px 90px -18px #000,inset 0 1px 0 #ffffff12}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🔢 חשבון בזק</div>
+    <div class="pill">🏆 <span id="bestTop">0</span></div>
+  </header>
+
+  <section id="scrStart" class="screen active">
+    <div class="hero">
+      <h1>🔢 חשבון בזק</h1>
+      <p>60 שניות של תרגילים. תשובה נכונה: 10 נקודות + בונוס רצף. טעות: מינוס 2 שניות. התרגילים מתקשים ככל שאתם מצליחים!</p>
+      <button class="btn" id="btnStart">התחילו ▶</button>
+      <div class="best-chip" id="bestChip"></div>
+    </div>
+  </section>
+
+  <section id="scrGame" class="screen">
+    <div class="hud">
+      <div class="pill">⭐ <span id="score">0</span></div>
+      <div class="pill">🔥 <span id="streak">0</span></div>
+      <div class="pill">⏱️ <span id="time">60</span></div>
+    </div>
+    <div class="timerbar"><b id="tbar"></b></div>
+    <div class="qcard" id="qcard">
+      <p class="q" id="q">7 + 5 =</p>
+      <span class="answer" id="ans">?</span>
+      <div class="keypad">
+        <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+        <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+        <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+        <button class="key action" data-k="-">±</button><button class="key" data-k="0">0</button><button class="key action" data-k="b">⌫</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scrEnd" class="screen">
+    <div class="end">
+      <h2 id="endTitle">!זמן</h2>
+      <div class="score-big" id="finalScore">0</div>
+      <div class="newbest" id="newBest" hidden>🏆 שיא חדש!</div>
+      <div class="stats">
+        <div class="stat"><b id="stCorrect">0</b><span>נכונות</span></div>
+        <div class="stat"><b id="stWrong">0</b><span>טעויות</span></div>
+        <div class="stat"><b id="stStreak">0</b><span>רצף שיא</span></div>
+      </div>
+      <button class="btn" id="btnAgain">עוד סיבוב 🔁</button>
+      <button class="btn ghost" id="btnShare">שתפו 📤</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const TOTAL=60;
+let score,streak,bestStreak,correct,wrong,timeLeft,timer,cur,ansStr,difficulty;
+const best=+ArcadiaStorage.getItem('math_best')||0;
+$('bestTop').textContent=best;if(best)$('bestChip').textContent='השיא שלכם: '+best+' נקודות';
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function genQ(){
+  const d=difficulty;
+  const ops=d<3?['+','-']:d<6?['+','-','×']:['+','-','×','÷'];
+  const op=ops[ri(0,ops.length-1)];
+  let a,b,ans;
+  if(op==='+'){const m=8+d*6;a=ri(3,m);b=ri(3,m);ans=a+b;}
+  else if(op==='-'){const m=8+d*6;a=ri(5,m+6);b=ri(3,a);ans=a-b;}
+  else if(op==='×'){const m=Math.min(3+Math.floor(d/2),9);a=ri(2,m+3);b=ri(2,m+3);ans=a*b;}
+  else{b=ri(2,9);ans=ri(2,9+Math.floor(d/2));a=b*ans;}
+  cur={t:`${a} ${op} ${b} =`,ans};
+  ansStr='';
+  $('q').textContent=cur.t;
+  $('ans').textContent='?';
+}
+function start(){
+  score=0;streak=0;bestStreak=0;correct=0;wrong=0;timeLeft=TOTAL;difficulty=1;
+  $('score').textContent=0;$('streak').textContent=0;$('time').textContent=timeLeft;
+  $('tbar').style.width='100%';$('tbar').classList.remove('low');
+  show('scrGame');genQ();
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    timeLeft--;$('time').textContent=timeLeft;
+    $('tbar').style.width=(timeLeft/TOTAL*100)+'%';$('tbar').classList.toggle('low',timeLeft<=10);
+    if(timeLeft<=0){clearInterval(timer);end();}
+  },1000);
+}
+function submit(){
+  if(ansStr===''||ansStr==='-')return;
+  const v=parseInt(ansStr,10);
+  const qc=$('qcard');
+  if(v===cur.ans){
+    correct++;streak++;bestStreak=Math.max(bestStreak,streak);
+    const bonus=streak>=3?5:0;
+    score+=10+bonus;
+    difficulty=Math.min(10,1+Math.floor(correct/3));
+    qc.classList.remove('flash-good');void qc.offsetWidth;qc.classList.add('flash-good');
+  }else{
+    wrong++;streak=0;
+    timeLeft=Math.max(0,timeLeft-2);$('time').textContent=timeLeft;
+    $('tbar').style.width=(timeLeft/TOTAL*100)+'%';
+    qc.classList.remove('flash-bad');void qc.offsetWidth;qc.classList.add('flash-bad');
+    if(timeLeft<=0){clearInterval(timer);end();return;}
+  }
+  $('score').textContent=score;$('streak').textContent=streak;
+  genQ();
+}
+document.querySelectorAll('.key').forEach(b=>{
+  b.onclick=()=>{
+    const k=b.dataset.k;
+    if(k==='b'){ansStr=ansStr.slice(0,-1);}
+    else if(k==='-'){
+      if(ansStr.startsWith('-'))ansStr=ansStr.slice(1);else ansStr='-'+ansStr;
+    }
+    else{
+      if(ansStr.replace('-','').length>=4)return;
+      ansStr+=k;
+    }
+    $('ans').textContent=ansStr||'?';
+    if(ansStr===String(cur.ans))submit();
+  };
+});
+document.addEventListener('keydown',e=>{
+  if(!$('scrGame').classList.contains('active'))return;
+  if(/^[0-9]$/.test(e.key))document.querySelector(`.key[data-k="${e.key}"]`).click();
+  if(e.key==='Backspace')document.querySelector('.key[data-k="b"]').click();
+  if(e.key==='-')document.querySelector('.key[data-k="-"]').click();
+});
+function end(){
+  clearInterval(timer);
+  $('finalScore').textContent=score;
+  $('stCorrect').textContent=correct;$('stWrong').textContent=wrong;$('stStreak').textContent=bestStreak;
+  const nb=score>best;if(nb){ArcadiaStorage.setItem('math_best',score);$('bestTop').textContent=score;}
+  $('newBest').hidden=!nb;
+  $('endTitle').textContent=correct>=20?'🧮 מחשבון אנושי!':correct>=12?'⚡ מהירות שיא!':correct>=6?'👏 יפה מאוד!':'💪 תתאמנו ותחזרו!';
+  show('scrEnd');
+}
+$('btnStart').onclick=start;
+$('btnAgain').onclick=start;
+$('btnShare').onclick=async()=>{
+  const txt='פתרתי '+correct+' תרגילים ב-60 שניות בחשבון בזק! הניקוד: '+score+' 🔢 מי מנצח אותי?';
+  if(navigator.share){try{await navigator.share({text:txt,url:location.href});}catch(e){}}
+  else{try{await navigator.clipboard.writeText(txt+' '+location.href);$('btnShare').textContent='הועתק! ✅';setTimeout(()=>$('btnShare').textContent='שתפו 📤',1800);}catch(e){}}
+};
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

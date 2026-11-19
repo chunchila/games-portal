@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:dino-park-idle-tycoon:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b2a22">
+<meta name="description" content="פארק דינוזאורים - משחק Idle Tycoon בעברית. פתחו גידות, גייסו מנהלים, הרוויחו גם כשאתם לא כאן.">
+<title>פארק דינו - משחק Idle Tycoon</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦖</text></svg>">
+<style>
+:root{
+  --bg1:#07201a; --bg2:#0e3a2d; --bg3:#165240;
+  --card:rgba(255,255,255,.07); --card-b:rgba(255,255,255,.12);
+  --gold:#ffcb3d; --gold2:#ff9d1f; --ink:#f4fff8; --mut:#9fc7b7;
+  --ok:#3ee28a; --bad:#ff6b6b; --egg:#ffd9f0;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg1);color:var(--ink);
+  font-family:'Heebo',system-ui,-apple-system,'Rubik',system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none;touch-action:manipulation}
+body{overflow:hidden}
+button{font-family:inherit;color:inherit;border:0;cursor:pointer}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;
+  background:radial-gradient(120% 60% at 50% -10%,var(--bg3) 0%,transparent 60%),linear-gradient(180deg,var(--bg2),var(--bg1));
+  overflow:hidden}
+/* decor */
+.leaf{position:absolute;font-size:90px;opacity:.07;pointer-events:none;filter:blur(1px)}
+.leaf.a{top:90px;left:-24px;transform:rotate(-20deg)}
+.leaf.b{top:48%;right:-30px;transform:rotate(25deg) scaleX(-1);font-size:120px}
+.leaf.c{bottom:90px;left:-20px;transform:rotate(15deg)}
+.star{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;opacity:.5;animation:tw 3s infinite alternate}
+@keyframes tw{to{opacity:.1}}
+
+header{position:relative;z-index:5;padding:calc(10px + var(--safe-t)) 16px 12px;
+  background:linear-gradient(180deg,rgba(4,18,14,.92),rgba(4,18,14,.6));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--card-b)}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font-weight:900;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.brand span{background:linear-gradient(90deg,#fff,#b5ffd9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--card-b);font-size:18px;display:grid;place-items:center}
+.iconbtn:active{transform:scale(.94)}
+.coinbox{display:flex;align-items:baseline;justify-content:center;gap:8px;margin-top:8px}
+.coin{font-size:34px;filter:drop-shadow(0 2px 6px rgba(255,180,0,.5))}
+#coins{font-size:40px;font-weight:900;line-height:1;background:linear-gradient(180deg,#fff3b0,var(--gold) 50%,var(--gold2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+#coins.bump{animation:bump .25s}
+@keyframes bump{50%{transform:scale(1.07)}}
+.subline{display:flex;justify-content:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.chip{font-size:13px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--card);border:1px solid var(--card-b);color:var(--mut);display:flex;gap:5px;align-items:center}
+.chip b{color:var(--ink);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+.chip.egg b{color:var(--egg)}
+
+main{position:relative;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px 14px 20px}
+main::-webkit-scrollbar{display:none}
+.view{display:none;animation:fade .25s}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+
+.buymode{display:flex;gap:6px;background:rgba(0,0,0,.25);padding:4px;border-radius:14px;margin-bottom:12px;border:1px solid var(--card-b)}
+.buymode button{flex:1;padding:8px 0;border-radius:10px;background:transparent;font-weight:800;font-size:14px;color:var(--mut)}
+.buymode button.on{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3b2300;box-shadow:0 2px 10px rgba(255,170,0,.35)}
+
+.ex{position:relative;margin-bottom:12px;border-radius:20px;padding:12px;background:var(--card);border:1px solid var(--card-b);
+  box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden}
+.ex::before{content:"";position:absolute;inset:0;background:radial-gradient(90% 120% at 100% 0,var(--acc),transparent 60%);opacity:.18;pointer-events:none}
+.ex.locked .avatar{filter:grayscale(1) brightness(.25);animation:none}
+.ex.locked .meta .name{color:var(--mut)}
+.row{display:flex;gap:12px;align-items:center;position:relative}
+.avatar{flex:none;width:76px;height:76px;border-radius:22px;display:grid;place-items:center;font-size:44px;cursor:pointer;
+  background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.35),transparent 55%),linear-gradient(145deg,var(--acc),rgba(0,0,0,.35));
+  border:2px solid rgba(255,255,255,.25);box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 -6px 12px rgba(0,0,0,.25);position:relative;transition:transform .08s}
+.avatar:active{transform:scale(.93)}
+.avatar span{display:block;animation:bob 2.4s ease-in-out infinite;transform-origin:50% 90%}
+.ex.running .avatar span{animation:stomp .5s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-3px) rotate(-3deg)}}
+@keyframes stomp{50%{transform:translateY(-5px) scale(1.08) rotate(4deg)}}
+.lvl{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);background:#0a1f18;border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:1px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+.meta{flex:1;min-width:0}
+.name{font-weight:900;font-size:18px;line-height:1.1}
+.desc{font-size:12px;color:var(--mut);margin-top:2px}
+.bar{position:relative;height:22px;border-radius:99px;margin-top:8px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);overflow:hidden;cursor:pointer}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--acc),#fff8);border-radius:99px;box-shadow:0 0 12px var(--acc)}
+.bar.auto i{background-image:repeating-linear-gradient(115deg,rgba(255,255,255,.28) 0 8px,transparent 8px 16px);background-color:var(--acc);animation:slide 1s linear infinite;background-size:32px 100%}
+@keyframes slide{to{background-position:32px 0}}
+.bar em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;text-shadow:0 1px 3px #000;direction:ltr}
+.bottom{display:flex;gap:8px;align-items:stretch;margin-top:12px;position:relative}
+.buy{flex:1;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:14px;font-weight:900;font-size:15px;
+  background:linear-gradient(180deg,#4bf09a,#17b765);color:#04301a;box-shadow:0 4px 0 #0c7a43,0 8px 16px rgba(0,0,0,.3);transition:transform .08s,box-shadow .08s}
+.buy:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #0c7a43}
+.buy:disabled{background:linear-gradient(180deg,#4c5f58,#3a4a44);color:#a5b8b0;box-shadow:0 4px 0 #26332e;cursor:not-allowed}
+.buy .price{direction:ltr;unicode-bidi:isolate;display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.buy.pulse:not(:disabled){animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 4px 0 #0c7a43,0 0 0 6px rgba(75,240,154,.25)}}
+.stat{flex:none;min-width:96px;text-align:center;padding:6px 10px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid var(--card-b);font-size:11px;color:var(--mut);line-height:1.25}
+.stat b{display:block;font-size:15px;color:var(--ink);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+.ms{font-size:11.5px;color:var(--mut);margin-top:10px;position:relative;display:flex;justify-content:space-between;gap:8px}
+.ms .track{flex:1;height:5px;border-radius:9px;background:rgba(0,0,0,.35);align-self:center;overflow:hidden}
+.ms .track i{display:block;height:100%;width:0;background:var(--gold);border-radius:9px}
+.float{position:absolute;pointer-events:none;font-weight:900;font-size:20px;color:var(--gold);text-shadow:0 2px 6px #000,0 0 10px rgba(255,200,0,.6);animation:fl 1s ease-out forwards;z-index:9;direction:ltr;white-space:nowrap}
+@keyframes fl{from{opacity:1;transform:translate(-50%,0) scale(.8)}to{opacity:0;transform:translate(-50%,-60px) scale(1.15)}}
+
+/* lists */
+.sec-title{font-size:13px;font-weight:800;color:var(--mut);margin:4px 2px 10px;letter-spacing:.3px}
+.item{display:flex;gap:12px;align-items:center;padding:12px;border-radius:18px;background:var(--card);border:1px solid var(--card-b);margin-bottom:10px;position:relative;overflow:hidden}
+.item.off{opacity:.55}
+.item .ico{flex:none;width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-size:30px;background:linear-gradient(145deg,var(--acc,#3a6),rgba(0,0,0,.35));border:1px solid rgba(255,255,255,.2)}
+.item .txt{flex:1;min-width:0}
+.item .t{font-weight:800;font-size:15px}
+.item .d{font-size:12px;color:var(--mut);margin-top:2px}
+.item .go{flex:none;padding:9px 12px;border-radius:12px;font-weight:900;font-size:13px;background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3b2300;box-shadow:0 3px 0 #a15d00;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+.item .go:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #a15d00}
+.item .go:disabled{background:#4c5f58;color:#a5b8b0;box-shadow:0 3px 0 #26332e;cursor:not-allowed}
+.item .go.done{background:transparent;color:var(--ok);box-shadow:none;border:1px solid var(--ok)}
+.empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:14px}
+
+/* prestige */
+.pcard{border-radius:24px;padding:20px;text-align:center;background:linear-gradient(160deg,rgba(255,217,240,.14),rgba(120,70,200,.15));border:1px solid rgba(255,217,240,.3);margin-bottom:14px}
+.bigegg{font-size:70px;filter:drop-shadow(0 6px 14px rgba(255,150,220,.5));animation:bob 2.6s ease-in-out infinite;display:inline-block}
+.pcard h2{margin:6px 0 4px;font-size:22px;font-weight:900}
+.pcard p{margin:6px 0;color:var(--mut);font-size:14px;line-height:1.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.box{background:rgba(0,0,0,.28);border:1px solid var(--card-b);border-radius:16px;padding:10px}
+.box small{display:block;color:var(--mut);font-size:12px}
+.box b{font-size:20px;font-weight:900;direction:ltr;unicode-bidi:isolate;display:block;font-variant-numeric:tabular-nums}
+.pbtn{width:100%;padding:15px;border-radius:16px;font-size:17px;font-weight:900;background:linear-gradient(180deg,#ffb4e6,#c26bff);color:#2c0845;box-shadow:0 5px 0 #7d34b3,0 10px 24px rgba(160,80,255,.35)}
+.pbtn:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 #7d34b3}
+.pbtn:disabled{background:#4c5f58;color:#a5b8b0;box-shadow:0 5px 0 #26332e}
+
+nav{position:relative;z-index:5;display:flex;padding:8px 8px calc(8px + var(--safe-b));background:rgba(4,18,14,.94);border-top:1px solid var(--card-b);backdrop-filter:blur(10px)}
+nav button{flex:1;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:14px;color:var(--mut);font-weight:800;font-size:12px;position:relative}
+nav button .e{font-size:22px;filter:grayscale(.6)}
+nav button.on{color:var(--ink);background:rgba(255,255,255,.08)}
+nav button.on .e{filter:none;transform:translateY(-1px) scale(1.1)}
+nav .dot{position:absolute;top:4px;right:calc(50% - 22px);width:10px;height:10px;border-radius:50%;background:var(--bad);border:2px solid #04120e;display:none}
+nav .dot.on{display:block;animation:pulse2 1.2s infinite}
+@keyframes pulse2{50%{transform:scale(1.25)}}
+
+/* modal */
+.modal{position:absolute;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,10,8,.78);backdrop-filter:blur(6px)}
+.modal.on{display:flex;animation:fade .25s}
+.sheet{width:100%;max-height:92%;overflow:auto;border-radius:26px;padding:22px 18px;background:linear-gradient(170deg,#18503e,#0b2a22);border:1px solid rgba(255,255,255,.2);box-shadow:0 24px 60px rgba(0,0,0,.6);text-align:center;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.sheet h2{margin:0 0 4px;font-size:24px;font-weight:900}
+.sheet .sub{color:var(--mut);font-size:14px}
+.sheet .moon{font-size:56px;display:inline-block;animation:bob 3s ease-in-out infinite}
+.gain{font-size:44px;font-weight:900;margin:10px 0 2px;direction:ltr;unicode-bidi:isolate;background:linear-gradient(180deg,#fff3b0,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brk{margin:12px 0;text-align:right}
+.brk div{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.25);margin-bottom:6px;font-size:14px}
+.brk div b{direction:ltr;unicode-bidi:isolate;color:var(--gold)}
+.hint b{direction:ltr;unicode-bidi:isolate}
+.hint{font-size:12.5px;color:var(--mut);margin:8px 0 14px;line-height:1.5}
+.cta{width:100%;padding:14px;border-radius:16px;font-size:18px;font-weight:900;background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3b2300;box-shadow:0 5px 0 #a15d00;margin-top:4px}
+.cta:active{transform:translateY(4px);box-shadow:0 1px 0 #a15d00}
+.cta.sec{background:rgba(255,255,255,.1);color:var(--ink);box-shadow:none;border:1px solid var(--card-b);margin-top:8px;font-size:15px;padding:11px}
+.cta.danger{background:linear-gradient(180deg,#ff8a8a,#e04747);color:#3b0000;box-shadow:0 5px 0 #8f1f1f}
+.setrow{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.25);margin-bottom:8px;font-weight:700;text-align:right}
+.sw{width:50px;height:28px;border-radius:99px;background:#3a4a44;position:relative;transition:.2s}
+.sw::after{content:"";position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--ok)}
+.sw.on::after{right:25px}
+#toast{position:absolute;left:50%;bottom:calc(86px + var(--safe-b));transform:translate(-50%,20px);z-index:60;padding:10px 16px;border-radius:14px;background:rgba(10,30,24,.96);border:1px solid var(--card-b);font-weight:800;font-size:14px;opacity:0;pointer-events:none;transition:.3s;text-align:center;max-width:90%;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media (max-height:640px){#coins{font-size:32px}.coin{font-size:26px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+.box{backdrop-filter:blur(6px)}
+.buy{transition:transform .15s,filter .2s}
+.buy:hover:not(:disabled){filter:brightness(1.06)}
+.sheet{border-color:#ffffff30;box-shadow:0 30px 80px -18px #000,inset 0 1px 0 #ffffff12}
+.modal{backdrop-filter:blur(8px)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="leaf a">🌿</div><div class="leaf b">🌴</div><div class="leaf c">🌿</div>
+  <header>
+    <div class="topline">
+      <button class="iconbtn" id="btnSet" aria-label="הגדרות">⚙️</button>
+      <div class="brand">🦖 <span>פארק דינו</span></div>
+      <div class="iconbtn" style="visibility:hidden"></div>
+    </div>
+    <div class="coinbox"><span class="coin">🪙</span><div id="coins">0</div></div>
+    <div class="subline">
+      <div class="chip">⚡ <b id="ips">0</b> לשנייה</div>
+      <div class="chip egg">🥚 <b id="eggsN">0</b></div><div class="chip">מכפיל <b id="multN">×1</b></div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="view on" id="v-park">
+      <div class="buymode" id="buymode">
+        <button data-m="1" class="on">×1</button><button data-m="10">×10</button><button data-m="100">×100</button><button data-m="max">מקס׳</button>
+      </div>
+      <div id="exList"></div>
+    </section>
+    <section class="view" id="v-mgr"><div class="sec-title">מנהלים מפעילים את הגידה אוטומטית - גם כשאתם לא במשחק</div><div id="mgrList"></div></section>
+    <section class="view" id="v-up"><div class="sec-title">שדרוגים נקנים פעם אחת ומכפילים הכנסה</div><div id="upList"></div></section>
+    <section class="view" id="v-pr">
+      <div class="pcard">
+        <div class="bigegg">🥚</div>
+        <h2>שיקום הפארק</h2>
+        <p>התחילו את הפארק מחדש וקבלו <b>ביצי דינו</b>. כל ביצה נותנת <b>+10%</b> להכנסה של כל הגידות, לתמיד.</p>
+        <div class="grid2">
+          <div class="box"><small>ביצים עכשיו</small><b id="pEggs">0</b></div>
+          <div class="box"><small>מכפיל נוכחי</small><b id="pMult">×1</b></div>
+          <div class="box"><small>ביצים בשיקום הזה</small><b id="pGain">0</b></div>
+          <div class="box"><small>מכפיל אחרי שיקום</small><b id="pNext">×1</b></div>
+        </div>
+        <button class="pbtn" id="btnPrestige">שקמו את הפארק</button>
+        <p id="pHint" style="font-size:12.5px"></p>
+      </div>
+      <div class="grid2" style="margin-top:0">
+        <div class="box"><small>שיקומים</small><b id="pCount">0</b></div>
+        <div class="box"><small>סה״כ הרווחתם</small><b id="pTotal">0</b></div>
+      </div>
+    </section>
+  </main>
+
+  <nav id="nav">
+    <button data-v="park" class="on"><span class="e">🦖</span>פארק</button>
+    <button data-v="mgr"><span class="e">🧑‍🔬</span>מנהלים<i class="dot" id="dotMgr"></i></button>
+    <button data-v="up"><span class="e">🚀</span>שדרוגים<i class="dot" id="dotUp"></i></button>
+    <button data-v="pr"><span class="e">🥚</span>שיקום<i class="dot" id="dotPr"></i></button>
+  </nav>
+
+  <div class="modal" id="offModal"><div class="sheet">
+    <div class="moon">🌙</div>
+    <h2>בזמן שלא היית...</h2>
+    <div class="sub" id="offTime"></div>
+    <div class="gain" id="offGain">+0</div>
+    <div class="sub">🪙 מטבעות שהפארק הכניס בזמן ההיעדרות</div>
+    <div class="brk" id="offBrk"></div>
+    <div class="hint" id="offHint"></div>
+    <button class="cta" id="offOk">אספו והמשיכו 🪙</button>
+  </div></div>
+
+  <div class="modal" id="confModal"><div class="sheet">
+    <div class="moon">🥚</div>
+    <h2>לשקם את הפארק?</h2>
+    <div class="sub">הפארק יתאפס, אבל תקבלו:</div>
+    <div class="gain" id="cEggs" style="background:linear-gradient(180deg,#fff,#ffb4e6);-webkit-background-clip:text;background-clip:text">+0 🥚</div>
+    <div class="hint">מכפיל ההכנסה יעלה ל-<b id="cMult"></b>. כל הגידות, המנהלים והשדרוגים יתאפסו.</div>
+    <button class="cta" id="cYes" style="background:linear-gradient(180deg,#ffb4e6,#c26bff);color:#2c0845;box-shadow:0 5px 0 #7d34b3">כן, שקמו!</button>
+    <button class="cta sec" id="cNo">ביטול</button>
+  </div></div>
+
+  <div class="modal" id="setModal"><div class="sheet">
+    <h2>⚙️ הגדרות</h2>
+    <div style="height:10px"></div>
+    <div class="setrow">צלילים <div class="sw" id="swSound"></div></div>
+    <div class="setrow">רטט <div class="sw" id="swVib"></div></div>
+    <div class="hint">המשחק נשמר אוטומטית במכשיר הזה.</div>
+    <button class="cta sec danger" id="btnReset" style="background:rgba(255,107,107,.15);color:#ffb0b0;border-color:rgba(255,107,107,.5)">מחיקת כל ההתקדמות</button>
+    <button class="cta" id="setOk">סגירה</button>
+  </div></div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const KEY='dinoIdleTycoon_v1';
+const OFFLINE_CAP=12*3600;      // שניות - תקרת הכנסה אופליין
+const OFFLINE_MIN_MODAL=60;     // מעל זה מציגים מסך "בזמן שלא היית"
+const EGG_BONUS=0.10;
+const EGG_DIV=100000;
+const MILESTONES=[10,25,50,75,100,150,200,250,300,400,500,600,700,800,900,1000];
+
+const DINOS=[
+ {id:'tri',  name:'טריצרטופס', emoji:'🦏', acc:'#ff8a4c', desc:'עמיד, שקט ומרוויח יציב',     base:10,     coef:1.15, rev:1.5,    time:2,  mgr:{name:'נועה, מטפלת בחי', cost:1000,    emoji:'👩‍🌾'}},
+ {id:'bra',  name:'ברכיוזאור', emoji:'🦕', acc:'#4cd3a0', desc:'ענק עם צוואר שכולם מצלמים',  base:150,    coef:1.15, rev:18,     time:6,  mgr:{name:'אורי, מדריך סיורים', cost:15000,   emoji:'🧑‍🏫'}},
+ {id:'vel',  name:'ולוצירפטור',emoji:'🦎', acc:'#6aa8ff', desc:'מהיר, חכם ומסוכן. הילדים אוהבים', base:2200,   coef:1.15, rev:220,    time:12, mgr:{name:'דר׳ מיכל, אתולוגית', cost:200000,  emoji:'👩‍🔬'}},
+ {id:'rex',  name:'טי-רקס',    emoji:'🦖', acc:'#ff5a6e', desc:'מלך הפארק. תור ענק בכניסה',   base:35000,  coef:1.15, rev:3500,   time:24, mgr:{name:'רוני, מנהל הפארק', cost:3000000, emoji:'🧑‍💼'}},
+];
+const UPS=[];
+const UP_DEF={
+ tri:[['מזון משובח',500,2,'🥬'],['מתחם מרווח',25000,3,'🏞️']],
+ bra:[['עלים טריים מדי יום',7500,2,'🌿'],['מגדל תצפית',375000,3,'🗼']],
+ vel:[['גדר חשמלית ושקט',110000,2,'⚡'],['מופע האכלה',5500000,3,'🥩']],
+ rex:[['שואו שאגה',1750000,2,'📣'],['חוויית VIP',87000000,3,'🎟️']],
+};
+for(const d of DINOS){UP_DEF[d.id].forEach((u,i)=>UPS.push({id:d.id+i,dino:d.id,name:u[0],cost:u[1],mult:u[2],emoji:u[3],desc:'הכנסת '+d.name+' ×'+u[2]}));}
+UPS.push({id:'g0',dino:null,name:'קמפיין שיווק',cost:20000000,mult:2,emoji:'📢',desc:'הכנסת כל הגידות ×2'});
+UPS.push({id:'g1',dino:null,name:'כרטיס שנתי לפארק',cost:2000000000,mult:3,emoji:'🎫',desc:'הכנסת כל הגידות ×3'});
+
+/* ---------- state ---------- */
+function fresh(){
+  return {v:1,coins:10,runEarned:0,totalEarned:0,eggs:0,prestiges:0,
+    ex:DINOS.map(()=>({lvl:0,mgr:false,prog:0,run:false})),ups:{},
+    sound:true,vib:true,lastSave:Date.now(),started:Date.now()};
+}
+let S=null,lastRaw=null;
+function load(){
+  try{
+    const raw=ArcadiaStorage.getItem(KEY);
+    lastRaw=raw;
+    if(!raw)return fresh();
+    const o=JSON.parse(raw);
+    const f=fresh();
+    const s=Object.assign(f,o);
+    s.ex=DINOS.map((_,i)=>Object.assign({lvl:0,mgr:false,prog:0,run:false},(o.ex||[])[i]||{}));
+    s.ups=o.ups||{};
+    for(const k of ['coins','runEarned','totalEarned','eggs','prestiges','lastSave']) if(!isFinite(s[k]))s[k]=f[k];
+    return s;
+  }catch(e){return fresh();}
+}
+function save(){
+  try{
+    const cur=ArcadiaStorage.getItem(KEY);
+    if(lastRaw!==null && cur!==null && cur!==lastRaw){ location.reload(); return; } // נשמר מבחוץ (טאב אחר / עריכה ידנית)
+    S.lastSave=Date.now();
+    const raw=JSON.stringify(S);
+    ArcadiaStorage.setItem(KEY,raw); lastRaw=raw;
+  }catch(e){}
+}
+
+/* ---------- math ---------- */
+const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+function fmt(n){
+  if(!isFinite(n))return '∞';
+  if(n<0)n=0;
+  if(n<1000){ return n<10&&n%1?n.toFixed(1).replace(/\.0$/,''):String(Math.floor(n)); }
+  const i=Math.min(SUF.length-1,Math.floor(Math.log10(n)/3));
+  const v=n/Math.pow(10,i*3);
+  const t=v<10?v.toFixed(2):v<100?v.toFixed(1):v.toFixed(0);
+  return String(parseFloat(t))+SUF[i];
+}
+function fmtInt(n){return n<1e6?Math.floor(n).toLocaleString('en-US'):fmt(n);}
+function dur(s){
+  s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;
+  const p=[];
+  if(h)p.push(h===1?'שעה':h===2?'שעתיים':h+' שעות');
+  if(m)p.push(m===1?'דקה':m+' דקות');
+  if(!h&&!m||(!h&&m<5&&sec))p.push(sec+' שניות');
+  return p.join(' ו-');
+}
+function msCount(l){let c=0;for(const m of MILESTONES)if(l>=m)c++;return c;}
+function msNext(l){for(const m of MILESTONES)if(l<m)return m;return null;}
+function eggMult(){return 1+EGG_BONUS*S.eggs;}
+function upMult(di){
+  let m=1;for(const u of UPS)if(S.ups[u.id]&&(u.dino===null||u.dino===DINOS[di].id))m*=u.mult;return m;
+}
+function profit(di){ // הכנסה למחזור
+  const d=DINOS[di],e=S.ex[di];
+  if(e.lvl<1)return 0;
+  return d.rev*e.lvl*Math.pow(2,msCount(e.lvl))*upMult(di)*eggMult();
+}
+function ratePS(di){return profit(di)/DINOS[di].time;}
+function autoPS(){let t=0;S.ex.forEach((e,i)=>{if(e.mgr&&e.lvl>0)t+=ratePS(i)});return t;}
+function costN(di,n){
+  const d=DINOS[di],L=S.ex[di].lvl;
+  return d.base*Math.pow(d.coef,L)*(Math.pow(d.coef,n)-1)/(d.coef-1);
+}
+function maxN(di){
+  const d=DINOS[di],L=S.ex[di].lvl;
+  const first=d.base*Math.pow(d.coef,L);
+  let n=Math.floor(Math.log(S.coins*(d.coef-1)/first+1)/Math.log(d.coef));
+  if(!isFinite(n)||n<0)n=0;
+  while(n>0&&costN(di,n)>S.coins)n--;
+  return n;
+}
+let mode='1';
+function buyCount(di){
+  if(mode==='max')return Math.max(1,maxN(di));
+  return +mode;
+}
+function prestigeGain(){return Math.floor(Math.sqrt(S.runEarned/EGG_DIV));}
+
+/* ---------- audio / haptics ---------- */
+let AC=null;
+function beep(freq,dur2,type,vol,when){
+  if(!S.sound)return;
+  try{
+    if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+    const t=AC.currentTime+(when||0),o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||.08,t+.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur2);
+    o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+dur2+.02);
+  }catch(e){}
+}
+const sfx={
+  coin(){beep(880,.12,'triangle',.07);beep(1320,.16,'triangle',.06,.07);},
+  buy(){beep(520,.1,'square',.05);beep(780,.14,'square',.05,.08);},
+  ms(){[523,659,784,1047].forEach((f,i)=>beep(f,.2,'triangle',.07,i*.09));},
+  err(){beep(180,.15,'sawtooth',.05);},
+  big(){[392,523,659,784,1047,1319].forEach((f,i)=>beep(f,.25,'triangle',.07,i*.1));}
+};
+function vib(ms){if(S.vib&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
+
+/* ---------- DOM ---------- */
+const $=s=>document.querySelector(s);
+const exList=$('#exList'),mgrList=$('#mgrList'),upList=$('#upList');
+const refs=[];
+function buildExhibits(){
+  exList.innerHTML='';
+  DINOS.forEach((d,i)=>{
+    const el=document.createElement('div');
+    el.className='ex locked';el.style.setProperty('--acc',d.acc);
+    el.innerHTML=`
+      <div class="row">
+        <div class="avatar"><span>${d.emoji}</span><div class="lvl">רמה 0</div></div>
+        <div class="meta">
+          <div class="name">${d.name}</div>
+          <div class="desc">${d.desc}</div>
+          <div class="bar"><i></i><em>—</em></div>
+        </div>
+      </div>
+      <div class="bottom">
+        <button class="buy"><span class="bl">פתחו גידה</span><span class="price"><span class="pp">0</span>🪙</span></button>
+        <div class="stat">הכנסה לשנייה<b class="rps">0</b></div>
+      </div>
+      <div class="ms"><span class="mt"></span><div class="track"><i></i></div></div>`;
+    exList.appendChild(el);
+    const r={el,avatar:el.querySelector('.avatar'),lvl:el.querySelector('.lvl'),bar:el.querySelector('.bar'),fill:el.querySelector('.bar i'),
+      txt:el.querySelector('.bar em'),buy:el.querySelector('.buy'),bl:el.querySelector('.bl'),pp:el.querySelector('.pp'),rps:el.querySelector('.rps'),
+      mt:el.querySelector('.mt'),tr:el.querySelector('.track i'),n:1};
+    const tap=()=>collect(i);
+    r.avatar.addEventListener('click',tap);r.bar.addEventListener('click',tap);
+    r.buy.addEventListener('click',()=>buyLevels(i));
+    refs.push(r);
+  });
+}
+function buildMgrs(){
+  mgrList.innerHTML='';
+  DINOS.forEach((d,i)=>{
+    const el=document.createElement('div');el.className='item';el.style.setProperty('--acc',d.acc);
+    el.innerHTML=`<div class="ico">${d.mgr.emoji}</div><div class="txt"><div class="t">${d.mgr.name}</div><div class="d"></div></div><button class="go"></button>`;
+    mgrList.appendChild(el);
+    el.querySelector('.go').addEventListener('click',()=>buyMgr(i));
+    d._m={el,d:el.querySelector('.d'),go:el.querySelector('.go')};
+  });
+}
+function buildUps(){
+  upList.innerHTML='';
+  UPS.forEach(u=>{
+    const el=document.createElement('div');el.className='item';
+    const acc=u.dino?DINOS.find(x=>x.id===u.dino).acc:'#c69cff';
+    el.style.setProperty('--acc',acc);
+    el.innerHTML=`<div class="ico">${u.emoji}</div><div class="txt"><div class="t">${u.name}</div><div class="d">${u.desc}</div></div><button class="go"></button>`;
+    upList.appendChild(el);
+    el.querySelector('.go').addEventListener('click',()=>buyUp(u));
+    u._el={el,go:el.querySelector('.go')};
+  });
+}
+
+/* ---------- actions ---------- */
+function earn(a){S.coins+=a;S.runEarned+=a;S.totalEarned+=a;}
+function floatAt(i,txt){
+  const r=refs[i];const f=document.createElement('div');f.className='float';f.textContent=txt;
+  f.style.left=(r.avatar.offsetLeft+r.avatar.offsetWidth/2+r.el.querySelector('.row').offsetLeft)+'px';
+  f.style.top=(r.el.querySelector('.row').offsetTop+6)+'px';
+  r.el.appendChild(f);setTimeout(()=>f.remove(),1000);
+}
+function collect(i){
+  const e=S.ex[i];
+  if(e.lvl<1){ toast('קודם פותחים את הגידה 👇'); sfx.err(); return; }
+  if(e.mgr||e.run){ if(!e.mgr)return; return; }
+  e.run=true;e.prog=0;vib(10);
+}
+function finishCycle(i,count){
+  const gain=profit(i)*count;
+  earn(gain);
+  floatAt(i,'+'+fmt(gain));
+  sfx.coin();
+  const c=$('#coins');c.classList.remove('bump');void c.offsetWidth;c.classList.add('bump');
+}
+function buyLevels(i){
+  const n=buyCount(i),c=costN(i,n);
+  if(S.coins<c||n<1){sfx.err();return;}
+  const e=S.ex[i],was=e.lvl;
+  S.coins-=c;e.lvl+=n;
+  const opened=was===0;
+  if(opened){ e.run=true;e.prog=0; toast(DINOS[i].emoji+' '+DINOS[i].name+' נפתחה!'); sfx.big(); vib([20,30,20]); }
+  else { sfx.buy(); vib(15); }
+  if(msCount(e.lvl)>msCount(was)){ toast('🎉 יעד רמה '+MILESTONES[msCount(e.lvl)-1]+': הכנסת '+DINOS[i].name+' ×2'); sfx.ms(); vib([30,40,30]); }
+  save();render(true);
+}
+function buyMgr(i){
+  const d=DINOS[i],e=S.ex[i];
+  if(e.mgr||e.lvl<1||S.coins<d.mgr.cost){sfx.err();return;}
+  S.coins-=d.mgr.cost;e.mgr=true;e.run=true;
+  toast(d.mgr.emoji+' '+d.mgr.name+' גויס/ה!');sfx.big();vib([20,30,20]);save();render(true);
+}
+function buyUp(u){
+  if(S.ups[u.id]||S.coins<u.cost){sfx.err();return;}
+  S.coins-=u.cost;S.ups[u.id]=true;toast(u.emoji+' '+u.name+' נרכש!');sfx.ms();vib(25);save();render(true);
+}
+
+/* ---------- simulation ---------- */
+function advance(dt){
+  S.ex.forEach((e,i)=>{
+    if(e.lvl<1||!e.run&&!e.mgr)return;
+    const T=DINOS[i].time;
+    e.prog+=dt/T;
+    if(e.prog>=1){
+      const n=e.mgr?Math.floor(e.prog):1;
+      e.prog=e.mgr?e.prog-n:0;
+      if(!e.mgr)e.run=false;
+      finishCycle(i,n);
+    }
+  });
+}
+function offline(dt){
+  const sec=Math.min(dt,OFFLINE_CAP);
+  let total=0;const items=[];
+  S.ex.forEach((e,i)=>{
+    if(e.lvl>0&&e.mgr){
+      const a=ratePS(i)*sec;
+      if(a>0){total+=a;items.push({i,a});}
+    }
+  });
+  // מנהלים: התקדמות המחזור נשמרת, מחזורים לא מסתנכרנים אחרי היעדרות
+  S.ex.forEach(e=>{if(e.mgr)e.prog=0;});
+  // גידות ללא מנהל שהיו באמצע מחזור מסיימות אותו
+  S.ex.forEach((e,i)=>{if(e.lvl>0&&!e.mgr&&e.run){const g=profit(i);total+=g;items.push({i,a:g});e.run=false;e.prog=0;}});
+  earn(total);
+  return {sec:dt,capped:dt>OFFLINE_CAP,total,items};
+}
+let lastClock=Date.now();
+function tick(){
+  const now=Date.now();
+  let dt=(now-lastClock)/1000;lastClock=now;
+  if(dt<0)dt=0;
+  if(dt>5){
+    const r=offline(dt);
+    if(dt>=OFFLINE_MIN_MODAL&&r.total>0)showOffline(r);
+    else if(r.total>0)toast('🪙 +'+fmt(r.total)+' בזמן שלא היית');
+    save();
+  }else advance(dt);
+}
+
+/* ---------- render ---------- */
+let tickN=0;
+function render(force){
+  const eff=autoPS();
+  $('#coins').textContent=fmtInt(S.coins);
+  $('#ips').textContent=fmt(eff);
+  $('#eggsN').textContent=fmt(S.eggs);
+  $('#multN').textContent='×'+fmt(eggMult());
+  let canMgr=false,canUp=false;
+  DINOS.forEach((d,i)=>{
+    const e=S.ex[i],r=refs[i];
+    const n=buyCount(i),c=costN(i,n);
+    r.el.classList.toggle('locked',e.lvl<1);
+    r.el.classList.toggle('running',e.lvl>0&&(e.run||e.mgr));
+    r.lvl.textContent='רמה '+e.lvl;
+    r.bar.classList.toggle('auto',e.mgr&&e.lvl>0);
+    r.bl.textContent=e.lvl<1?'פתחו גידה':(n>1?'שדרגו ×'+n:'שדרגו');
+    r.pp.textContent=fmt(c);
+    r.buy.disabled=S.coins<c;
+    r.buy.classList.toggle('pulse',S.runEarned<60&&e.lvl===0&&i===0);
+    r.rps.textContent=e.lvl<1?'—':fmt(ratePS(i));
+    const nm=msNext(e.lvl);
+    if(nm){
+      const prev=[0,...MILESTONES].filter(x=>x<=e.lvl).pop();
+      r.mt.textContent='יעד: רמה '+nm+' · ×2';
+      r.tr.style.width=Math.min(100,(e.lvl-prev)/(nm-prev)*100)+'%';
+    }else{r.mt.textContent='כל היעדים הושגו ✨';r.tr.style.width='100%';}
+    // bar
+    if(e.lvl<1){r.fill.style.width='0%';r.txt.textContent='🔒 סגורה';}
+    else if(e.mgr&&DINOS[i].time/ (1) <0.4){r.fill.style.width='100%';r.txt.textContent=fmt(profit(i))+' 🪙';}
+    else{
+      const p=e.run||e.mgr?Math.min(1,e.prog):0;
+      r.fill.style.width=(p*100)+'%';
+      r.txt.textContent=e.mgr?('+'+fmt(profit(i))+' 🪙 · '+Math.max(0,(1-p)*d.time).toFixed(1)+'s'):(e.run?('+'+fmt(profit(i))+' 🪙 · '+Math.max(0,(1-p)*d.time).toFixed(1)+'s'):'לחצו לאיסוף +'+fmt(profit(i))+' 🪙');
+    }
+    // mgr
+    const m=d._m;
+    if(e.mgr){m.go.textContent='מגויס ✓';m.go.className='go done';m.go.disabled=true;m.d.textContent=d.name+' עובדת אוטומטית';m.el.classList.remove('off');}
+    else if(e.lvl<1){m.go.textContent=fmt(d.mgr.cost)+' 🪙';m.go.className='go';m.go.disabled=true;m.d.textContent='פתחו קודם את '+d.name;m.el.classList.add('off');}
+    else{m.go.textContent=fmt(d.mgr.cost)+' 🪙';m.go.className='go';m.go.disabled=S.coins<d.mgr.cost;m.d.textContent='מפעיל את '+d.name+' אוטומטית · '+fmt(ratePS(i))+' לשנייה';m.el.classList.remove('off');if(S.coins>=d.mgr.cost)canMgr=true;}
+  });
+  UPS.forEach(u=>{
+    const g=u._el.go,own=S.ups[u.id];
+    if(own){g.textContent='נרכש ✓';g.className='go done';g.disabled=true;u._el.el.classList.remove('off');}
+    else{
+      const need=u.dino?S.ex[DINOS.findIndex(x=>x.id===u.dino)].lvl>0:true;
+      g.textContent=fmt(u.cost)+' 🪙';g.className='go';g.disabled=!need||S.coins<u.cost;
+      u._el.el.classList.toggle('off',!need);
+      if(need&&S.coins>=u.cost)canUp=true;
+    }
+  });
+  const gain=prestigeGain();
+  $('#dotMgr').classList.toggle('on',canMgr);
+  $('#dotUp').classList.toggle('on',canUp);
+  $('#dotPr').classList.toggle('on',gain>=Math.max(5,S.eggs*0.5)&&gain>=1);
+  if(force||tickN%5===0){
+    $('#pEggs').textContent=fmt(S.eggs);
+    $('#pMult').textContent='×'+fmt(eggMult());
+    $('#pGain').textContent='+'+fmt(gain);
+    $('#pNext').textContent='×'+fmt(1+EGG_BONUS*(S.eggs+gain));
+    $('#pCount').textContent=S.prestiges;
+    $('#pTotal').textContent=fmt(S.totalEarned);
+    const b=$('#btnPrestige');b.disabled=gain<1;
+    b.textContent=gain<1?'עוד לא מוכן':'שקמו וקבלו '+fmt(gain)+' 🥚';
+    $('#pHint').textContent=gain<1?('צריך להרוויח '+fmt(EGG_DIV)+' 🪙 בסבב הזה כדי לקבל ביצה ראשונה. עד עכשיו: '+fmt(S.runEarned)):'ככל שמחכים ומרוויחים יותר, מקבלים יותר ביצים.';
+  }
+  tickN++;
+}
+
+/* ---------- modals / ui ---------- */
+let toastT=null;
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2200);}
+function open(id){$(id).classList.add('on');}
+function close(id){$(id).classList.remove('on');}
+function showOffline(r){
+  $('#offTime').textContent='עברו '+dur(r.sec)+(r.capped?' (הכנסה נספרת עד '+dur(OFFLINE_CAP)+')':'');
+  $('#offGain').textContent='+'+fmt(r.total);
+  $('#offBrk').innerHTML=r.items.sort((a,b)=>b.a-a.a).map(x=>`<div><span>${DINOS[x.i].emoji} ${DINOS[x.i].name}</span><b>+${fmt(x.a)} 🪙</b></div>`).join('');
+  const unm=S.ex.filter(e=>e.lvl>0&&!e.mgr).length;
+  $('#offHint').textContent=unm?'💡 גידות בלי מנהל לא מרוויחות כשאתם לא כאן. גייסו מנהלים בלשונית "מנהלים".':'כל הגידות עבדו בשבילכם. כל הכבוד לצוות!';
+  open('#offModal');sfx.big();
+}
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
+  $('#main').scrollTop=0;render(true);
+}));
+document.querySelectorAll('#buymode button').forEach(b=>b.addEventListener('click',()=>{
+  mode=b.dataset.m;document.querySelectorAll('#buymode button').forEach(x=>x.classList.toggle('on',x===b));render(true);
+}));
+$('#offOk').onclick=()=>close('#offModal');
+$('#btnSet').onclick=()=>{syncSw();open('#setModal');};
+$('#setOk').onclick=()=>close('#setModal');
+function syncSw(){$('#swSound').classList.toggle('on',S.sound);$('#swVib').classList.toggle('on',S.vib);}
+$('#swSound').parentElement.onclick=()=>{S.sound=!S.sound;syncSw();save();if(S.sound)sfx.buy();};
+$('#swVib').parentElement.onclick=()=>{S.vib=!S.vib;syncSw();save();vib(30);};
+let resetArm=false;
+$('#btnReset').onclick=function(){
+  if(!resetArm){resetArm=true;this.textContent='לחצו שוב לאישור מחיקה סופית';setTimeout(()=>{resetArm=false;this.textContent='מחיקת כל ההתקדמות';},4000);return;}
+  ArcadiaStorage.removeItem(KEY);lastRaw=null;S=fresh();resetArm=false;this.textContent='מחיקת כל ההתקדמות';close('#setModal');lastClock=Date.now();save();render(true);toast('המשחק אופס');
+};
+$('#btnPrestige').onclick=()=>{
+  const g=prestigeGain();if(g<1)return;
+  $('#cEggs').textContent='+'+fmt(g)+' 🥚';
+  $('#cMult').textContent='×'+fmt(1+EGG_BONUS*(S.eggs+g));
+  open('#confModal');
+};
+$('#cNo').onclick=()=>close('#confModal');
+$('#cYes').onclick=()=>{
+  const g=prestigeGain();if(g<1)return;
+  const keep={eggs:S.eggs+g,prestiges:S.prestiges+1,totalEarned:S.totalEarned,sound:S.sound,vib:S.vib,started:S.started};
+  S=Object.assign(fresh(),keep);
+  close('#confModal');
+  document.querySelector('#nav button[data-v="park"]').click();
+  sfx.big();vib([40,40,40]);save();render(true);toast('🥚 הפארק שוקם! מכפיל ×'+fmt(eggMult()));
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save();else tick();});
+
+/* ---------- boot ---------- */
+S=load();
+buildExhibits();buildMgrs();buildUps();
+// הכנסה אופליין: לפי הזמן שחלף מאז השמירה האחרונה
+(function boot(){
+  const now=Date.now();
+  let away=(now-(S.lastSave||now))/1000;
+  lastClock=now;
+  if(away>5){
+    const r=offline(away);
+    if(away>=OFFLINE_MIN_MODAL&&r.total>0)setTimeout(()=>showOffline(r),350);
+  }
+  S.lastSave=now;
+  save();
+})();
+render(true);
+setInterval(tick,100);
+setInterval(save,2500);
+(function raf(){render(false);requestAnimationFrame(raf);})();
+for(let i=0;i<14;i++){const s=document.createElement('i');s.className='star';s.style.left=Math.random()*100+'%';s.style.top=Math.random()*40+'%';s.style.animationDelay=Math.random()*3+'s';$('#app').appendChild(s);}
+window.__dino={get S(){return S},save,fmt};
+})();
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

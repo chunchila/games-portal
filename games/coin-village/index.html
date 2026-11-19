@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:coin-village:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a5c2e">
+<title>כפר המטבעות 🎰</title>
+<style>
+  :root{
+    --green:#1a5c2e; --green2:#2e8b47; --gold:#ffd54a; --gold2:#ffb300;
+    --brown:#5d4037; --cream:#fff8e1; --red:#e53935; --blue:#1e88e5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:'Rubik',system-ui,sans-serif;
+    background:linear-gradient(180deg,#7ec850 0%,#4caf50 35%,#2e7d32 100%);
+    color:#3e2723;user-select:none;touch-action:manipulation;
+    display:flex;flex-direction:column;max-width:520px;margin:0 auto;
+    box-shadow:0 0 40px rgba(0,0,0,.35);
+  }
+  /* ===== top bar ===== */
+  #topbar{
+    display:flex;gap:6px;align-items:center;justify-content:space-between;
+    padding:8px 10px;background:linear-gradient(180deg,#2e8b47,#1a5c2e);
+    color:#fff;font-weight:700;font-size:14px;z-index:5;flex-wrap:wrap;
+  }
+  .stat{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.25);
+    border-radius:20px;padding:4px 10px;min-width:0}
+  .stat b{font-size:15px}
+  #statLevel{background:linear-gradient(90deg,#ffb300,#ff8f00);color:#4e2600}
+  #muteBtn,#resetBtn{background:rgba(0,0,0,.25);border:none;color:#fff;border-radius:50%;
+    width:30px;height:30px;font-size:15px;cursor:pointer}
+  /* ===== views ===== */
+  #views{flex:1;position:relative;overflow:hidden}
+  .view{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:10px;overflow-y:auto}
+  .view.active{display:flex}
+  /* ===== slot machine ===== */
+  #machine{
+    margin-top:8px;background:linear-gradient(180deg,#8d5524,#5d3a17);
+    border-radius:24px;padding:18px 14px 14px;box-shadow:0 10px 24px rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.2);
+    width:100%;max-width:360px;position:relative;
+  }
+  #machineTop{
+    text-align:center;color:var(--gold);font-weight:900;font-size:20px;margin-bottom:10px;
+    text-shadow:0 2px 0 rgba(0,0,0,.5);letter-spacing:1px;
+  }
+  #reels{display:flex;gap:8px;justify-content:center;background:#3e2723;
+    border-radius:16px;padding:10px;box-shadow:inset 0 4px 12px rgba(0,0,0,.7)}
+  .reel{width:30%;max-width:96px;height:96px;background:linear-gradient(180deg,#fffde7,#fff);
+    border-radius:12px;overflow:hidden;position:relative;
+    box-shadow:inset 0 -10px 14px rgba(0,0,0,.15), inset 0 10px 14px rgba(0,0,0,.15)}
+  .strip{position:absolute;left:0;right:0;top:0}
+  .cell{height:96px;display:flex;align-items:center;justify-content:center;font-size:52px}
+  .reel::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:12px;
+    background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22%,transparent 78%,rgba(0,0,0,.28))}
+  #winline{position:absolute;left:6%;right:6%;top:50%;height:0;border-top:3px dashed rgba(255,213,74,.85);
+    transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .3s}
+  #winBanner{
+    min-height:34px;margin-top:10px;text-align:center;font-size:20px;font-weight:900;color:var(--gold);
+    text-shadow:0 2px 0 rgba(0,0,0,.55);transition:transform .15s;
+  }
+  #winBanner.pop{animation:pop .45s ease}
+  @keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+  #spinBtn{
+    margin-top:8px;width:100%;border:none;border-radius:16px;padding:16px;font-size:22px;font-weight:900;
+    color:#4e2600;background:linear-gradient(180deg,#ffe082,#ffb300);cursor:pointer;
+    box-shadow:0 6px 0 #c17900,0 10px 18px rgba(0,0,0,.4);transition:transform .06s, box-shadow .06s;
+  }
+  #spinBtn:active{transform:translateY(5px);box-shadow:0 1px 0 #c17900}
+  #spinBtn:disabled{filter:grayscale(.8);opacity:.6;cursor:not-allowed}
+  #spinCost{text-align:center;color:#ffe9b0;font-size:13px;margin-top:6px;font-weight:700}
+  #paytable{margin-top:14px;background:rgba(0,0,0,.28);border-radius:14px;padding:10px 14px;
+    color:#fff8e1;font-size:13px;width:100%;max-width:360px;line-height:1.9}
+  #paytable h3{color:var(--gold);font-size:15px;margin-bottom:2px;text-align:center}
+  #paytable .row{display:flex;justify-content:space-between}
+  /* ===== village ===== */
+  #villageHead{text-align:center;color:#fff;margin:6px 0 2px}
+  #villageHead h2{font-size:22px;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+  #levelProg{width:100%;max-width:360px;background:rgba(0,0,0,.3);border-radius:12px;height:16px;
+    margin:8px 0 12px;overflow:hidden;position:relative}
+  #levelProgFill{height:100%;width:0%;background:linear-gradient(90deg,#ffd54a,#ff8f00);
+    border-radius:12px;transition:width .5s}
+  #levelProg span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 2px #000}
+  #buildings{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;padding-bottom:14px}
+  .bld{display:flex;align-items:center;gap:10px;background:rgba(255,248,225,.96);border-radius:16px;
+    padding:10px 12px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+  .bld .icon{font-size:38px;width:58px;height:58px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#d7ccc8,#bcaaa4);border-radius:12px;flex-shrink:0}
+  .bld.built .icon{background:linear-gradient(180deg,#fff3c4,#ffd54a)}
+  .bld .info{flex:1;min-width:0}
+  .bld .name{font-weight:800;font-size:15px}
+  .bld .stars{color:#ff8f00;font-size:13px;letter-spacing:2px}
+  .bld .buy{border:none;border-radius:12px;padding:9px 12px;font-weight:800;font-size:13px;cursor:pointer;
+    background:linear-gradient(180deg,#ffe082,#ffb300);color:#4e2600;box-shadow:0 3px 0 #c17900;white-space:nowrap}
+  .bld .buy:disabled{filter:grayscale(.9);opacity:.55;cursor:not-allowed}
+  .bld .buy:active{transform:translateY(2px);box-shadow:0 1px 0 #c17900}
+  .bld.maxed .buy{background:#c8e6c9;color:#2e7d32;box-shadow:none}
+  /* ===== bottom nav ===== */
+  #nav{display:flex;background:#1a5c2e;z-index:5}
+  .tab{flex:1;border:none;background:transparent;color:#b9dfb9;font-size:13px;font-weight:800;
+    padding:10px 0 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tab .ti{font-size:22px}
+  .tab.active{color:#fff;background:rgba(255,255,255,.12);border-top:3px solid var(--gold)}
+  /* ===== overlays ===== */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;
+    justify-content:center;z-index:50;padding:16px}
+  .overlay.show{display:flex}
+  .panel{background:linear-gradient(180deg,#fff8e1,#ffe8b3);border-radius:22px;padding:20px;
+    width:100%;max-width:340px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5);
+    animation:slideUp .3s ease;max-height:88vh;overflow-y:auto}
+  @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+  .panel h2{font-size:22px;margin-bottom:4px}
+  .panel p{font-size:14px;margin-bottom:12px;color:#5d4037}
+  .targets{display:flex;gap:8px;justify-content:center;margin:10px 0}
+  .target{flex:1;border:3px solid #8d5524;border-radius:14px;background:#fff;padding:10px 4px;
+    cursor:pointer;font-size:34px;transition:transform .1s}
+  .target:active{transform:scale(.92)}
+  .target small{display:block;font-size:11px;font-weight:800;color:#5d4037;margin-top:2px}
+  .diggrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+  .dig{border:3px dashed #8d5524;border-radius:14px;background:#d7ccc8;font-size:40px;
+    padding:16px 0;cursor:pointer;transition:transform .1s}
+  .dig:active{transform:scale(.93)}
+  .bigbtn{border:none;border-radius:14px;padding:13px 26px;font-size:17px;font-weight:900;cursor:pointer;
+    background:linear-gradient(180deg,#ffe082,#ffb300);color:#4e2600;box-shadow:0 4px 0 #c17900;margin-top:6px}
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #c17900}
+  #overlayResult{font-size:19px;font-weight:900;min-height:28px;margin:8px 0}
+  /* toast */
+  #toasts{position:fixed;top:54px;left:0;right:0;display:flex;flex-direction:column;align-items:center;
+    gap:6px;z-index:90;pointer-events:none}
+  .toast{background:rgba(30,20,10,.92);color:#ffe082;padding:9px 18px;border-radius:20px;
+    font-weight:800;font-size:14px;animation:toastIn .25s ease;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+  @keyframes toastIn{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+  /* coins flying */
+  .flycoin{position:fixed;font-size:26px;z-index:80;pointer-events:none;transition:all .8s cubic-bezier(.2,.7,.3,1)}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:70}
+  .shake{animation:shake .5s}
+  @keyframes shake{0%,100%{transform:none}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+.overlay{backdrop-filter:blur(10px)}
+.panel{box-shadow:0 30px 80px -18px #000,inset 0 1px 0 #fff}
+.bigbtn{transition:transform .15s,filter .2s}
+.bigbtn:hover{filter:brightness(1.06)}
+.stat{backdrop-filter:blur(6px)}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="stat" id="statLevel">⭐ <b id="uiLevel">1</b></div>
+  <div class="stat">🪙 <b id="uiCoins">0</b></div>
+  <div class="stat">⚡ <b id="uiSpins">0</b></div>
+  <div class="stat">🛡️ <b id="uiShields">0</b></div>
+  <button id="muteBtn" title="צליל">🔊</button>
+  <button id="resetBtn" title="איפוס">↺</button>
+</div>
+
+<div id="views">
+  <!-- SLOT -->
+  <section class="view active" id="viewSlot">
+    <div id="machine">
+      <div id="machineTop">🎰 מכונת המזל 🎰</div>
+      <div id="reels">
+        <div class="reel"><div class="strip" id="strip0"></div></div>
+        <div class="reel"><div class="strip" id="strip1"></div></div>
+        <div class="reel"><div class="strip" id="strip2"></div></div>
+        <div id="winline"></div>
+      </div>
+      <div id="winBanner">סובב ותזכה!</div>
+      <button id="spinBtn">סובב! 🎲</button>
+      <div id="spinCost">כל סיבוב עולה ספין אחד ⚡ · ספין חדש כל דקה</div>
+    </div>
+    <div id="paytable">
+      <h3>טבלת זכיות</h3>
+      <div class="row"><span>🪙🪙🪙 שלושה מטבעות</span><b>2,000 🪙</b></div>
+      <div class="row"><span>💰💰💰 שלוש שקיות</span><b>10,000 🪙</b></div>
+      <div class="row"><span>⭐⭐⭐ שלושה כוכבים</span><b>ג׳קפוט 25,000 🪙</b></div>
+      <div class="row"><span>⚡⚡⚡ שלושה ברקים</span><b>+10 ספינים</b></div>
+      <div class="row"><span>🛡️🛡️🛡️ שלושה מגנים</span><b>+1 מגן</b></div>
+      <div class="row"><span>🔨🔨🔨 שלושה פטישים</span><b>התקפה!</b></div>
+      <div class="row"><span>🐷🐷🐷 שלושה חזירים</span><b>שוד!</b></div>
+      <div class="row"><span>זוג 🪙 / 💰</span><b>200 / 500 🪙</b></div>
+    </div>
+  </section>
+
+  <!-- VILLAGE -->
+  <section class="view" id="viewVillage">
+    <div id="villageHead">
+      <h2 id="villageName">כפר</h2>
+      <div style="color:#e8f5e9;font-size:13px;font-weight:700" id="villageSub"></div>
+    </div>
+    <div id="levelProg"><div id="levelProgFill"></div><span id="levelProgText"></span></div>
+    <div id="buildings"></div>
+  </section>
+</div>
+
+<nav id="nav">
+  <button class="tab active" data-view="viewSlot"><span class="ti">🎰</span>סלוט</button>
+  <button class="tab" data-view="viewVillage"><span class="ti">🏘️</span>הכפר שלי</button>
+</nav>
+
+<!-- ATTACK overlay -->
+<div class="overlay" id="ovAttack">
+  <div class="panel">
+    <h2>🔨 התקפה!</h2>
+    <p id="attackInfo">בחר מבנה לתקוף בכפר היריב</p>
+    <div class="targets" id="attackTargets"></div>
+    <div id="overlayResult"></div>
+    <button class="bigbtn" id="attackClose" style="display:none">אסוף שלל 🪙</button>
+  </div>
+</div>
+
+<!-- RAID overlay -->
+<div class="overlay" id="ovRaid">
+  <div class="panel">
+    <h2>🐷 שוד!</h2>
+    <p id="raidInfo">החזיר חש מטמון... בחר איפה לחפור!</p>
+    <div class="diggrid" id="digGrid"></div>
+    <div id="raidResult" style="font-size:19px;font-weight:900;min-height:28px;margin:8px 0"></div>
+    <button class="bigbtn" id="raidClose" style="display:none">אסוף שלל 🪙</button>
+  </div>
+</div>
+
+<!-- LEVEL UP overlay -->
+<div class="overlay" id="ovLevel">
+  <div class="panel">
+    <h2>🎉 רמה <span id="newLevel"></span>!</h2>
+    <p id="levelText"></p>
+    <button class="bigbtn" id="levelClose">לכפר הבא! 🏘️</button>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<canvas id="confetti"></canvas>
+
+<script>
+"use strict";
+/* ================= state ================= */
+const SAVE_KEY = "coinVillageHeV1";
+const VILLAGES = [
+  {name:"כפר החקלאים", mult:1},
+  {name:"כפר הדייגים", mult:3},
+  {name:"כפר החרושים", mult:9},
+  {name:"עיר הנגב", mult:25},
+  {name:"עיר ההרים", mult:70},
+  {name:"ממלכת הזהב", mult:200},
+];
+const BUILDINGS = [
+  {name:"בית מגורים", icons:["🏕️","🏠","🏡","🏰"], base:300},
+  {name:"חווה", icons:["🌱","🌾","🚜","🌻"], base:600},
+  {name:"שוק", icons:["🧺","🏪","🏬","🎪"], base:1000},
+  {name:"מגדל שמירה", icons:["🗼","🏯","🛕","🕌"], base:1600},
+  {name:"פסל הזהב", icons:["🗿","🦁","🐉","🏆"], base:2500},
+];
+const SYMBOLS = ["🪙","💰","⚡","🛡️","🔨","🐷","⭐"];
+const WEIGHTS  = [  22,   12,   13,   11,    9,   7,   5 ];
+const RIVAL_NAMES = ["כפר הזאבים","עמק הירוק","הר הגעש","חוף השנהב","בקעת הקשת","עיר הבאר","נחל השקט","פסגת העופרת"];
+const MAX_SHIELDS = 3, MAX_SPINS = 50, REGEN_MS = 60000;
+
+const defaultState = () => ({
+  coins: 1000, spins: 25, shields: 0,
+  village: 0,                       // index in VILLAGES
+  built: BUILDINGS.map(()=>0),      // upgrade level 0..3 per building
+  lastRegen: Date.now(), muted: false,
+  totalEarned: 0, totalSpins: 0, attacks: 0, raids: 0,
+});
+let S = load();
+
+function load(){
+  try{
+    const raw = ArcadiaStorage.getItem(SAVE_KEY);
+    if(!raw) return defaultState();
+    const s = Object.assign(defaultState(), JSON.parse(raw));
+    // offline spin regen
+    const gained = Math.floor((Date.now() - s.lastRegen) / REGEN_MS);
+    if(gained > 0){
+      s.spins = Math.min(MAX_SPINS, s.spins + gained);
+      s.lastRegen += gained * REGEN_MS;
+    }
+    return s;
+  }catch(e){ return defaultState(); }
+}
+function save(){
+  S.lastRegen = S.spins >= MAX_SPINS ? S.lastRegen : S.lastRegen;
+  try{ ArcadiaStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){}
+}
+
+/* ================= audio ================= */
+let AC = null;
+function beep(freq, dur, type, vol, when){
+  if(S.muted) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||"sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.12, AC.currentTime + (when||0));
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (when||0) + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(AC.currentTime + (when||0)); o.stop(AC.currentTime + (when||0) + dur);
+  }catch(e){}
+}
+const sfx = {
+  click: ()=>beep(600,.07,"square",.06),
+  coin:  ()=>{beep(900,.09,"square",.1);beep(1400,.12,"square",.1,.08)},
+  spin:  ()=>{beep(220,.5,"sawtooth",.05)},
+  stop:  ()=>beep(330,.08,"triangle",.09),
+  win:   ()=>{[523,659,784,1047].forEach((f,i)=>beep(f,.18,"triangle",.12,i*.1))},
+  big:   ()=>{[523,659,784,1047,1319,1568].forEach((f,i)=>beep(f,.22,"triangle",.13,i*.09))},
+  bad:   ()=>beep(160,.3,"sawtooth",.1),
+  build: ()=>{beep(392,.1,"square",.1);beep(523,.15,"square",.1,.1)},
+};
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const fmt = n => Math.floor(n).toLocaleString("he-IL");
+function toast(msg){
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(()=>{t.style.opacity="0";t.style.transition="opacity .4s"},1900);
+  setTimeout(()=>t.remove(),2400);
+}
+function addCoins(n, why){
+  S.coins += n; S.totalEarned += Math.max(0,n);
+  ui();
+  if(n > 0) flyCoins();
+  save();
+}
+function flyCoins(){
+  const bar = $("topbar").getBoundingClientRect();
+  for(let i=0;i<8;i++){
+    const c = document.createElement("div");
+    c.className = "flycoin"; c.textContent = "🪙";
+    c.style.right = (innerWidth/2 - 20 + Math.random()*60) + "px";
+    c.style.top = (innerHeight/2) + "px";
+    document.body.appendChild(c);
+    requestAnimationFrame(()=>{
+      c.style.top = (bar.top + 14 + Math.random()*10) + "px";
+      c.style.right = (innerWidth - bar.right + bar.width*0.42 + Math.random()*30) + "px";
+      c.style.opacity = "0.2";
+    });
+    setTimeout(()=>c.remove(), 850);
+  }
+}
+function confettiBurst(){
+  const cv = $("confetti"), ctx = cv.getContext("2d");
+  cv.width = innerWidth; cv.height = innerHeight;
+  const parts = [];
+  const colors = ["#ffd54a","#ff5252","#69f0ae","#40c4ff","#e040fb","#fff"];
+  for(let i=0;i<90;i++) parts.push({
+    x: innerWidth/2, y: innerHeight/2,
+    vx: (Math.random()-.5)*14, vy: Math.random()*-12-3,
+    c: colors[i%colors.length], s: Math.random()*7+4, r: Math.random()*Math.PI
+  });
+  let frames = 0;
+  (function tick(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.vy+=.35; p.r+=.1;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
+      ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); ctx.restore();
+    });
+    if(++frames < 70) requestAnimationFrame(tick);
+    else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ================= UI ================= */
+function ui(){
+  $("uiCoins").textContent = fmt(S.coins);
+  $("uiSpins").textContent = S.spins + "/" + MAX_SPINS;
+  $("uiShields").textContent = S.shields;
+  $("uiLevel").textContent = S.village + 1;
+  $("spinBtn").disabled = S.spins <= 0 || spinning;
+  $("spinBtn").textContent = S.spins <= 0 ? "אין ספינים 😴" : (spinning ? "מסתובב..." : "סובב! 🎲");
+  renderVillage();
+}
+function costOf(bIdx){
+  const lvl = S.built[bIdx];
+  if(lvl >= 3) return null;
+  return Math.round(BUILDINGS[bIdx].base * VILLAGES[S.village].mult * (lvl+1) * (lvl+1) / 2);
+}
+function renderVillage(){
+  const v = VILLAGES[S.village];
+  $("villageName").textContent = v.name;
+  $("villageSub").textContent = "רמה " + (S.village+1) + " מתוך " + VILLAGES.length + " · שדרג הכל כדי לעבור כפר";
+  const total = S.built.reduce((a,b)=>a+b,0), max = BUILDINGS.length*3;
+  $("levelProgFill").style.width = (total/max*100) + "%";
+  $("levelProgText").textContent = "⭐ " + total + " / " + max;
+  const wrap = $("buildings"); wrap.innerHTML = "";
+  BUILDINGS.forEach((b,i)=>{
+    const lvl = S.built[i], cost = costOf(i);
+    const div = document.createElement("div");
+    div.className = "bld" + (lvl>0?" built":"") + (cost===null?" maxed":"");
+    div.innerHTML =
+      '<div class="icon">'+ b.icons[lvl] +'</div>' +
+      '<div class="info"><div class="name">'+ b.name +'</div>' +
+      '<div class="stars">'+ "★".repeat(lvl) + "☆".repeat(3-lvl) +'</div></div>';
+    const btn = document.createElement("button");
+    btn.className = "buy";
+    if(cost === null){ btn.textContent = "מקסימום ✓"; btn.disabled = true; }
+    else{
+      btn.innerHTML = (lvl===0?"בנה":"שדרג") + "<br>" + fmt(cost) + " 🪙";
+      btn.disabled = S.coins < cost;
+      btn.onclick = ()=>buyBuilding(i);
+    }
+    div.appendChild(btn);
+    wrap.appendChild(div);
+  });
+}
+function buyBuilding(i){
+  const cost = costOf(i);
+  if(cost === null || S.coins < cost) return;
+  S.coins -= cost; S.built[i]++;
+  sfx.build(); confettiBurst();
+  toast("⭐ " + BUILDINGS[i].name + " שודרג לרמה " + S.built[i] + "!");
+  save(); ui();
+  if(S.built.every(l=>l>=3)){
+    setTimeout(levelUp, 700);
+  }
+}
+function levelUp(){
+  const reward = 20000 * VILLAGES[S.village].mult;
+  S.coins += reward;
+  S.spins = Math.min(MAX_SPINS, S.spins + 10);
+  if(S.village < VILLAGES.length-1) S.village++;
+  S.built = BUILDINGS.map(()=>0);
+  save(); ui();
+  $("newLevel").textContent = S.village + 1;
+  $("levelText").innerHTML = "עברת ל<b>" + VILLAGES[S.village].name + "</b>!<br>בונוס: " + fmt(reward) + " 🪙 ו-10 ⚡ ספינים";
+  $("ovLevel").classList.add("show");
+  sfx.big(); confettiBurst();
+}
+
+/* ================= slot machine ================= */
+const CELL = 96;
+let spinning = false;
+function pickSymbol(){
+  const total = WEIGHTS.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let i=0;i<SYMBOLS.length;i++){ if((r -= WEIGHTS[i]) < 0) return SYMBOLS[i]; }
+  return SYMBOLS[0];
+}
+function buildStrip(el, result, len){
+  el.innerHTML = "";
+  el.style.transition = "none";
+  el.style.transform = "translateY(0)";
+  for(let i=0;i<len-1;i++){
+    const d = document.createElement("div");
+    d.className = "cell"; d.textContent = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+    el.appendChild(d);
+  }
+  const f = document.createElement("div");
+  f.className = "cell"; f.textContent = result;
+  el.appendChild(f);
+}
+function spinReel(el, result, duration){
+  return new Promise(res=>{
+    const len = 14 + Math.floor(Math.random()*4);
+    buildStrip(el, result, len);
+    el.getBoundingClientRect(); // reflow
+    el.style.transition = "transform " + duration + "ms cubic-bezier(.15,.85,.25,1)";
+    el.style.transform = "translateY(-" + ((len-1)*CELL) + "px)";
+    setTimeout(()=>{ sfx.stop(); res(); }, duration);
+  });
+}
+async function spin(){
+  if(spinning || S.spins <= 0) return;
+  spinning = true; S.spins--; S.totalSpins++;
+  S.lastRegen = S.spins < MAX_SPINS ? S.lastRegen : Date.now();
+  save(); ui();
+  $("winBanner").textContent = ""; $("winline").style.opacity = "0";
+  sfx.spin();
+  const r = [pickSymbol(), pickSymbol(), pickSymbol()];
+  await Promise.all([
+    spinReel($("strip0"), r[0], 1100),
+    spinReel($("strip1"), r[1], 1600),
+    spinReel($("strip2"), r[2], 2100),
+  ]);
+  spinning = false;
+  settle(r);
+  ui(); save();
+}
+function settle(r){
+  const [a,b,c] = r;
+  const banner = $("winBanner");
+  const three = a===b && b===c;
+  $("winline").style.opacity = "1";
+  if(three){
+    switch(a){
+      case "🪙": banner.textContent = "🪙 שלושה מטבעות! +2,000"; addCoins(2000); sfx.win(); break;
+      case "💰": banner.textContent = "💰 אוצר! +10,000"; addCoins(10000); sfx.big(); confettiBurst(); break;
+      case "⭐": banner.textContent = "⭐ ג׳קפוט! +25,000"; addCoins(25000); sfx.big(); confettiBurst(); break;
+      case "⚡": banner.textContent = "⚡ +10 ספינים!"; S.spins = Math.min(MAX_SPINS, S.spins+10); sfx.win(); break;
+      case "🛡️":
+        if(S.shields < MAX_SHIELDS){ S.shields++; banner.textContent = "🛡️ קיבלת מגן!"; }
+        else { banner.textContent = "🛡️ מגנים מלאים! +1,000 🪙"; addCoins(1000); }
+        sfx.win(); break;
+      case "🔨": banner.textContent = "🔨 התקפה!"; sfx.big(); setTimeout(openAttack, 900); break;
+      case "🐷": banner.textContent = "🐷 שוד!"; sfx.big(); setTimeout(openRaid, 900); break;
+    }
+  } else if(a===b || b===c || a===c){
+    const p = a===b ? a : (b===c ? b : a);
+    if(p==="🪙"){ banner.textContent = "זוג מטבעות +200"; addCoins(200); sfx.coin(); }
+    else if(p==="💰"){ banner.textContent = "זוג שקיות +500"; addCoins(500); sfx.coin(); }
+    else { banner.textContent = "זוג " + p + " +50"; addCoins(50); sfx.coin(); }
+  } else {
+    banner.textContent = "לא הפעם... נסה שוב!";
+    sfx.bad();
+  }
+  banner.classList.remove("pop"); void banner.offsetWidth; banner.classList.add("pop");
+}
+
+/* ================= attack ================= */
+let attackTargets = [];
+function openAttack(){
+  const rival = RIVAL_NAMES[Math.floor(Math.random()*RIVAL_NAMES.length)];
+  $("attackInfo").innerHTML = "הכפר <b>" + rival + "</b> חסר הגנה... בחר מטרה!";
+  const icons = ["🏠","🏪","🗼"];
+  const names = ["בית","שוק","מגדל"];
+  attackTargets = icons.map((ic,i)=>({icon:ic, name:names[i], destroyed: Math.random()<0.18}));
+  const wrap = $("attackTargets"); wrap.innerHTML = "";
+  attackTargets.forEach((t,i)=>{
+    const b = document.createElement("button");
+    b.className = "target";
+    b.innerHTML = t.icon + "<small>" + t.name + "</small>";
+    b.onclick = ()=>doAttack(i, b);
+    wrap.appendChild(b);
+  });
+  $("overlayResult").textContent = "";
+  $("attackClose").style.display = "none";
+  $("ovAttack").classList.add("show");
+}
+function doAttack(i, btn){
+  const t = attackTargets[i];
+  document.querySelectorAll("#attackTargets .target").forEach(x=>x.style.pointerEvents="none");
+  const res = $("overlayResult");
+  S.attacks++;
+  if(t.destroyed){
+    res.innerHTML = "💨 ההריסות כבר הרוסות...<br>פיצוי קטן: +1,000 🪙";
+    addCoins(1000); sfx.bad();
+  } else if(Math.random() < 0.15){
+    res.innerHTML = "🛡️ הכפר הופעל מגן!<br>נחסמת, אבל הרווחת +800 🪙";
+    addCoins(800); sfx.bad();
+  } else {
+    const loot = 5000 + Math.floor(Math.random()*10)*1000;
+    btn.textContent = "💥";
+    btn.classList.add("shake");
+    res.innerHTML = "💥 פגיעה ישירה!<br>שללת +" + fmt(loot) + " 🪙";
+    addCoins(loot); sfx.big(); confettiBurst();
+  }
+  save();
+  $("attackClose").style.display = "inline-block";
+}
+
+/* ================= raid ================= */
+function openRaid(){
+  $("raidInfo").textContent = "החזיר חש מטמון... בחר איפה לחפור!";
+  const grid = $("digGrid"); grid.innerHTML = "";
+  const amounts = [15000, 8000, 4000, 0].sort(()=>Math.random()-.5);
+  amounts.forEach(amt=>{
+    const d = document.createElement("button");
+    d.className = "dig"; d.textContent = "❌";
+    d.onclick = ()=>{
+      document.querySelectorAll("#digGrid .dig").forEach(x=>x.style.pointerEvents="none");
+      d.textContent = amt>0 ? "💰" : "🕳️";
+      const res = $("raidResult");
+      S.raids++;
+      if(amt > 0){
+        res.innerHTML = "🐷 מצאת מטמון!<br>+" + fmt(amt) + " 🪙";
+        addCoins(amt); sfx.big(); confettiBurst();
+      } else {
+        res.innerHTML = "🕳️ חור ריק...<br>החזיר מנחם: +500 🪙";
+        addCoins(500); sfx.bad();
+      }
+      save();
+      $("raidClose").style.display = "inline-block";
+    };
+    grid.appendChild(d);
+  });
+  $("raidResult").textContent = "";
+  $("raidClose").style.display = "none";
+  $("ovRaid").classList.add("show");
+}
+
+/* ================= events ================= */
+$("spinBtn").onclick = ()=>{ sfx.click(); spin(); };
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick = ()=>{
+    sfx.click();
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    $(t.dataset.view).classList.add("active");
+  };
+});
+$("attackClose").onclick = ()=>{ sfx.click(); $("ovAttack").classList.remove("show"); };
+$("raidClose").onclick = ()=>{ sfx.click(); $("ovRaid").classList.remove("show"); };
+$("levelClose").onclick = ()=>{ sfx.click(); $("ovLevel").classList.remove("show"); };
+$("muteBtn").onclick = ()=>{
+  S.muted = !S.muted; save();
+  $("muteBtn").textContent = S.muted ? "🔇" : "🔊";
+  if(!S.muted) sfx.click();
+};
+$("resetBtn").onclick = ()=>{
+  if(confirm("לאפס את כל ההתקדמות ולהתחיל מחדש?")){
+    ArcadiaStorage.removeItem(SAVE_KEY);
+    S = defaultState(); save(); ui();
+    toast("המשחק אופס. בהצלחה! 🍀");
+  }
+};
+
+/* spin regen timer */
+setInterval(()=>{
+  if(S.spins < MAX_SPINS){
+    const gained = Math.floor((Date.now() - S.lastRegen) / REGEN_MS);
+    if(gained > 0){
+      S.spins = Math.min(MAX_SPINS, S.spins + gained);
+      S.lastRegen += gained * REGEN_MS;
+      save(); ui();
+    }
+  } else {
+    S.lastRegen = Date.now();
+  }
+}, 5000);
+
+/* init */
+$("muteBtn").textContent = S.muted ? "🔇" : "🔊";
+["strip0","strip1","strip2"].forEach(id=>buildStrip($(id), SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)], 1));
+ui();
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:cafe-merge-game:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>בית הקפה שלי - משחק מיזוג</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Rubik',system-ui,sans-serif;background:linear-gradient(160deg,#3e2723 0%,#5d4037 40%,#795548 100%);color:#fff;display:flex;flex-direction:column;height:100dvh;touch-action:manipulation}
+header{padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(0,0,0,.25);backdrop-filter:blur(4px)}
+h1{font-size:1.05rem;display:flex;align-items:center;gap:6px}
+.stat{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border-radius:20px;padding:4px 10px;font-weight:700;font-size:.85rem}
+.stat .bar{width:52px;height:8px;background:rgba(0,0,0,.35);border-radius:4px;overflow:hidden}
+.stat .bar i{display:block;height:100%;background:linear-gradient(90deg,#ffb74d,#ff9800);border-radius:4px;transition:width .3s}
+.stat.energy .bar i{background:linear-gradient(90deg,#4dd0e1,#00bcd4)}
+.icon-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:12px;padding:6px 10px;font-size:1rem;cursor:pointer;font-family:inherit;font-weight:700}
+.icon-btn:active{transform:scale(.93)}
+#customers{display:flex;gap:8px;padding:8px 10px;min-height:86px}
+.customer{flex:1;background:linear-gradient(145deg,#fff8e1,#ffecb3);color:#4e342e;border-radius:14px;padding:6px 8px;display:flex;align-items:center;gap:6px;box-shadow:0 3px 8px rgba(0,0,0,.35);position:relative;animation:pop .35s;min-width:0}
+.customer .face{font-size:1.7rem}
+.customer .info{flex:1;min-width:0}
+.customer .want{font-size:.68rem;font-weight:700;color:#795548}
+.customer .item{display:flex;align-items:center;gap:4px;font-size:.8rem;font-weight:700}
+.customer .item .em{font-size:1.25rem}
+.customer .pay{font-size:.65rem;color:#2e7d32;font-weight:700}
+.customer.ready{outline:3px solid #66bb6a;animation:pulse 1s infinite}
+.customer.drop-hint{outline:3px dashed #ff9800}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+#generators{display:flex;gap:10px;padding:4px 12px}
+.gen{flex:1;background:linear-gradient(145deg,#6d4c41,#4e342e);border:2px solid #a1887f;border-radius:14px;padding:8px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.gen:active{transform:scale(.96)}
+.gen .gicon{font-size:1.9rem}
+.gen .gname{font-weight:700;font-size:.85rem}
+.gen .gcost{font-size:.68rem;color:#b0bec5}
+.gen.disabled{opacity:.45;pointer-events:none}
+#board-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px}
+#board{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:min(96vw,58vh);aspect-ratio:1;background:rgba(0,0,0,.3);border-radius:14px;padding:6px;box-shadow:inset 0 2px 10px rgba(0,0,0,.5)}
+.cell{background:rgba(255,255,255,.07);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:background .15s}
+.cell.drop-hint{background:rgba(255,215,64,.35);outline:2px dashed #ffd740}
+.cell.sel{background:rgba(129,199,132,.3);outline:2px solid #81c784}
+.tile{width:88%;height:88%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:calc(min(96vw,58vh)/7*.42);box-shadow:0 2px 5px rgba(0,0,0,.35);animation:pop .25s;cursor:grab;touch-action:none}
+.tile .lv{position:absolute;bottom:1px;left:3px;font-size:.55rem;font-weight:800;color:rgba(0,0,0,.55);background:rgba(255,255,255,.7);border-radius:6px;padding:0 4px}
+.tile.coffee{background:linear-gradient(145deg,#d7ccc8,#a1887f)}
+.tile.bakery{background:linear-gradient(145deg,#ffe0b2,#ffcc80)}
+#ghost{position:fixed;pointer-events:none;z-index:99;font-size:2rem;opacity:.85;transform:translate(-50%,-50%);display:none}
+#toast{position:fixed;top:14%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#ffe082;padding:10px 18px;border-radius:24px;font-weight:700;z-index:200;display:none;animation:pop .3s;white-space:nowrap;font-size:.9rem}
+#selbar{display:flex;visibility:hidden;gap:10px;padding:8px 12px;justify-content:center;background:rgba(0,0,0,.3)}
+#selbar.show{visibility:visible}
+#selbar button{border:none;border-radius:12px;padding:8px 16px;font-weight:700;font-family:inherit;font-size:.85rem;cursor:pointer}
+#sell-btn{background:#ef5350;color:#fff}
+#cancel-btn{background:#78909c;color:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:300;padding:16px}
+.modal.open{display:flex}
+.modal .card{background:linear-gradient(160deg,#efebe9,#d7ccc8);color:#3e2723;border-radius:20px;padding:18px;max-width:420px;width:100%;max-height:84vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.modal h2{font-size:1.1rem;margin-bottom:10px;text-align:center}
+.album-chain{margin-bottom:14px}
+.album-chain h3{font-size:.9rem;color:#5d4037;margin-bottom:6px}
+.album-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.album-item{background:#fff;border-radius:12px;padding:8px 4px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+.album-item .em{font-size:1.7rem;display:block}
+.album-item .nm{font-size:.6rem;font-weight:700;display:block;margin-top:2px}
+.album-item.locked{filter:grayscale(1);opacity:.45}
+.modal .close-btn{display:block;margin:10px auto 0;background:#6d4c41;color:#fff;border:none;border-radius:12px;padding:9px 24px;font-weight:700;font-family:inherit;cursor:pointer;font-size:.9rem}
+.shop-row{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:12px;padding:10px;margin-bottom:8px;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+.shop-row .buy{background:#43a047;color:#fff;border:none;border-radius:10px;padding:7px 14px;font-weight:700;font-family:inherit;cursor:pointer}
+.shop-row .buy:disabled{background:#bdbdbd}
+#help-text{font-size:.8rem;line-height:1.6;color:#4e342e}
+.float-anim{position:fixed;pointer-events:none;z-index:150;font-weight:800;font-size:1rem;animation:floatUp 1s forwards}
+@keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-60px)}}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1000px 620px at 82% -10%,#ffb74d1c,transparent 62%),radial-gradient(820px 640px at -8% 110%,#8d6e6318,transparent 60%),linear-gradient(160deg,#2c1a12 0%,#4e342e 45%,#5d4037 100%)}
+.modal{background:rgba(12,6,3,.72);backdrop-filter:blur(10px)}
+.modal .card{box-shadow:0 30px 80px -18px #000;border:1px solid #ffffff40}
+.buy,.close-btn,.icon-btn{transition:transform .15s,filter .2s}
+.buy:hover,.close-btn:hover{filter:brightness(1.07)}
+.buy:active,.close-btn:active{transform:scale(.96)}
+</style>
+</head>
+<body>
+<header>
+<h1>☕ בית הקפה שלי</h1>
+<div class="stat coins">🪙 <span id="coins">0</span></div>
+<div class="stat energy">⚡ <span id="energy">0</span><span class="bar"><i id="ebar"></i></span></div>
+<button class="icon-btn" id="album-btn" title="אלבום">📖</button>
+<button class="icon-btn" id="shop-btn" title="חנות">🛒</button>
+<button class="icon-btn" id="help-btn" title="עזרה">❓</button>
+</header>
+<div id="customers"></div>
+<div id="generators"></div>
+<div id="board-wrap"><div id="board"></div></div>
+<div id="selbar">
+<button id="sell-btn">מכור 🪙</button>
+<button id="cancel-btn">ביטול ✖</button>
+</div>
+<div id="ghost"></div>
+<div id="toast"></div>
+<div class="modal" id="album-modal"><div class="card"><h2>📖 אלבום האספנות</h2><div id="album-content"></div><button class="close-btn" data-close>סגור</button></div></div>
+<div class="modal" id="shop-modal"><div class="card"><h2>🛒 חנות</h2>
+<div class="shop-row"><span>⚡ 20 אנרגיה</span><button class="buy" id="buy-energy">🪙 15</button></div>
+<div class="shop-row"><span>📦 פריט אקראי (רמה 2)</span><button class="buy" id="buy-item">🪙 25</button></div>
+<button class="close-btn" data-close>סגור</button></div></div>
+<div class="modal" id="help-modal"><div class="card"><h2>❓ איך משחקים</h2><div id="help-text">
+<p>☕ <b>מיזוג:</b> גרור פריט על פריט זהה כדי למזג לפריט ברמה גבוהה יותר (או הקש על פריט ואז על היעד).</p>
+<p>🏭 <b>גנרטורים:</b> הקש על מכונת הקפה או התנור כדי לייצר פריט חדש (עולה אנרגיה ⚡).</p>
+<p>🧑‍🤝‍🧑 <b>לקוחות:</b> גרור את הפריט שהם מזמינים אליהם וקבל מטבעות 🪙 ואנרגיה ⚡.</p>
+<p>📖 <b>אלבום:</b> גלה את כל פריטי שרשרת המיזוג!</p>
+<p>💾 המשחק נשמר אוטומטית.</p>
+</div><button class="close-btn" data-close>סגור</button></div></div>
+<script>
+"use strict";
+const ROWS=7,COLS=7,SIZE=ROWS*COLS,MAX_ENERGY=50,ENERGY_REGEN_MS=20000,SAVE_KEY="cafeMergeSaveV1";
+const CHAINS={
+ coffee:{name:"קפה",genName:"מכונת קפה",genIcon:"🤎",items:[
+  {em:"🫘",nm:"פולי קפה"},{em:"🥄",nm:"קפה טחון"},{em:"☕",nm:"אספרסו"},{em:"🥤",nm:"אייס קפה"},
+  {em:"🥛",nm:"קפה הפוך"},{em:"🍵",nm:"קפוצ'ינו"},{em:"🍫",nm:"מוקה שוקולד"},{em:"🏆",nm:"קפה אלופים"}]},
+ bakery:{name:"מאפייה",genName:"תנור",genIcon:"🔥",items:[
+  {em:"🌾",nm:"קמח"},{em:"🥖",nm:"בצק"},{em:"🥨",nm:"פרעצל"},{em:"🥐",nm:"קרואסון"},
+  {em:"🥯",nm:"בייגל"},{em:"🧁",nm:"קאפקייק"},{em:"🍰",nm:"עוגה"},{em:"🎂",nm:"עוגת אלופים"}]}
+};
+const FACES=["🧑","👩","👨","🧔","👵","👴","👧","🧒","👱‍♀️","👱"];
+const $=id=>document.getElementById(id);
+let board=new Array(SIZE).fill(null);
+let coins=20,energy=30,discovered=new Set(),customers=[];
+let sel=null,lastEnergyTick=Date.now();
+function key(it){return it.chain+"-"+it.level}
+function maxLevel(ch){return CHAINS[ch].items.length-1}
+function toast(msg){const t=$("toast");t.textContent=msg;t.style.display="block";clearTimeout(t._tm);t._tm=setTimeout(()=>t.style.display="none",1800)}
+function floatText(x,y,txt,color){const d=document.createElement("div");d.className="float-anim";d.style.left=x+"px";d.style.top=y+"px";d.style.color=color||"#ffe082";d.textContent=txt;document.body.appendChild(d);setTimeout(()=>d.remove(),1000)}
+function emptyCells(){const r=[];for(let i=0;i<SIZE;i++)if(!board[i])r.push(i);return r}
+function addDiscovered(it){if(!discovered.has(key(it))){discovered.add(key(it));toast("📖 פריט חדש באלבום: "+CHAINS[it.chain].items[it.level-1].nm)}}
+function renderHeader(){
+ $("coins").textContent=coins;$("energy").textContent=energy;
+ $("ebar").style.width=(energy/MAX_ENERGY*100)+"%";
+}
+function renderBoard(){
+ const b=$("board");b.innerHTML="";
+ for(let i=0;i<SIZE;i++){
+  const c=document.createElement("div");c.className="cell";c.dataset.i=i;
+  const it=board[i];
+  if(it){const t=document.createElement("div");t.className="tile "+it.chain;t.dataset.i=i;
+   t.innerHTML=CHAINS[it.chain].items[it.level-1].em+'<span class="lv">'+it.level+"</span>";c.appendChild(t)}
+  if(sel===i)c.classList.add("sel");
+  b.appendChild(c);
+ }
+}
+function renderGenerators(){
+ const g=$("generators");g.innerHTML="";
+ for(const ch in CHAINS){
+  const d=document.createElement("div");d.className="gen"+(energy<1?" disabled":"");d.dataset.chain=ch;
+  d.innerHTML='<span class="gicon">'+CHAINS[ch].genIcon+'</span><span><span class="gname">'+CHAINS[ch].genName+'</span><br><span class="gcost">⚡ 1 להפעלה</span></span>';
+  d.addEventListener("click",()=>useGenerator(ch));
+  g.appendChild(d);
+ }
+}
+function renderCustomers(){
+ const c=$("customers");c.innerHTML="";
+ customers.forEach((cu,idx)=>{
+  const d=document.createElement("div");d.className="customer";d.dataset.idx=idx;
+  const it=CHAINS[cu.chain].items[cu.level-1];
+  const has=board.some(x=>x&&x.chain===cu.chain&&x.level===cu.level);
+  if(has)d.classList.add("ready");
+  d.innerHTML='<span class="face">'+cu.face+'</span><div class="info"><div class="want">מזמין/ה:</div><div class="item"><span class="em">'+it.em+'</span> '+it.nm+'</div><div class="pay">🪙 '+(3+cu.level*3)+' + ⚡2</div></div>';
+  d.addEventListener("click",()=>onCustomerTap(idx));
+  c.appendChild(d);
+ });
+}
+function renderAll(){renderHeader();renderBoard();renderGenerators();renderCustomers()}
+function save(){
+ try{ArcadiaStorage.setItem(SAVE_KEY,JSON.stringify({board,coins,energy,discovered:[...discovered],customers,ts:Date.now()}))}catch(e){}
+}
+function load(){
+ try{const s=ArcadiaStorage.getItem(SAVE_KEY);if(!s)return false;
+  const d=JSON.parse(s);
+  board=d.board;coins=d.coins;energy=d.energy;discovered=new Set(d.discovered);customers=d.customers||[];
+  const away=Date.now()-(d.ts||Date.now());
+  energy=Math.min(MAX_ENERGY,energy+Math.floor(away/ENERGY_REGEN_MS));
+  return true}catch(e){return false}
+}
+function newGame(){
+ board=new Array(SIZE).fill(null);coins=20;energy=30;discovered=new Set();customers=[];
+ const starter=[{chain:"coffee",level:1},{chain:"coffee",level:1},{chain:"bakery",level:1},{chain:"bakery",level:1},{chain:"coffee",level:2}];
+ for(const s of starter){const e=emptyCells();if(e.length)board[e[Math.floor(Math.random()*e.length)]]=s;addDiscovered(s)}
+ spawnCustomer();spawnCustomer();
+}
+function useGenerator(ch){
+ if(energy<1){toast("⚡ אין מספיק אנרגיה!");return}
+ const e=emptyCells();if(!e.length){toast("הלוח מלא!");return}
+ energy--;
+ const lvl=Math.random()<0.15?2:1;
+ const cell=e[Math.floor(Math.random()*e.length)];
+ board[cell]={chain:ch,level:lvl};addDiscovered(board[cell]);
+ renderAll();save();
+}
+function tryMerge(from,to){
+ const a=board[from],b=board[to];
+ if(!a)return false;
+ if(to===from)return false;
+ if(!b){board[to]=a;board[from]=null;return true}
+ if(a.chain===b.chain&&a.level===b.level&&a.level<maxLevel(a.chain)){
+  board[to]={chain:a.chain,level:a.level+1};board[from]=null;
+  addDiscovered(board[to]);
+  const cells=$("board").children;
+  if(cells[to]){const r=cells[to].getBoundingClientRect();floatText(r.left+r.width/2,r.top,"✨","#ffd740")}
+  return true;
+ }
+ return false;
+}
+function orderReward(cu){return 3+cu.level*3}
+function onCustomerTap(idx){
+ if(sel!==null&&board[sel]){
+  const cu=customers[idx],it=board[sel];
+  if(it.chain===cu.chain&&it.level===cu.level)fulfill(idx,sel);else toast("הלקוח רוצה משהו אחר 😕")
+ }else{
+  const cu=customers[idx];
+  const i=board.findIndex(x=>x&&x.chain===cu.chain&&x.level===cu.level);
+  if(i>=0)fulfill(idx,i);else toast("עדיין אין את הפריט הזה")
+ }
+}
+function fulfill(cidx,cell){
+ const cu=customers[cidx];
+ board[cell]=null;sel=null;
+ coins+=orderReward(cu);energy=Math.min(MAX_ENERGY,energy+2);
+ const cards=$("customers").children;
+ if(cards[cidx]){const r=cards[cidx].getBoundingClientRect();floatText(r.left+r.width/2,r.top,"+"+orderReward(cu)+" 🪙","#ffd740")}
+ customers.splice(cidx,1);
+ toast("ההזמנה הושלמה! 🎉");
+ setTimeout(spawnCustomer,600);
+ renderAll();save();
+}
+function spawnCustomer(){
+ if(customers.length>=3)return;
+ const ch=Math.random()<0.5?"coffee":"bakery";
+ let maxL=2;
+ for(const it of board.concat([...discovered].map(k=>{const[c,l]=k.split("-");return{chain:c,level:+l}})))
+  if(it&&it.chain===ch)maxL=Math.max(maxL,Math.min(it.level,4));
+ const lvl=1+Math.floor(Math.random()*Math.min(maxL,4));
+ customers.push({chain:ch,level:lvl,face:FACES[Math.floor(Math.random()*FACES.length)]});
+ renderCustomers();save();
+}
+// --- drag & tap ---
+const ghost=$("ghost");let drag=null,tapCell=null;
+document.addEventListener("pointerdown",e=>{
+ const c=e.target.closest(".cell");
+ tapCell=c?+c.dataset.i:null;
+ const t=e.target.closest(".tile");if(!t)return;
+ drag={from:+t.dataset.i,x:e.clientX,y:e.clientY,moved:false};
+});
+document.addEventListener("pointermove",e=>{
+ if(!drag)return;
+ if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>9)drag.moved=true;
+ if(drag.moved){
+  ghost.style.display="block";ghost.style.left=e.clientX+"px";ghost.style.top=e.clientY+"px";
+  ghost.textContent=CHAINS[board[drag.from].chain].items[board[drag.from].level-1].em;
+  document.querySelectorAll(".cell.drop-hint,.customer.drop-hint").forEach(el=>el.classList.remove("drop-hint"));
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(el){const c=el.closest(".cell");const cu=el.closest(".customer");
+   if(c&&+c.dataset.i!==drag.from)c.classList.add("drop-hint");
+   if(cu)cu.classList.add("drop-hint");}
+ }
+});
+document.addEventListener("pointerup",e=>{
+ const tc=tapCell;tapCell=null;
+ if(!drag){if(tc!==null)onCellTap(tc);return}
+ const d=drag;drag=null;ghost.style.display="none";
+ document.querySelectorAll(".drop-hint").forEach(el=>el.classList.remove("drop-hint"));
+ if(d.moved){
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(el){
+   const cu=el.closest(".customer");
+   if(cu){const idx=+cu.dataset.idx;const it=board[d.from],c2=customers[idx];
+    if(it&&it.chain===c2.chain&&it.level===c2.level)fulfill(idx,d.from);else toast("הלקוח רוצה משהו אחר 😕");
+    renderAll();save();return}
+   const c=el.closest(".cell");
+   if(c){if(tryMerge(d.from,+c.dataset.i)){sel=null}else toast("אי אפשר למזג 🤔");renderAll();save();return}
+  }
+  renderAll();return;
+ }
+ // tap
+ if(tc!==null)onCellTap(tc);else onCellTap(d.from);
+});
+function onCellTap(i){
+ if(!board[i]){if(sel!==null){if(tryMerge(sel,i)){sel=null;$("selbar").classList.remove("show")}renderAll();save()}return}
+ if(sel===null){sel=i;$("selbar").classList.add("show")}
+ else if(sel===i){sel=null;$("selbar").classList.remove("show")}
+ else{if(tryMerge(sel,i)){sel=null;$("selbar").classList.remove("show")}else{sel=i}}
+ renderAll();
+}
+$("sell-btn").addEventListener("click",()=>{
+ if(sel===null||!board[sel])return;
+ const v=board[sel].level;coins+=v;
+ floatText(innerWidth/2,innerHeight/2,"+"+v+" 🪙","#ffd740");
+ board[sel]=null;sel=null;$("selbar").classList.remove("show");
+ renderAll();save();
+});
+$("cancel-btn").addEventListener("click",()=>{sel=null;$("selbar").classList.remove("show");renderAll()});
+// --- modals ---
+$("album-btn").addEventListener("click",()=>{
+ const ac=$("album-content");ac.innerHTML="";
+ for(const ch in CHAINS){
+  const sec=document.createElement("div");sec.className="album-chain";
+  sec.innerHTML="<h3>"+CHAINS[ch].genIcon+" "+CHAINS[ch].name+"</h3>";
+  const g=document.createElement("div");g.className="album-grid";
+  CHAINS[ch].items.forEach((it,idx)=>{
+   const has=discovered.has(ch+"-"+(idx+1));
+   const d=document.createElement("div");d.className="album-item"+(has?"":" locked");
+   d.innerHTML='<span class="em">'+(has?it.em:"❓")+'</span><span class="nm">'+(has?it.nm:"???")+"</span>";
+   g.appendChild(d);
+  });
+  sec.appendChild(g);ac.appendChild(sec);
+ }
+ $("album-modal").classList.add("open");
+});
+$("shop-btn").addEventListener("click",()=>{$("shop-modal").classList.add("open")});
+$("help-btn").addEventListener("click",()=>{$("help-modal").classList.add("open")});
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",e=>e.target.closest(".modal").classList.remove("open")));
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open")}));
+$("buy-energy").addEventListener("click",()=>{
+ if(coins<15){toast("אין מספיק מטבעות 🪙");return}
+ coins-=15;energy=Math.min(MAX_ENERGY,energy+20);renderAll();save();toast("⚡ +20 אנרגיה!");
+});
+$("buy-item").addEventListener("click",()=>{
+ if(coins<25){toast("אין מספיק מטבעות 🪙");return}
+ const e=emptyCells();if(!e.length){toast("הלוח מלא!");return}
+ coins-=25;const ch=Math.random()<0.5?"coffee":"bakery";
+ board[e[Math.floor(Math.random()*e.length)]]={chain:ch,level:2};
+ addDiscovered(board[e[0]]||{chain:ch,level:2});addDiscovered({chain:ch,level:2});
+ renderAll();save();toast("📦 פריט חדש על הלוח!");
+});
+// --- timers ---
+setInterval(()=>{
+ const now=Date.now();
+ if(now-lastEnergyTick>=ENERGY_REGEN_MS){
+  lastEnergyTick=now;
+  if(energy<MAX_ENERGY){energy++;renderHeader();renderGenerators();save()}
+ }
+},1000);
+setInterval(()=>{if(customers.length<3&&Math.random()<0.4)spawnCustomer()},15000);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
+window.addEventListener("beforeunload",save);
+// --- init ---
+if(!load())newGame();
+lastEnergyTick=Date.now();
+renderAll();
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

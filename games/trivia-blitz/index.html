@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:trivia-blitz:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>בזק טריוויה - 60 שניות של שאלות</title>
+<meta name="description" content="בזק טריוויה - כמה שאלות תצליחו לענות ב-60 שניות? משחק טריוויה מהיר בעברית">
+<style>
+:root{
+  --bg:#08131f;--card:#0f2233;--card2:#143050;--accent:#22d3ee;--accent2:#fbbf24;
+  --good:#34d399;--bad:#fb7185;--text:#eef7ff;--muted:#8fb3cc;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{margin:0;height:100%;}
+body{font-family:'Rubik',system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(1000px 700px at 90% -10%,#22d3ee22,transparent),
+             radial-gradient(800px 600px at -10% 110%,#fbbf2418,transparent),var(--bg);
+  display:flex;flex-direction:column;align-items:center;min-height:100%;
+  padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);}
+.wrap{width:100%;max-width:520px;display:flex;flex-direction:column;flex:1;}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 6px;}
+.logo{font-weight:900;font-size:24px;background:linear-gradient(90deg,var(--accent),#7ff5ff,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.pill{background:var(--card);border:1px solid #ffffff14;border-radius:999px;padding:5px 14px;font-weight:600;font-size:14px;}
+.screen{display:none;flex-direction:column;flex:1;animation:fade .3s ease;}
+.screen.active{display:flex;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding:20px 0 40px;}
+.hero h1{font-size:52px;margin:0;line-height:1.1;background:linear-gradient(135deg,var(--accent),#7ff5ff 50%,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 30px #22d3ee33);}
+.hero p{color:var(--muted);font-size:17px;max-width:330px;margin:0;line-height:1.6;}
+.btn{border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:16px;color:#06222b;
+  background:linear-gradient(135deg,var(--accent),#7ff5ff);padding:15px 42px;font-size:19px;
+  box-shadow:0 8px 24px #22d3ee44,inset 0 1px 0 #ffffff88;transition:transform .12s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid #ffffff22;font-weight:600;padding:12px 24px;font-size:15px;}
+.best-chip{color:var(--accent2);font-weight:700;font-size:14px;}
+.hud{display:flex;gap:8px;margin:8px 0;}
+.hud .pill{flex:1;text-align:center;}
+.timerbar{height:9px;background:#ffffff12;border-radius:99px;overflow:hidden;margin:4px 0 10px;}
+.timerbar b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s linear;}
+.timerbar b.low{background:linear-gradient(90deg,var(--bad),#ff9b6a);}
+.timerbar b.penalty{animation:pen .5s;}
+@keyframes pen{0%{filter:brightness(2) hue-rotate(-40deg)}100%{}}
+.qcard{background:linear-gradient(160deg,var(--card),var(--card2));border:1px solid #ffffff12;border-radius:22px;padding:20px;margin-top:6px;box-shadow:0 10px 30px #00000055;}
+.cat{display:inline-block;background:#22d3ee22;color:var(--accent);border-radius:999px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:12px;}
+.q{font-size:21px;font-weight:800;line-height:1.45;margin:0 0 16px;min-height:60px;}
+.answers{display:flex;flex-direction:column;gap:10px;}
+.ans{background:#ffffff0a;border:1.5px solid #ffffff1c;color:var(--text);border-radius:14px;padding:13px 16px;font-size:17px;font-weight:600;text-align:right;cursor:pointer;font-family:inherit;transition:all .15s;line-height:1.35;}
+.ans:active{transform:scale(.98);}
+.ans.correct{background:#34d39926;border-color:var(--good);color:var(--good);}
+.ans.wrong{background:#fb718526;border-color:var(--bad);color:var(--bad);}
+.flash{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;transition:opacity .12s;}
+.flash.good{background:radial-gradient(circle,#34d39933,transparent 70%);}
+.flash.bad{background:radial-gradient(circle,#fb718533,transparent 70%);}
+.combo{position:fixed;top:22%;left:50%;transform:translateX(-50%);font-size:34px;font-weight:900;color:var(--accent2);text-shadow:0 4px 20px #fbbf2466;opacity:0;pointer-events:none;z-index:41;transition:opacity .2s,transform .2s;}
+.combo.show{opacity:1;transform:translateX(-50%) scale(1.15);}
+.end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding-bottom:40px;}
+.end .score-big{font-size:74px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent2),#ff9b6a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.end h2{margin:0;font-size:26px;}
+.stats{display:flex;gap:10px;margin:8px 0;flex-wrap:wrap;justify-content:center;}
+.stat{background:var(--card);border:1px solid #ffffff12;border-radius:14px;padding:12px 18px;min-width:84px;}
+.stat b{display:block;font-size:22px;}
+.stat span{color:var(--muted);font-size:12.5px;}
+.newbest{color:var(--accent2);font-weight:800;}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1100px 620px at 85% -10%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 62%),radial-gradient(900px 620px at -12% 112%,color-mix(in srgb,var(--accent2) 11%,transparent),transparent 62%),radial-gradient(#ffffff08 1px,transparent 1.4px) 0 0/32px 32px,var(--bg)}
+.logo{letter-spacing:-.5px}
+.pill{border-color:#ffffff21;box-shadow:inset 0 1px 0 #ffffff0f,0 4px 14px -6px #00000088;backdrop-filter:blur(8px)}
+.hero h1{letter-spacing:-1.5px}
+.btn{position:relative;overflow:hidden;transition:transform .15s cubic-bezier(.34,1.4,.4,1),box-shadow .25s,filter .2s}
+.btn:not(.ghost){box-shadow:0 10px 30px -8px color-mix(in srgb,var(--accent) 60%,transparent),inset 0 1px 0 #ffffff52}
+.btn:not(.ghost):hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 16px 42px -8px color-mix(in srgb,var(--accent) 72%,transparent),inset 0 1px 0 #ffffff70}
+.btn:not(.ghost):active{transform:translateY(1px) scale(.97)}
+.btn:not(.ghost)::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff2e 50%,transparent 65%);transform:translateX(130%);transition:transform .55s;pointer-events:none}
+.btn:not(.ghost):hover::after{transform:translateX(-130%)}
+.btn.ghost{transition:transform .15s,background .2s,border-color .2s}
+.btn.ghost:hover{background:#ffffff10;border-color:#ffffff3a;color:var(--text)}
+.overlay-msg{background:#04050ed2;backdrop-filter:blur(12px)}
+.ov-card{border-color:#ffffff26;box-shadow:0 30px 90px -18px #000,inset 0 1px 0 #ffffff12}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⚡ בזק טריוויה</div>
+    <div class="pill">🏆 <span id="bestTop">0</span></div>
+  </header>
+
+  <section id="scrStart" class="screen active">
+    <div class="hero">
+      <h1>⚡ בזק טריוויה</h1>
+      <p>60 שניות על השעון. כמה שיותר תשובות נכונות, כמה שיותר נקודות. טעות עולה 3 שניות. רצף של 5 מכפיל נקודות!</p>
+      <button class="btn" id="btnStart">התחילו ▶</button>
+      <div class="best-chip" id="bestChip"></div>
+    </div>
+  </section>
+
+  <section id="scrGame" class="screen">
+    <div class="hud">
+      <div class="pill">⭐ <span id="score">0</span></div>
+      <div class="pill">🔥 <span id="streak">0</span></div>
+      <div class="pill">⏱️ <span id="time">60</span></div>
+    </div>
+    <div class="timerbar"><b id="tbar"></b></div>
+    <div class="qcard">
+      <span class="cat" id="cat"></span>
+      <p class="q" id="q"></p>
+      <div class="answers" id="answers"></div>
+    </div>
+  </section>
+
+  <section id="scrEnd" class="screen">
+    <div class="end">
+      <h2 id="endTitle">!זמן</h2>
+      <div class="score-big" id="finalScore">0</div>
+      <div class="newbest" id="newBest" hidden>🏆 שיא חדש!</div>
+      <div class="stats">
+        <div class="stat"><b id="stCorrect">0</b><span>נכונות</span></div>
+        <div class="stat"><b id="stWrong">0</b><span>טעויות</span></div>
+        <div class="stat"><b id="stStreak">0</b><span>רצף שיא</span></div>
+        <div class="stat"><b id="stAcc">0%</b><span>דיוק</span></div>
+      </div>
+      <button class="btn" id="btnAgain">עוד סיבוב 🔁</button>
+      <button class="btn ghost" id="btnShare">שתפו 📤</button>
+    </div>
+  </section>
+</div>
+<div class="flash" id="flash"></div>
+<div class="combo" id="combo"></div>
+
+<script>
+"use strict";
+const QUESTIONS=[
+{c:"גאוגרפיה 🌍",q:"מהי בירת צרפת?",a:["פריז","ליוון","מרסיי","ניס"],i:0},
+{c:"גאוגרפיה 🌍",q:"מהי בירת יפן?",a:["אוסקה","טוקיו","קיוטו","הירושימה"],i:1},
+{c:"גאוגרפיה 🌍",q:"איזו מדינה הגדולה בעולם בשטחה?",a:["סין","קנדה","רוסיה","ארה״ב"],i:2},
+{c:"גאוגרפיה 🌍",q:"איזה נהר הארוך בעולם?",a:["האמזונס","הנילוס","המיסיסיפי","הדנובה"],i:1},
+{c:"גאוגרפיה 🌍",q:"באיזו יבשת נמצאת מצרים?",a:["אסיה","אירופה","אפריקה","אמריקה"],i:2},
+{c:"גאוגרפיה 🌍",q:"מהי בירת אוסטרליה?",a:["סידני","מלבורן","קנברה","פרת׳"],i:2},
+{c:"גאוגרפיה 🌍",q:"איזה ים נמצא בין ישראל לקפריסין?",a:["הים האדום","הים התיכון","הים השחור","ים כנרת"],i:1},
+{c:"גאוגרפיה 🌍",q:"מהי המדינה עם הכי הרבה תושבים בעולם?",a:["סין","הודו","ארה״ב","אינדונזיה"],i:1},
+{c:"גאוגרפיה 🌍",q:"איזו עיר ידועה בלשון ״התפוח הגדול״?",a:["לונדון","פריז","ניו יורק","טוקיו"],i:2},
+{c:"גאוגרפיה 🌍",q:"היכן נמצא הר האוורסט?",a:["באלפים","בהימלאיה","באנדים","ברוקי"],i:1},
+{c:"מדע 🔬",q:"כמה כוכבי לכת יש במערכת השמש?",a:["7","8","9","10"],i:1},
+{c:"מדע 🔬",q:"מהו היסוד הכימי O?",a:["זהב","חמצן","חנקן","ברזל"],i:1},
+{c:"מדע 🔬",q:"מהו כוכב הלכת הקרוב ביותר לשמש?",a:["נוגה","מאדים","כוכב חמה","צדק"],i:2},
+{c:"מדע 🔬",q:"איזה איבר שואב דם בגוף האדם?",a:["הכבד","הריאות","הלב","הכליות"],i:2},
+{c:"מדע 🔬",q:"מהי הנוסחה הכימית של מים?",a:["CO2","H2O","O2","NaCl"],i:1},
+{c:"מדע 🔬",q:"איזה חיה היא היונק הגדול בעולם?",a:["פיל","לווייתן כחול","ג׳ירף","קרנף"],i:1},
+{c:"מדע 🔬",q:"באיזו מהירות בקירוב נע האור?",a:["300 ק״מ לשנייה","3,000 ק״מ לשנייה","300,000 ק״מ לשנייה","30 ק״מ לשנייה"],i:2},
+{c:"מדע 🔬",q:"מי פיתח את תורת היחסות?",a:["ניוטון","איינשטיין","גלילאו","דארווין"],i:1},
+{c:"מדע 🔬",q:"איזה כוכב לכת מכונה ״כוכב הלכת האדום״?",a:["נוגה","צדק","מאדים","שבתאי"],i:2},
+{c:"מדע 🔬",q:"כמה עצמות יש בגוף אדם בוגר?",a:["106","206","306","406"],i:1},
+{c:"היסטוריה 📜",q:"באיזו שנה הכריזה ישראל על עצמאותה?",a:["1947","1948","1949","1950"],i:1},
+{c:"היסטוריה 📜",q:"מי היה ראש הממשלה הראשון של ישראל?",a:["בן גוריון","וייצמן","שערת","בגין"],i:0},
+{c:"היסטוריה 📜",q:"איזו אימפריה בנתה את הקולוסיאום?",a:["היוונית","הרומית","המצרית","הפרסית"],i:1},
+{c:"היסטוריה 📜",q:"באיזו שנה נחת האדם הראשון על הירח?",a:["1967","1968","1969","1971"],i:2},
+{c:"היסטוריה 📜",q:"מי צייר את המונה ליזה?",a:["וואן גוך","פיקאסו","לאונרדו דה וינצ׳י","מיכלאנג׳לו"],i:2},
+{c:"היסטוריה 📜",q:"הפירמידות של גיזה נבנו באיזו ארץ?",a:["מקסיקו","מצרים","סין","פרו"],i:1},
+{c:"היסטוריה 📜",q:"מי המציא את הדפוס?",a:["גוטנברג","אדיסון","בל","טסלה"],i:0},
+{c:"היסטוריה 📜",q:"איזה חומה מפורסמת נפלה ב-1989?",a:["חומת סין","חומת ברלין","חומת העיר העתיקה","חומת אדריאנוס"],i:1},
+{c:"ישראל 🇮🇱",q:"מהו הים הנמוך ביותר בעולם?",a:["ים כנרת","ים המלח","הים התיכון","הים האדום"],i:1},
+{c:"ישראל 🇮🇱",q:"איזו עיר היא הבירה של ישראל?",a:["תל אביב","חיפה","ירושלים","באר שבע"],i:2},
+{c:"ישראל 🇮🇱",q:"על מה מבוססת המטבע הישראלי?",a:["דולר","שקל","דינר","לירה"],i:1},
+{c:"ישראל 🇮🇱",q:"מהו ההר הגבוה ביותר בישראל?",a:["הר תבור","הר החרמון","הר הכרמל","הר מירון"],i:1},
+{c:"ישראל 🇮🇱",q:"כמה פסים כחולים יש בדגל ישראל?",a:["1","2","3","4"],i:1},
+{c:"ישראל 🇮🇱",q:"איזה נמל תעופה הוא המרכזי בישראל?",a:["רמון","בן גוריון","דב הוז","חיפה"],i:1},
+{c:"ישראל 🇮🇱",q:"איזו עיר ידועה בגני הבאהאים?",a:["עכו","חיפה","צפת","נצרת"],i:1},
+{c:"ישראל 🇮🇱",q:"מהו הכינוי של תל אביב?",a:["העיר הלבנה","עיר הזהב","העיר הנצחית","עיר האורות"],i:0},
+{c:"טבע וחיות 🦁",q:"איזו חיה היא המהירה ביותר ביבשה?",a:["אריה","ברדלס","סוס","אנטילופה"],i:1},
+{c:"טבע וחיות 🦁",q:"כמה רגליים יש לעכביש?",a:["6","8","10","12"],i:1},
+{c:"טבע וחיות 🦁",q:"איזה ציפור היא הגדולה בעולם?",a:["נשר","יען","ברווז","ינשוף"],i:1},
+{c:"טבע וחיות 🦁",q:"מה אוכלת בעיקר דובי פנדה?",a:["דגים","במבוק","דבש","פירות"],i:1},
+{c:"טבע וחיות 🦁",q:"איזה בע״ח משנה את צבע עורו?",a:["זיקית","תמנון","גמלון שלמה","כל התשובות נכונות"],i:3},
+{c:"טבע וחיות 🦁",q:"כמה לבבות יש לתמנון?",a:["1","2","3","4"],i:2},
+{c:"טבע וחיות 🦁",q:"איזו עוף דורס פעיל בעיקר בלילה?",a:["ברבור","ינשוף","זרזיר","יונה"],i:1},
+{c:"טבע וחיות 🦁",q:"איזו נחש הארוכה בעולם?",a:["קוברה","פיתון רשת","אנקונדה","פתן"],i:1},
+{c:"ספורט ⚽",q:"כמה שחקנים בקבוצת כדורגל על המגרש?",a:["9","10","11","12"],i:2},
+{c:"ספורט ⚽",q:"באיזה ענף משחקים עם חישוק וכתפיים?",a:["טניס","בדמינטון","כדורעף","סקווש"],i:1},
+{c:"ספורט ⚽",q:"כמה טבעות יש בסמל האולימפי?",a:["4","5","6","7"],i:1},
+{c:"ספורט ⚽",q:"איזו מדינה זכתה הכי הרבה פעמים במונדיאל?",a:["גרמניה","ארגנטינה","ברזיל","צרפת"],i:2},
+{c:"ספורט ⚽",q:"מהו מרחק המרתון?",a:["21 ק״מ","42.195 ק״מ","50 ק״מ","26 ק״מ"],i:1},
+{c:"ספורט ⚽",q:"באיזה משחק יש ״מט ושח״?",a:["דמקה","שחמט","בridge","גו"],i:1},
+{c:"ספורט ⚽",q:"כמה נקודות שווה סל שלוש בכדורסל?",a:["2","3","4","5"],i:1},
+{c:"תרבות ואמנות 🎨",q:"מי כתב את ״רומיאו ויוליה״?",a:["דיקנס","שייקספיר","הומר","תולסטוי"],i:1},
+{c:"תרבות ואמנות 🎨",q:"איזו זמרת ידועה בכינוי ״דייבה״?",a:["מדונה","ויטני יוסטון","ברברה סטרייסנד","מריה קארי"],i:1},
+{c:"תרבות ואמנות 🎨",q:"מי חיבר את הסימפוניה התשיעית?",a:["מוצרט","בטהובן","באך","צ׳ייקובסקי"],i:1},
+{c:"תרבות ואמנות 🎨",q:"באיזו עיר נמצא מוזיאון הלובר?",a:["לונדון","רומא","פריז","מדריד"],i:2},
+{c:"תרבות ואמנות 🎨",q:"מי פיסל את ״דוד״ המפורסם?",a:["מיכלאנג׳לו","רפאל","דונטלו","ברניני"],i:0},
+{c:"תרבות ואמנות 🎨",q:"איזה כלי נגינה יש לג׳ימי הנדריקס?",a:["פסנתר","גיטרה","תופים","סקסופון"],i:1},
+{c:"קולנוע 🎬",q:"איזו זכתה באוסקר הסרט הטוב ביותר 1998?",a:["טיטאניק","פורסט גאמפ","מלך האריות","ברבור שחור"],i:0},
+{c:"קולנוע 🎬",q:"מי ביים את ״פארק היורה״?",a:["ג׳ורג׳ לוקאס","ספילברג","קמרון","סקורסזה"],i:1},
+{c:"קולנוע 🎬",q:"מהו שם הדג הכתום בסרט ״מוצאים את נמו״?",a:["דורי","נמו","מרלין","ברוס"],i:1},
+{c:"כללי 🧠",q:"כמה ימים יש בשנה מעוברת?",a:["364","365","366","367"],i:2},
+{c:"כללי 🧠",q:"כמה צלעות יש למשושה?",a:["5","6","7","8"],i:1},
+{c:"כללי 🧠",q:"מהו הכוכב הגדול ביותר במערכת השמש?",a:["צדק","שבתאי","אוראנוס","נפטון"],i:0},
+{c:"כללי 🧠",q:"באיזו שפה כותבים מימין לשמאל?",a:["אנגלית","רוסית","עברית","יוונית"],i:2},
+{c:"כללי 🧠",q:"כמה דקות יש בשעתיים?",a:["100","110","120","130"],i:2},
+{c:"כללי 🧠",q:"איזה מתכת נוזלית בטמפרטורת החדר?",a:["ברזל","כספית","אלומיניום","נחושת"],i:1},
+{c:"כללי 🧠",q:"מהו הצבע המתקבל מערבוב כחול וצהוב?",a:["סגול","ירוק","כתום","חום"],i:1},
+{c:"כללי 🧠",q:"כמה שחקנים משחקים בקבוצת כדורסל על הפרקט?",a:["4","5","6","7"],i:1},
+{c:"אוכל 🍕",q:"מאיזו מדינה מקור הפיצה?",a:["צרפת","ספרד","איטליה","יוון"],i:2},
+{c:"אוכל 🍕",q:"ממה עשוי בעיקר גואקמולה?",a:["עגבניה","אבוקדו","בצל","מלפפון"],i:1},
+{c:"אוכל 🍕",q:"איזה תבלין הוא היקר בעולם?",a:["קינמון","זעפרן","ווניל","פלפל שחור"],i:1},
+{c:"אוכל 🍕",q:"מאיזו מדינה הסושי?",a:["סין","יפן","תאילנד","קוריאה"],i:1},
+{c:"אוכל 🍕",q:"מהו המרכיב העיקרי בחומוס?",a:["עדשים","חומוס (גרגירי)","שומשום","שעועית"],i:1},
+{c:"מדע 🔬",q:"איזה גז צמחים קולטים בפוטוסינתזה?",a:["חמצן","פחמן דו חמצני","חנקן","מימן"],i:1},
+{c:"מדע 🔬",q:"מהו הכוח שמושך עצמים לכדור הארץ?",a:["מגנטיות","כבידה","חיכוך","לחץ"],i:1},
+{c:"גאוגרפיה 🌍",q:"מהי בירת קנדה?",a:["טורונטו","ונקובר","אוטווה","מונטריאול"],i:2},
+{c:"גאוגרפיה 🌍",q:"איזו מדינה ידועה בקנגורו?",a:["ניו זילנד","אוסטרליה","דרום אפריקה","ברזיל"],i:1},
+{c:"גאוגרפיה 🌍",q:"איזו יבשת היבשה ביותר?",a:["אפריקה","אוסטרליה","אנטארקטיקה","אסיה"],i:2},
+{c:"היסטוריה 📜",q:"מי היה הנשיא הראשון של ארה״ב?",a:["לינקולן","ג׳פרסון","וושינגטון","אדמס"],i:2},
+{c:"היסטוריה 📜",q:"באיזו שנה חתומה מגילת העצמאות האמריקאית?",a:["1776","1789","1804","1812"],i:0},
+{c:"תרבות ואמנות 🎨",q:"כמה תווים יש באלף בית העברי?",a:["20","22","24","26"],i:1},
+{c:"כללי 🧠",q:"איזו יחידה מודדת טמפרטורה?",a:["קלוריה","צלזיוס","ג׳ול","וואט"],i:1},
+{c:"ספורט ⚽",q:"איזה צבע הקלף הגבוה ביותר בסולם קלפים רגיל?",a:["מלך","אס","נסיכה","נסיך"],i:1},
+{c:"טבע וחיות 🦁",q:"מהו החיה הלאומית של סין?",a:["דרקון","פנדה","קוף זהוב","נמר"],i:1},
+{c:"מדע 🔬",q:"איזה כוכב לכת ידוע בטבעותיו?",a:["מאדים","שבתאי","נוגה","כוכב חמה"],i:1},
+{c:"ישראל 🇮🇱",q:"מהו שמו של הכנסת הישראלית במספר חבריה?",a:["100","120","150","200"],i:1},
+{c:"כללי 🧠",q:"כמה ס״מ יש במטר?",a:["10","100","1000","60"],i:1},
+{c:"אוכל 🍕",q:"מהו הפלאפל עשוי ממנו בעיקר?",a:["חומוס","פול","עדשים","בטטה"],i:0},
+{c:"גאוגרפיה 🌍",q:"איזו עיר נמצאת על גדות נהר התמזה?",a:["פריז","לונדון","ברלין","רומא"],i:1},
+{c:"מדע 🔬",q:"מה שם הכלי שמודד לחץ דם?",a:["סטטוסקופ","ספיגמומנומטר","תרמומטר","ברומטר"],i:1},
+{c:"היסטוריה 📜",q:"איזו ספינה טבעה ב-1912 במסע הבכורה?",a:["קווין מרי","טיטאניק","בריטניה","לוסיטניה"],i:1},
+{c:"תרבות ואמנות 🎨",q:"מי כתב את ההמנון הישראלי ״התקווה״?",a:["ביאליק","אימבר","טשרניחובסקי","גורדון"],i:1},
+{c:"ספורט ⚽",q:"באיזה ענף אולימפי יש ״קפיצה משולשת״?",a:["שחייה","אתלטיקה","התעמלות","סיף"],i:1},
+{c:"טבע וחיות 🦁",q:"כמה זמן בממוצע ישן דולפין ביום?",a:["24 שעות","12 שעות","4 שעות עם חצי מוח ער","לא ישן כלל"],i:2},
+{c:"כללי 🧠",q:"מהי המספר הבא בסדרה: 2,4,8,16...?",a:["20","24","32","64"],i:2},
+{c:"גאוגרפיה 🌍",q:"מהו האי הגדול בעולם?",a:["אוסטרליה","גרינלנד","בורנאו","מדגסקר"],i:1},
+{c:"מדע 🔬",q:"איזה ויטמין מייצר הגוף בעזרת שמש?",a:["A","B12","C","D"],i:3},
+{c:"אוכל 🍕",q:"מאיזו מדינה הגיע הקוסקוס?",a:["צפון אפריקה","דרום אמריקה","דרום אפריקה","הודו"],i:0},
+{c:"קולנוע 🎬",q:"מהו שם הבית בסרטי הארי פוטר?",a:["נarnia","הוגוורטס","אוז","מורדור"],i:1}
+];
+const TOTAL=60;
+const $=id=>document.getElementById(id);
+let deck=[],qi=0,score=0,streak=0,bestStreak=0,correct=0,wrong=0,timeLeft=TOTAL,timer=null,lock=false;
+const best=+ArcadiaStorage.getItem('blitz_best')||0;
+$('bestTop').textContent=best;
+if(best)$('bestChip').textContent='השיא שלכם: '+best+' נקודות';
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function start(){
+  deck=shuffle([...QUESTIONS]);qi=0;score=0;streak=0;bestStreak=0;correct=0;wrong=0;timeLeft=TOTAL;lock=false;
+  $('score').textContent=0;$('streak').textContent=0;$('time').textContent=timeLeft;$('tbar').style.width='100%';$('tbar').classList.remove('low');
+  show('scrGame');ask();
+  clearInterval(timer);timer=setInterval(()=>{timeLeft--;$('time').textContent=timeLeft;
+    $('tbar').style.width=(timeLeft/TOTAL*100)+'%';$('tbar').classList.toggle('low',timeLeft<=10);
+    if(timeLeft<=0){clearInterval(timer);end();}},1000);
+}
+function ask(){
+  lock=false;
+  if(qi>=deck.length)deck=shuffle([...QUESTIONS]),qi=0;
+  const c=deck[qi++];
+  $('cat').textContent=c.c;
+  $('q').textContent=c.q;
+  const box=$('answers');box.innerHTML='';
+  const order=shuffle([0,1,2,3]);
+  order.forEach(idx=>{
+    const b=document.createElement('button');b.className='ans';b.textContent=c.a[idx];
+    b.onclick=()=>pick(b,idx===c.i);box.appendChild(b);
+  });
+}
+function pick(btn,ok){
+  if(lock)return;lock=true;
+  [...$('answers').children].forEach(b=>b.disabled=true);
+  if(ok){
+    btn.classList.add('correct');
+    streak++;bestStreak=Math.max(bestStreak,streak);correct++;
+    const mult=streak>0&&streak%5===0?2:1;
+    const pts=10*mult;score+=pts;
+    if(mult===2){const cb=$('combo');cb.textContent='🔥 רצף '+streak+'! ×2';cb.classList.add('show');setTimeout(()=>cb.classList.remove('show'),900);}
+    flash('good');
+    setTimeout(ask,450);
+  }else{
+    btn.classList.add('wrong');
+    streak=0;wrong++;
+    timeLeft=Math.max(0,timeLeft-3);$('time').textContent=timeLeft;
+    $('tbar').style.width=(timeLeft/TOTAL*100)+'%';
+    const tb=$('tbar');tb.classList.remove('penalty');void tb.offsetWidth;tb.classList.add('penalty');
+    flash('bad');
+    if(timeLeft<=0){clearInterval(timer);setTimeout(end,450);return;}
+    setTimeout(ask,450);
+  }
+  $('score').textContent=score;$('streak').textContent=streak;
+}
+function flash(kind){const f=$('flash');f.className='flash '+kind;f.style.opacity=1;setTimeout(()=>f.style.opacity=0,180);}
+function end(){
+  clearInterval(timer);
+  $('finalScore').textContent=score;
+  $('stCorrect').textContent=correct;$('stWrong').textContent=wrong;
+  $('stStreak').textContent=bestStreak;
+  $('stAcc').textContent=Math.round(correct/Math.max(correct+wrong,1)*100)+'%';
+  const nb=score>best;if(nb){ArcadiaStorage.setItem('blitz_best',score);$('bestTop').textContent=score;}
+  $('newBest').hidden=!nb;
+  $('endTitle').textContent=correct>=20?'🧠 גאון טריוויה!':correct>=12?'⚡ מרשים מאוד!':correct>=6?'👏 יפה מאוד!':'💪 בעוד סיבוב תשתפרו!';
+  show('scrEnd');
+}
+$('btnStart').onclick=start;
+$('btnAgain').onclick=start;
+$('btnShare').onclick=async()=>{
+  const txt='עניתי נכון על '+correct+' שאלות ב-60 שניות בבזק טריוויה! הניקוד: '+score+' ⚡ מי מנצח אותי?';
+  if(navigator.share){try{await navigator.share({text:txt,url:location.href});}catch(e){}}
+  else{try{await navigator.clipboard.writeText(txt+' '+location.href);$('btnShare').textContent='הועתק! ✅';setTimeout(()=>$('btnShare').textContent='שתפו 📤',1800);}catch(e){}}
+};
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

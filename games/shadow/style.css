@@ -1,0 +1,22 @@
+body.g-shadow{background:#0a0c1a;overflow:hidden;height:calc(var(--vh,1vh)*100);color:#fff}
+.hall{position:fixed;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 38%,#3a4272 0,#171b38 55%,#070813 100%)}
+.hall::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 72px,rgba(255,255,255,.03) 72px 74px)}
+.beam{position:fixed;top:0;left:50%;width:120%;height:62%;transform:translateX(-50%);background:conic-gradient(from 160deg at 50% -5%,transparent 0,rgba(255,240,190,.25) 10deg,transparent 20deg);clip-path:polygon(40% 0,60% 0,100% 100%,0 100%);background:linear-gradient(rgba(255,240,190,.38),rgba(255,240,190,0));filter:blur(2px)}
+.floor{position:fixed;left:0;right:0;bottom:0;height:38%;background:linear-gradient(#1a1e3d,#05060f);border-top:2px solid rgba(255,255,255,.08)}
+#app{position:relative;height:calc(var(--vh,1vh)*100);display:flex;flex-direction:column;align-items:center;padding:66px 12px calc(env(safe-area-inset-bottom) + 16px)}
+#title{font-family:'Secular One';font-size:1.7rem;text-shadow:0 0 14px rgba(255,230,150,.8);text-align:center;min-height:1.3em}
+#sub{opacity:.85;font-weight:600;margin-bottom:4px;text-align:center}
+#stage{position:relative;width:min(100%,520px);flex:1;display:grid;place-items:center}
+#plate{position:absolute;bottom:6%;width:78%;height:14%;border-radius:50%;background:radial-gradient(ellipse,rgba(255,235,170,.5),rgba(255,235,170,0) 70%)}
+#sil{width:86%;max-height:92%;object-fit:contain;filter:brightness(0) drop-shadow(0 0 10px rgba(130,150,255,.55));opacity:.92;transition:none;position:relative}
+#sil.rev{transition:filter .9s,opacity .9s;filter:none;opacity:1;animation:rv 1s}
+@keyframes rv{40%{transform:scale(1.08)}}
+#sil.rev{filter:drop-shadow(0 0 28px rgba(255,230,140,.95))}
+#tray{display:flex;gap:12px;width:100%;max-width:520px;justify-content:center;padding:8px 0}
+.opt{flex:1;max-width:160px;aspect-ratio:1;border-radius:22px;background:linear-gradient(#2a3166,#161a3b);border:3px solid rgba(255,255,255,.25);display:grid;place-items:center;box-shadow:0 6px 0 rgba(0,0,0,.5);position:relative}
+.opt img{width:90%;height:75%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 4px 3px rgba(0,0,0,.5))}
+.opt.bad{animation:shk .4s}.opt.used{visibility:hidden}
+@keyframes shk{25%{margin-left:-8px}75%{margin-left:8px}}
+.dots{display:flex;gap:6px}.dots i{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.25)}.dots i.on{background:#ffd54a;box-shadow:0 0 8px #ffd54a}
+
+body::before,body::after{pointer-events:none}

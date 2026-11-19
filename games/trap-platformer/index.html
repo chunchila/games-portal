@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:trap-platformer:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>מלכודות! - פלטפורמר מרמה</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0b0f1a;
+    font-family:'Rubik',system-ui,sans-serif; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; image-rendering:auto; }
+  #hud { position:fixed; top:0; right:0; left:0; display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; z-index:10; pointer-events:none; color:#e8ecf4; text-shadow:0 2px 4px rgba(0,0,0,.6); }
+  #hud .grp { display:flex; gap:8px; align-items:center; pointer-events:auto; }
+  #hud .pill { background:rgba(15,20,35,.72); border:1px solid rgba(255,255,255,.14); border-radius:999px;
+    padding:6px 14px; font-size:15px; font-weight:600; backdrop-filter:blur(6px); }
+  #hud button { background:rgba(15,20,35,.72); border:1px solid rgba(255,255,255,.14); color:#e8ecf4;
+    border-radius:999px; width:38px; height:38px; font-size:17px; cursor:pointer; backdrop-filter:blur(6px); }
+  #hud button:active { transform:scale(.92); }
+  #banner { position:fixed; top:16%; right:0; left:0; text-align:center; z-index:9; pointer-events:none;
+    color:#fff; opacity:0; transition:opacity .35s; text-shadow:0 3px 10px rgba(0,0,0,.75); }
+  #banner h2 { font-size:clamp(26px,5.5vw,44px); font-weight:800; letter-spacing:.5px; }
+  #banner p { font-size:clamp(15px,3vw,22px); color:#ffd76e; margin-top:6px; font-weight:600; }
+  #quip { position:fixed; bottom:24%; right:0; left:0; text-align:center; z-index:9; pointer-events:none;
+    color:#ff9db0; font-size:clamp(15px,3.2vw,22px); font-weight:700; opacity:0; transition:opacity .3s;
+    text-shadow:0 2px 8px rgba(0,0,0,.8); }
+  .overlay { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
+    background:rgba(6,9,18,.86); backdrop-filter:blur(8px); color:#eef2fa; text-align:center; padding:20px; }
+  .overlay.on { display:flex; }
+  .card { max-width:520px; width:100%; background:#141a2c; border:1px solid rgba(255,255,255,.12);
+    border-radius:20px; padding:28px 24px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .card h1 { font-size:30px; margin-bottom:10px; }
+  .card p { color:#aeb8d0; line-height:1.7; margin-bottom:16px; font-size:16px; }
+  .bigbtn { display:inline-block; background:linear-gradient(135deg,#ffb02e,#ff7a3d); color:#231400; border:0;
+    font-weight:800; font-size:18px; padding:13px 34px; border-radius:999px; cursor:pointer;
+    box-shadow:0 6px 18px rgba(255,140,40,.35); margin:4px; }
+  .bigbtn:active { transform:scale(.95); }
+  .bigbtn.ghost { background:rgba(255,255,255,.08); color:#e8ecf4; box-shadow:none; border:1px solid rgba(255,255,255,.15); }
+  #lvgrid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:14px 0; direction:ltr; }
+  #lvgrid button { aspect-ratio:1; border-radius:12px; border:1px solid rgba(255,255,255,.14); font-size:16px;
+    font-weight:700; cursor:pointer; background:#1c2440; color:#cdd6ea; }
+  #lvgrid button.lock { opacity:.28; cursor:default; }
+  #lvgrid button.done { background:#1f4d2e; color:#9fe6b0; }
+  #touch { position:fixed; bottom:0; right:0; left:0; z-index:15; display:none; justify-content:space-between;
+    padding:0 18px calc(18px + env(safe-area-inset-bottom)); pointer-events:none; }
+  #touch .side { display:flex; gap:14px; pointer-events:auto; }
+  .tbtn { width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,.10);
+    border:2px solid rgba(255,255,255,.22); color:#fff; font-size:30px; display:flex; align-items:center;
+    justify-content:center; backdrop-filter:blur(4px); font-weight:700; }
+  .tbtn.on { background:rgba(255,178,46,.55); border-color:#ffb02e; }
+  @media (pointer:coarse) { #touch { display:flex; } }
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1000px 620px at 82% -10%,#ff7a3d14,transparent 60%),radial-gradient(820px 640px at -8% 110%,#22d3ee10,transparent 60%),radial-gradient(#ffffff07 1px,transparent 1.4px) 0 0/32px 32px,#0a0e1a}
+.overlay{background:rgba(4,6,14,.88);backdrop-filter:blur(12px)}
+.card{border-color:#ffffff26;box-shadow:0 30px 80px -18px #000,inset 0 1px 0 #ffffff10}
+.bigbtn{transition:transform .15s,filter .2s,box-shadow .25s}
+.bigbtn:hover{filter:brightness(1.08);transform:translateY(-2px)}
+.pill{backdrop-filter:blur(8px)}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv"></canvas></div>
+<div id="hud">
+  <div class="grp"><span class="pill" id="hudLevel">שלב 1</span><span class="pill" id="hudDeaths">💀 0</span></div>
+  <div class="grp">
+    <button id="btnReset" title="התחל שלב מחדש">↺</button>
+    <button id="btnLevels" title="בחירת שלב">☰</button>
+    <button id="btnMute" title="שמע">🔊</button>
+  </div>
+</div>
+<div id="banner"><h2 id="bTitle"></h2><p id="bSub"></p></div>
+<div id="quip"></div>
+<div id="touch"><div class="side"></div><div class="side"></div></div>
+<div class="overlay" id="ovStart"><div class="card">
+  <h1>מלכודות!</h1>
+  <p>פלטפורמר שנראה תמים. הוא לא.<br>הגע לדלת. כנראה שהרצפה תיפול, הקוצים יצוצו והדלת תברח.<br>כל מוות מלמד אותך משהו. בערך.</p>
+  <p style="font-size:14px">🎮 מקלדת: חצים / רווח &nbsp;·&nbsp; 📱 מגע: כפתורים על המסך</p>
+  <button class="bigbtn" id="btnPlay">שחק</button>
+  <button class="bigbtn ghost" id="btnPick">בחירת שלב</button>
+</div></div>
+<div class="overlay" id="ovLevels"><div class="card">
+  <h1>בחירת שלב</h1>
+  <div id="lvgrid"></div>
+  <button class="bigbtn ghost" id="btnCloseLevels">סגור</button>
+</div></div>
+<div class="overlay" id="ovEnd"><div class="card">
+  <h1>🎉 סיימת! 🎉</h1>
+  <p id="endText"></p>
+  <button class="bigbtn" id="btnAgain">שחק שוב מההתחלה</button>
+  <button class="bigbtn ghost" id="btnEndLevels">בחירת שלב</button>
+</div></div>
+<script>
+"use strict";
+// ===== Audio (tiny synth) =====
+let AC=null, muted=false;
+function snd(fn){ if(muted) return; try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended')AC.resume(); fn(AC);}catch(e){} }
+function tone(f0,f1,dur,type,vol){ snd(ac=>{ const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;
+  o.type=type||'square'; o.frequency.setValueAtTime(f0,t); if(f1)o.frequency.exponentialRampToValueAtTime(Math.max(f1,1),t+dur);
+  g.gain.setValueAtTime(vol||.12,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+dur); }); }
+const sJump=()=>tone(280,620,.14,'square',.08), sDie=()=>tone(320,40,.4,'sawtooth',.14),
+  sPop=()=>tone(900,1400,.07,'square',.07), sDoor=()=>{tone(523,523,.1,'triangle',.12);setTimeout(()=>tone(784,784,.14,'triangle',.12),90);},
+  sCheck=()=>{tone(660,660,.08,'triangle',.1);setTimeout(()=>tone(880,880,.1,'triangle',.1),80);},
+  sFlip=()=>tone(200,900,.25,'sine',.1), sFall=()=>tone(500,150,.3,'triangle',.08);
+
+// ===== Save =====
+const SAVE_KEY='malchodot.v1';
+let save={unlocked:1, deaths:0, muted:false};
+try{ const s=JSON.parse(ArcadiaStorage.getItem(SAVE_KEY)); if(s&&s.unlocked) save=Object.assign(save,s); }catch(e){}
+muted=save.muted;
+function persist(){ save.muted=muted; try{ArcadiaStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch(e){} }
+
+// ===== Input =====
+const inp={left:false,right:false,jump:false,jumpBuf:0};
+const keymap={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'jump',KeyW:'jump',Space:'jump',KeyZ:'jump'};
+addEventListener('keydown',e=>{ const k=keymap[e.code]; if(k){ e.preventDefault(); if(k==='jump'&&!e.repeat){inp.jump=true;inp.jumpBuf=.12;} else inp[k]=true; } });
+addEventListener('keyup',e=>{ const k=keymap[e.code]; if(k){ if(k==='jump') inp.jump=false; else inp[k]=false; } });
+function bindBtn(el,on,off){ const s=e=>{e.preventDefault();el.classList.add('on');on();}, x=e=>{e.preventDefault();el.classList.remove('on');off();};
+  el.addEventListener('pointerdown',s); el.addEventListener('pointerup',x); el.addEventListener('pointercancel',x); el.addEventListener('pointerleave',x); }
+
+// ===== World constants =====
+const TILE=40, ROWS=12, VH=ROWS*TILE;
+const GRAV=2300, MOVE=270, JUMP=790;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let VW=960, camX=0, shake=0;
+
+function resize(){ const dpr=Math.min(devicePixelRatio||1,2), w=innerWidth, h=innerHeight;
+  cv.width=w*dpr; cv.height=h*dpr; cv.style.width=w+'px'; cv.style.height=h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0); }
+addEventListener('resize',resize); resize();
+
+// ===== Level runtime =====
+let L=null; // parsed level
+function parseLevel(def){
+  const g=def.grid, W=Math.max(...g.map(r=>r.length));
+  const lv={def,W, tiles:[], spikes:[], ctiles:[], door:null, start:null, cps:[], traps:[], parts:[], t:0, gravDir:1, done:false, doorT:0};
+  for(let y=0;y<ROWS;y++){ lv.tiles[y]=[]; const row=g[y]||'';
+    for(let x=0;x<W;x++){ const ch=row[x]||' ';
+      let t={ch,x,y, solid:false, fall:0, vy:0, shakeT:0, crum:-1, gone:false, cy:y*TILE, moving:false};
+      if(ch==='#') t.solid=true;
+      if(ch==='C'||ch==='c'||ch==='T') t.solid=true;
+      if(ch==='S') lv.start={x:x*TILE+10,y:y*TILE+6};
+      if(ch==='D') lv.door={x:x*TILE,y:y*TILE,tx:x,ty:y,poof:0};
+      if(ch==='P') lv.cps.push({x:x*TILE+20,y:y*TILE+40,on:false});
+      if(ch==='s'||ch==='u') lv.spikes.push({x,y,dir:ch==='s'?1:-1,pop:0,hidden:true});
+      if(ch==='x'||ch==='w') lv.spikes.push({x,y,dir:ch==='x'?1:-1,pop:1,hidden:false});
+      lv.tiles[y][x]=t; } }
+  lv.traps=(def.traps||[]).map(tr=>Object.assign({fired:false,cool:0},tr));
+  return lv;
+}
+function tileAt(px,py){ const x=Math.floor(px/TILE), y=Math.floor(py/TILE);
+  if(y<0||y>=ROWS||x<0||x>=L.W) return null; return L.tiles[y][x]; }
+function solidAt(px,py){ const t=tileAt(px,py); return t&&t.solid&&!t.gone&&t.fall===0; }
+function rectSolid(rx,ry,rw,rh){ const x0=Math.floor(rx/TILE),x1=Math.floor((rx+rw-1)/TILE),y0=Math.floor(ry/TILE),y1=Math.floor((ry+rh-1)/TILE);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ if(x<0||x>=L.W||y<0||y>=ROWS) continue; const t=L.tiles[y][x]; if(t.solid&&!t.gone&&t.fall===0) return t; } return null; }
+// ===== Player =====
+const P={x:0,y:0,w:22,h:30,vx:0,vy:0,ground:false,coyote:0,dead:0,face:1,squash:0,cp:null};
+function spawn(){ P.x=P.cp?P.cp.x-11:L.start.x; P.y=P.cp?P.cp.y-P.h:L.start.y;
+  P.vx=0; P.vy=0; P.dead=0; P.squash=0; L.gravDir=1; }
+function loadLevel(i){ L=parseLevel(LEVELS[i]); P.cp=null; spawn(); camX=clamp(P.x-VW*.4,0,Math.max(0,L.W*TILE-VW)); showBanner(LEVELS[i].name,LEVELS[i].tip); }
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const QUIPS=['הרצפה? איזו רצפה?','זו הייתה מלכודת.','הדלת בורחת כי היא יכולה.','קלאסי.','נסה שוב, הפעם עם פחות אמון.','המשחק לא משקר. הוא פשוט לא אומר הכל.','קוצים. מאין? מקוצים.','לפחות עכשיו אתה יודע.','הכבידה גם היא בקנוניה.','טעות של מתחילים. וגם של מומחים.'];
+function kill(){ if(P.dead>0||L.done) return; P.dead=.9; shake=.5; sDie(); save.deaths++; persist(); updateHud();
+  burst(P.x+P.w/2,P.y+P.h/2,'#ff4d6d',26); quip(QUIPS[(Math.random()*QUIPS.length)|0]); }
+function burst(x,y,c,n){ for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=90+Math.random()*260;
+  L.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.7+Math.random()*.4,c,s:3+Math.random()*5}); } }
+function confetti(x,y){ const cs=['#ffd76e','#7ee787','#6ec1ff','#ff9db0','#c99aff'];
+  for(let i=0;i<46;i++){ const a=-Math.PI/2+(Math.random()-.5)*2.2,s=160+Math.random()*300;
+    L.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.9+Math.random()*.6,c:cs[i%5],s:3+Math.random()*5}); } }
+
+function stepPlayer(dt){
+  if(P.dead>0){ P.dead-=dt; if(P.dead<=0){ resetTraps(); spawn(); } return; }
+  const acc=MOVE*8;
+  const want=(inp.right?1:0)-(inp.left?1:0);
+  P.vx+=clamp(want*MOVE-P.vx,-acc*dt,acc*dt);
+  if(want) P.face=want;
+  P.vy+=GRAV*L.gravDir*dt; P.vy=clamp(P.vy,-1300,1300);
+  P.coyote-=dt; inp.jumpBuf-=dt;
+  if(P.ground) P.coyote=.09;
+  if(inp.jumpBuf>0&&P.coyote>0){ P.vy=-JUMP*L.gravDir; P.coyote=0; inp.jumpBuf=0; sJump(); P.squash=-.25; }
+  if(!inp.jump&&Math.sign(P.vy)===-L.gravDir) P.vy+=GRAV*L.gravDir*dt*1.6; // variable jump
+  // move X
+  P.x+=P.vx*dt;
+  let t=rectSolid(P.x,P.y,P.w,P.h);
+  if(t){ if(P.vx>0) P.x=t.x*TILE-P.w; else if(P.vx<0) P.x=t.x*TILE+TILE; P.vx=0; }
+  // move Y
+  P.y+=P.vy*dt; P.ground=false;
+  t=rectSolid(P.x,P.y,P.w,P.h);
+  if(t){ if(P.vy*L.gravDir>0){ P.ground=true; P.squash=Math.max(P.squash,.22); }
+    if(P.vy>0) P.y=t.cy-P.h; else if(P.vy<0) P.y=t.cy+TILE; P.vy=0; }
+  if(P.ground){ // crumble under feet
+    const belowY=L.gravDir>0?P.y+P.h+2:P.y-2, cx=P.x+P.w/2;
+    const bt=tileAt(cx,belowY); if(bt&&bt.ch==='c'&&bt.crum<0){ bt.crum=.55; }
+  }
+  P.squash*=Math.pow(.001,dt); if(Math.abs(P.squash)<.01)P.squash=0;
+  // checkpoints
+  for(const cp of L.cps){ if(!cp.on&&Math.abs(P.x+P.w/2-cp.x)<26&&Math.abs(P.y+P.h-cp.y)<44){ cp.on=true; P.cp=cp; sCheck(); burst(cp.x,cp.y-30,'#7ee787',12); } }
+  // spikes
+  for(const s of L.spikes){ if(s.pop<.35) continue;
+    const sx=s.x*TILE+6, sy=s.dir>0?s.y*TILE+14:s.y*TILE, sw=TILE-12, sh=TILE-14;
+    if(P.x+3<sx+sw&&P.x+P.w-3>sx&&P.y+3<sy+sh&&P.y+P.h-3>sy){ kill(); return; } }
+  // door
+  const D=L.door;
+  if(D&&Math.abs(P.x+P.w/2-(D.x+20))<24&&Math.abs(P.y+P.h/2-(D.y+20))<30){
+    L.done=true; sDoor(); confetti(D.x+20,D.y+20); L.doorT=.8; }
+  // out of world
+  if(P.y>VH+90||P.y+P.h<-90) kill();
+}
+function resetTraps(){ const d=L.def; const keep=P.cp;
+  L=parseLevel(d); P.cp=keep; if(keep){ for(const cp of L.cps){ if(cp.x===keep.x&&cp.y===keep.y) cp.on=true; } } }
+
+function stepTraps(dt){
+  const pcx=P.x+P.w/2, pcy=P.y+P.h/2;
+  for(const tr of L.traps){
+    const z=tr.z, inZ=pcx>z[0]*TILE&&pcx<(z[0]+z[2])*TILE&&pcy>z[1]*TILE&&pcy<(z[1]+z[3])*TILE;
+    tr.cool-=dt;
+    if(tr.a==='gravity'){ if(inZ&&tr.armed!==false){ L.gravDir*=-1; tr.armed=false; sFlip(); burst(pcx,pcy,'#c99aff',14);} if(!inZ) tr.armed=true; continue; }
+    if(tr.fired||P.dead>0||!inZ) continue;
+    tr.fired=true;
+    if(tr.a==='spikes'){ let n=0; for(const s of L.spikes){ if(!s.hidden) continue;
+        if(!tr.r||(s.x>=tr.r[0]&&s.x<tr.r[0]+tr.r[2]&&s.y>=tr.r[1]&&s.y<tr.r[1]+tr.r[3])){ s.popT=n*45; s.hidden=false; n++; } } if(n)sPop(); }
+    if(tr.a==='collapse'){ for(const row of L.tiles) for(const t of row){ const r=tr.r;
+        if((t.ch==='C'||t.ch==='#')&&(!r||(t.x>=r[0]&&t.x<r[0]+r[2]&&t.y>=r[1]&&t.y<r[1]+r[3]))) t.shakeT=tr.d||.4; } sFall(); }
+    if(tr.a==='door'){ const D=L.door; tr.step=(tr.step||0);
+        if(D&&tr.to&&tr.to[tr.step]){ burst(D.x+20,D.y+20,'#6ec1ff',14); D.tx=tr.to[tr.step][0]; D.ty=tr.to[tr.step][1]; tr.step++; tr.fired=false; tr.cool=.25; } }
+    if(tr.a==='ceiling'){ const r=tr.r; for(const row of L.tiles) for(const t of row){
+        if(t.ch==='T'&&(!r||(t.x>=r[0]&&t.x<r[0]+r[2]&&t.y>=r[1]&&t.y<r[1]+r[3]))){ t.moving=true; t.solid=false; t.mspd=tr.v||95; } } shake=Math.max(shake,.25); sFall(); }
+    if(tr.a==='msg'){ quip(tr.text); }
+  }
+  // falling / crumbling tiles
+  for(const row of L.tiles) for(const t of row){
+    if(t.shakeT>0){ t.shakeT-=dt; if(t.shakeT<=0){ t.fall=1; t.solid=false; } }
+    if(t.crum>=0){ t.crum-=dt; if(t.crum<0){ t.fall=1; t.solid=false; } }
+    if(t.fall>0){ t.vy+=1800*dt; t.cy+=t.vy*dt; if(t.cy>VH+120) t.gone=true; }
+    if(t.moving){ t.cy+=(t.mspd||95)*dt;
+      const below=tileAt(t.x*TILE+20, t.cy+TILE+2);
+      if((below&&below!==t&&below.solid&&!below.gone&&below.fall===0)||t.cy+TILE>=VH) t.moving=false; }
+  }
+  for(const s of L.spikes){ if(s.popT>0){ s.popT-=dt*1000; } else if(!s.hidden&&s.pop<1){ s.pop=Math.min(1,s.pop+dt*8); } }
+  // crush check (descending ceiling into player)
+  for(const row of L.tiles) for(const t of row){ if((t.moving||t.fall>0)&&!t.gone){
+    if(P.x<t.x*TILE+TILE&&P.x+P.w>t.x*TILE&&P.y<t.cy+TILE&&P.y+P.h>t.cy){ kill(); return; } } }
+  // door poof / move animation
+  const D=L.door; if(D){ D.x+=(D.tx*TILE-D.x)*Math.min(1,dt*8); D.y+=(D.ty*TILE-D.y)*Math.min(1,dt*8); }
+}
+// ===== Levels (1-15) =====
+const LEVELS=[
+{name:'שלב 1: מתחילים בעדינות', tip:'פשוט לך לדלת. מה יכול להשתבש?', W:18, grid:['','','','','','','','','','',
+' S              D',
+'##################'], traps:[]},
+{name:'שלב 2: קוצים. כן, ראית נכון', tip:'אלה לפחות גלויים. תתרגל.', W:20, grid:['','','','','','','','','','',
+' S      xx        D',
+'####################'], traps:[]},
+{name:'שלב 3: הרצפה נופלת', tip:'אל תעמוד במקום אחד יותר מדי.', W:22, grid:['','','','','','','','','','',
+' S                  D',
+'########CCCCCC########'], traps:[{z:[3,8,5,4],a:'collapse',r:[8,11,6,1],d:.45}]},
+{name:'שלב 4: הדלת הביישנית', tip:'היא קצת ביישנית. אל תיקח אישית.', W:24, grid:['','','','','','','','','','',
+' S                    D',
+'########################'], traps:[{z:[16,8,4,4],a:'door',to:[[2,10]]}]},
+{name:'שלב 5: משהו ברצפה', tip:'הרצפה נראית רגילה. לחלוטין רגילה.', W:22, grid:['','','','','','','','','','',
+' S      sssss       D',
+'######################'], traps:[{z:[3,8,4,4],a:'spikes',r:[8,10,5,1]}]},
+{name:'שלב 6: התקרה יורדת', tip:'אל תסתכל למעלה. רוץ.', W:22, grid:[
+'      TTTTTTTTTT',
+'      TTTTTTTTTT',
+'      TTTTTTTTTT','','','','','','','',
+' S                  D',
+'######################'], traps:[{z:[3,8,3,4],a:'ceiling',r:[6,0,10,3]}]},
+{name:'שלב 7: דגל הביניים', tip:'הדגל שומר את המקום שלך. חבב אותו.', W:28, grid:['','','','','','','','','','',
+' S           P    xx     D',
+'############################'], traps:[]},
+{name:'שלב 8: הכבידה מתהפכת', tip:'לפעמים למעלה זה למטה.', W:24, grid:[
+'########################',
+'                      D','','','','','','','','',
+' S',
+'########################'], traps:[{z:[9,8,6,4],a:'gravity'}]},
+{name:'שלב 9: הגשר המתפורר', tip:'הגשר לא אוהב משקל. רוץ.', W:22, grid:['','','','','','','','','','',
+' S                  D',
+'######cccccccccc######'], traps:[]},
+{name:'שלב 10: הדלת הברחנית', tip:'היא למדה טריקים חדשים.', W:26, grid:['','','','','','','',
+'                     ####','','',
+' S                      D',
+'##########################'], traps:[{z:[17,8,4,4],a:'door',to:[[2,10],[22,7]]}]},
+{name:'שלב 11: מסדרון ההפתעות', tip:'צעד, צעד, קפיצה.', W:26, grid:['','','','','','','','','','',
+' S    sss    sss        D',
+'##########################'], traps:[{z:[2,8,4,4],a:'spikes',r:[6,10,3,1]},{z:[9,8,4,4],a:'spikes',r:[13,10,3,1]}]},
+{name:'שלב 12: סנדוויץ׳', tip:'למעלה רע, למטה רע. באמצע מעולה.', W:24, grid:[
+'     TTTTTTTTTTTTTT',
+'     TTTTTTTTTTTTTT',
+'     TTTTTTTTTTTTTT','','','','','','','',
+' S        sss         D',
+'########################'], traps:[{z:[3,8,3,4],a:'ceiling',r:[5,0,14,3]},{z:[6,8,4,4],a:'spikes',r:[10,10,3,1]}]},
+{name:'שלב 13: כבידה כפולה', tip:'למעלה, למטה, למעלה. אל תקיא.', W:26, grid:[
+'##########################',
+'           www','','','','','','','','',
+' S                     D',
+'##########################'], traps:[{z:[6,8,4,4],a:'gravity'},{z:[17,1,4,10],a:'gravity'}]},
+{name:'שלב 14: הדלת על הקרע', tip:'הרצפה ליד הדלת נראית שבירה.', W:24, grid:['','','','','','','','','','',
+' S                    D',
+'##################CCCC##'], traps:[{z:[12,8,4,4],a:'collapse',r:[18,11,4,1],d:.7}]},
+{name:'שלב 15: אמצע הדרך', tip:'גשר, דגל, ואז משהו נוסף.', W:28, grid:['','','','','','','','','','',
+' S           P     sss    D',
+'########ccccc###############'], traps:[{z:[16,8,3,4],a:'spikes',r:[19,10,3,1]}]},
+];
+// ===== Levels (16-30) =====
+LEVELS.push(
+{name:'שלב 16: קפוץ עכשיו', tip:'הנחיתה היא החלק המסוכן.', W:26, grid:['','','','','','','','','','',
+' S             sss      D',
+'##########    ############'], traps:[{z:[10,8,5,4],a:'spikes',r:[15,10,3,1]}]},
+{name:'שלב 17: התקרה החושדת', tip:'היא יורדת. וגם הדלת מתנהגת מוזר.', W:26, grid:[
+'        TTTTTTTTTT',
+'        TTTTTTTTTT',
+'        TTTTTTTTTT','','','','','','','',
+' S                      D',
+'##########################'], traps:[{z:[4,8,3,4],a:'ceiling',r:[8,0,10,3]},{z:[18,8,4,4],a:'door',to:[[3,10]]}]},
+{name:'שלב 18: מסדרון הכבידה', tip:'למעלה, קפוץ, למטה, קפוץ.', W:27, grid:[
+'###########################',
+'            www','','','','','','','','',
+' S                    xx  D',
+'###########################'], traps:[{z:[8,8,4,4],a:'gravity'},{z:[18,1,4,10],a:'gravity'}]},
+{name:'שלב 19: הרצפה כולה שקר', tip:'חלק מהרצפה. בסדר, רוב הרצפה.', W:26, grid:['','','','','','','','','','',
+' S                      D',
+'#############CCC##########'], traps:[{z:[9,8,3,4],a:'collapse',r:[13,11,3,1],d:.6}]},
+{name:'שלב 20: סלאלום', tip:'למעלה זה הבטוח. בדרך כלל.', W:28, grid:['','','','','','','','',
+'    #### #### ####','','',
+' S   xx   xx   xx      D',
+'############################'], traps:[]},
+{name:'שלב 21: גשר ותקרה', tip:'שתי בעיות במחיר אחת.', W:28, grid:[
+'         TTTTTTTTTTTT',
+'         TTTTTTTTTTTT',
+'         TTTTTTTTTTTT','','','','','','','',
+' S                    P   D',
+'#########ccccccccccc########'], traps:[{z:[5,8,3,4],a:'ceiling',r:[9,0,12,3]}]},
+{name:'שלב 22: הקפיצה האחרונה', tip:'נחת על המשטח ולא נשאר עליו.', W:24, grid:['','','','','','','','','','',
+' S               xx   D',
+'##########    CC########'], traps:[{z:[11,8,3,4],a:'collapse',r:[14,11,2,1],d:.9}]},
+{name:'שלב 23: הדלת למעלה', tip:'היא למעלה. כמובן שהיא למעלה.', W:26, grid:[
+'##########################',
+'                www    D','','','','','','','','',
+' S',
+'##########################'], traps:[{z:[6,8,5,4],a:'gravity'}]},
+{name:'שלב 24: התקרה הממהרת', tip:'היא למדה לרוץ.', W:24, grid:[
+'      TTTTTTTTTTTT',
+'      TTTTTTTTTTTT',
+'      TTTTTTTTTTTT','','','','','','','',
+' S                    D',
+'########################'], traps:[{z:[3,8,3,4],a:'ceiling',r:[6,0,12,3],v:135}]},
+{name:'שלב 25: כל הבית בוגד', tip:'קוצים, רצפה, דלת. כולם בקנוניה.', W:30, grid:['','','','','','','','','','',
+' S      sss             D',
+'##############CC##############'], traps:[{z:[4,8,3,4],a:'spikes',r:[8,10,3,1]},{z:[11,8,3,4],a:'collapse',r:[14,11,2,1],d:.5},{z:[22,8,4,4],a:'door',to:[[5,10]]}]},
+{name:'שלב 26: המדרגות המתפוררות', tip:'אל תעצור. בכלל.', W:26, grid:['','','','',
+'                    D',
+'                cccc','',
+'            cccc','',
+'        cccc','',
+' S   xxxxxxxxxxxxxxxxxxxx',
+'##########################'], traps:[]},
+{name:'שלב 27: הפוך על הפוך', tip:'גם התקרה מסתירה דברים.', W:28, grid:[
+'############################',
+'        www      uuu','','','','','','','','',
+' S                       D',
+'############################'], traps:[{z:[5,8,4,4],a:'gravity'},{z:[13,0,4,3],a:'spikes',r:[17,1,3,1]},{z:[23,1,3,10],a:'gravity'}]},
+{name:'שלב 28: כמעט שם', tip:'גשר, תקרה, קוצים. ארוחה מלאה.', W:32, grid:[
+'              TTTTTTTTTT',
+'              TTTTTTTTTT',
+'              TTTTTTTTTT','','','','','','','',
+' S         P              sss  D',
+'######cccc######################'], traps:[{z:[12,8,3,4],a:'ceiling',r:[14,0,10,3],v:110},{z:[24,8,2,4],a:'spikes',r:[26,10,3,1]}]},
+{name:'שלב 29: שאלת מהירות', tip:'הרצפה נושרת מאחוריך. רוץ ואל תביט.', W:31, grid:['','','','','','','','','','',
+' S                         D',
+'####CCCCCCCCCCCCCCCCCCCCCCCC###'], traps:[{z:[2,8,2,4],a:'collapse',r:[4,11,6,1],d:.6},{z:[9,8,2,4],a:'collapse',r:[10,11,6,1],d:.6},{z:[15,8,2,4],a:'collapse',r:[16,11,6,1],d:.6},{z:[21,8,2,4],a:'collapse',r:[22,11,6,1],d:.6}]},
+{name:'שלב 30: הסוף?', tip:'פשוט לך לדלת. באמת הפעם. אולי.', W:26, grid:['','','','','','','','','','',
+' S                      D',
+'##########################'], traps:[{z:[16,8,4,4],a:'door',to:[[4,10],[20,10],[12,10]]},{z:[13,8,2,4],a:'msg',text:'עוד פעם אחת וזהו. מבטיח.'},{z:[7,8,2,4],a:'msg',text:'בסדר, אולי עוד פעם.'}]}
+);
+// ===== Rendering =====
+function draw(dt){
+  const w=innerWidth, h=innerHeight;
+  const sc=Math.min(h/VH, w/560); VW=w/sc; const voff=(h-VH*sc)/2;
+  ctx.clearRect(0,0,w,h);
+  // sky
+  const grd=ctx.createLinearGradient(0,0,0,h); grd.addColorStop(0,'#101a35'); grd.addColorStop(1,'#0b0f1a');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,w,h);
+  // parallax hills
+  ctx.save(); ctx.translate(-camX*.25*sc,voff);
+  ctx.fillStyle='#141d38';
+  for(let i=-1;i<8;i++){ const bx=i*420, by=h-150*sc; ctx.beginPath(); ctx.arc(bx+200,by+260,300,Math.PI,0); ctx.fill(); }
+  ctx.fillStyle='#0e1528';
+  for(let i=-1;i<8;i++){ const bx=i*340+170, by=h-70*sc; ctx.beginPath(); ctx.arc(bx+150,by+260,260,Math.PI,0); ctx.fill(); }
+  ctx.restore();
+  const sx=(shake>0?(Math.random()-.5)*shake*14:0), sy=(shake>0?(Math.random()-.5)*shake*14:0);
+  shake=Math.max(0,shake-dt*1.4);
+  ctx.save(); ctx.translate(0,voff); ctx.scale(sc,sc); ctx.translate(-camX+sx,sy);
+  const x0=Math.max(0,Math.floor(camX/TILE)-1), x1=Math.min(L.W-1,Math.ceil((camX+VW)/TILE)+1);
+  // tiles
+  for(let y=0;y<ROWS;y++) for(let x=x0;x<=x1;x++){ const t=L.tiles[y][x];
+    if(t.gone) continue; const isVis=t.solid||t.fall>0||t.moving; if(!isVis) continue;
+    const px=x*TILE, py=(t.fall>0||t.moving)?t.cy:y*TILE;
+    if(t.shakeT>0){ ctx.save(); ctx.translate((Math.random()-.5)*4,0); }
+    if(t.ch==='C'){ ctx.fillStyle='#4a3f68'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#5d4f85'; ctx.fillRect(px,py,TILE,6);
+      ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.beginPath(); ctx.moveTo(px+8,py+10); ctx.lineTo(px+20,py+24); ctx.lineTo(px+14,py+38); ctx.moveTo(px+28,py+8); ctx.lineTo(px+24,py+22); ctx.stroke(); }
+    else if(t.ch==='c'){ ctx.fillStyle='#6b4f35'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#8a6845'; ctx.fillRect(px,py,TILE,6); }
+    else if(t.ch==='T'){ ctx.fillStyle='#3a3f52'; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle='#ffd76e'; for(let s2=0;s2<TILE;s2+=16){ ctx.save(); ctx.beginPath(); ctx.rect(px+s2,py+TILE-8,8,8); ctx.clip(); ctx.translate(px+s2+4,py+TILE-4); ctx.rotate(.78); ctx.fillRect(-6,-6,12,12); ctx.restore(); } }
+    else { ctx.fillStyle='#2c3a5e'; ctx.fillRect(px,py,TILE,TILE); ctx.fillStyle='#46598c'; ctx.fillRect(px,py,TILE,5);
+      ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(px+4,py+10,3,3); ctx.fillRect(px+24,py+22,3,3); }
+    if(t.shakeT>0) ctx.restore();
+    ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.strokeRect(px+.5,py+.5,TILE-1,TILE-1);
+  }
+  // spikes
+  for(const s of L.spikes){ if(s.pop<=0) continue; const px=s.x*TILE, py=s.y*TILE, sc2=s.pop;
+    ctx.save(); ctx.translate(px+TILE/2, s.dir>0?py+TILE:py); ctx.scale(1,s.dir*sc2);
+    ctx.fillStyle='#c8d2e8';
+    ctx.beginPath(); ctx.moveTo(-TILE/2+3,0); ctx.lineTo(-TILE/6,-TILE+12); ctx.lineTo(-TILE/6+6,0);
+    ctx.moveTo(-TILE/6+3,0); ctx.lineTo(TILE/6+3,-TILE+12); ctx.lineTo(TILE/3,0); ctx.closePath(); ctx.fill();
+    ctx.restore(); }
+  // checkpoints
+  for(const cp of L.cps){ const px=cp.x, py=cp.y; ctx.strokeStyle='#8892ad'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,py-44); ctx.stroke();
+    ctx.fillStyle=cp.on?'#7ee787':'#8892ad'; const wv=Math.sin(L.t*6+px)*3;
+    ctx.beginPath(); ctx.moveTo(px,py-44); ctx.lineTo(px+24+wv,py-36); ctx.lineTo(px,py-28); ctx.closePath(); ctx.fill(); }
+  // door
+  const D=L.door; if(D){ const pulse=1+Math.sin(L.t*4)*.06;
+    ctx.save(); ctx.translate(D.x+20,D.y+20); ctx.scale(pulse,pulse);
+    ctx.shadowColor='#ffb02e'; ctx.shadowBlur=18;
+    ctx.fillStyle='#ffb02e'; ctx.fillRect(-16,-20,32,40);
+    ctx.shadowBlur=0; ctx.fillStyle='#8a4d00'; ctx.fillRect(-16,-20,32,5);
+    ctx.fillStyle='#5c3200'; ctx.beginPath(); ctx.arc(8,4,2.6,0,6.28); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='rgba(255,255,255,.85)'; const by=D.y-14+Math.sin(L.t*5)*4;
+    ctx.beginPath(); ctx.moveTo(D.x+20,by+8); ctx.lineTo(D.x+13,by); ctx.lineTo(D.x+27,by); ctx.closePath(); ctx.fill(); }
+  // player
+  if(P.dead<=0){ ctx.save(); ctx.translate(P.x+P.w/2,P.y+P.h/2); if(L.gravDir<0) ctx.scale(1,-1);
+    ctx.scale(1+P.squash*.6,1-P.squash);
+    ctx.fillStyle='#ff5d7e'; rr(-P.w/2,-P.h/2,P.w,P.h,6); ctx.fill();
+    ctx.fillStyle='#fff'; const ex=P.face*3;
+    rr(-6+ex,-8,5,7,2); ctx.fill(); rr(3+ex,-8,5,7,2); ctx.fill();
+    ctx.fillStyle='#1a1030'; rr(-4.5+ex,-6,2.5,3.5,1); ctx.fill(); rr(4.5+ex,-6,2.5,3.5,1); ctx.fill();
+    ctx.restore(); }
+  // particles
+  for(const p of L.parts){ ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.s,p.s); }
+  ctx.globalAlpha=1; ctx.restore();
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+// ===== UI =====
+const $=id=>document.getElementById(id);
+let levelIndex=0, bannerTO=null, quipTO=null;
+function updateHud(){ $('hudLevel').textContent='שלב '+(levelIndex+1)+'/'+LEVELS.length; $('hudDeaths').textContent='💀 '+save.deaths; }
+function showBanner(t,s){ $('bTitle').textContent=t; $('bSub').textContent=s||''; const b=$('banner'); b.style.opacity=1;
+  clearTimeout(bannerTO); bannerTO=setTimeout(()=>b.style.opacity=0,2400); }
+function quip(t){ $('quip').textContent=t; const q=$('quip'); q.style.opacity=1; clearTimeout(quipTO); quipTO=setTimeout(()=>q.style.opacity=0,1800); }
+function buildGrid(){ const g=$('lvgrid'); g.innerHTML='';
+  LEVELS.forEach((lv,i)=>{ const b=document.createElement('button'); b.textContent=i+1;
+    if(i+1>save.unlocked){ b.classList.add('lock'); } else { if(i+1<save.unlocked)b.classList.add('done');
+      b.onclick=()=>{ closeAll(); levelIndex=i; loadLevel(i); started=true; updateHud(); }; }
+    g.appendChild(b); }); }
+function closeAll(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on')); }
+let started=false;
+$('btnPlay').onclick=()=>{ closeAll(); levelIndex=Math.min(save.unlocked,LEVELS.length)-1; loadLevel(levelIndex); started=true; updateHud(); snd(()=>{}); };
+$('btnPick').onclick=()=>{ closeAll(); buildGrid(); $('ovLevels').classList.add('on'); };
+$('btnCloseLevels').onclick=()=>{ $('ovLevels').classList.remove('on'); if(!started)$('ovStart').classList.add('on'); };
+$('btnLevels').onclick=()=>{ buildGrid(); $('ovLevels').classList.add('on'); };
+$('btnReset').onclick=()=>{ if(started&&!L.done){ const keep=P.cp; loadLevel(levelIndex); P.cp=keep; } };
+$('btnMute').onclick=()=>{ muted=!muted; persist(); $('btnMute').textContent=muted?'🔇':'🔊'; };
+$('btnAgain').onclick=()=>{ closeAll(); levelIndex=0; loadLevel(0); started=true; updateHud(); };
+$('btnEndLevels').onclick=()=>{ closeAll(); buildGrid(); $('ovLevels').classList.add('on'); };
+// touch controls
+const touchEl=$('touch');
+[['▶','right'],['◀','left'],['⤒','jump']].forEach(([lbl,k],i)=>{ const d=document.createElement('div'); d.className='tbtn'; d.textContent=lbl;
+  bindBtn(d, ()=>{ if(k==='jump'){inp.jump=true;inp.jumpBuf=.12;} else inp[k]=true; },
+            ()=>{ if(k==='jump') inp.jump=false; else inp[k]=false; });
+  touchEl.children[i<2?0:1].appendChild(d); });
+// prevent context menu on long press
+addEventListener('contextmenu',e=>e.preventDefault());
+
+function finishLevel(){ const last=levelIndex===LEVELS.length-1;
+  save.unlocked=Math.max(save.unlocked,Math.min(levelIndex+2,LEVELS.length)); persist();
+  if(last){ save.unlocked=LEVELS.length; persist();
+    $('endText').innerHTML='עברת את כל '+LEVELS.length+' השלבים עם '+save.deaths+' מוותים בלבד.<br>'+
+      (save.deaths===0?'אפס מוותים?! או שרמית, או שאתה המשחק.':'הרצפה נפלה, הקוצים צצו, הדלת ברחה, הכבידה התהפכה - ואתה עדיין כאן.<br>המשחק גאה בך. אל תספר לאף אחד שאמרתי.')+
+      '<br><br>תודה ששיחקת במלכודות! 🚪'; 
+    $('ovEnd').classList.add('on'); }
+  else { levelIndex++; loadLevel(levelIndex); updateHud(); } }
+
+// ===== Main loop =====
+let lastT=performance.now();
+function loop(now){ requestAnimationFrame(loop); let dt=(now-lastT)/1000; lastT=now; if(dt>.033)dt=.033;
+  if(!started){ draw(dt); return; }
+  L.t+=dt;
+  if(L.done){ L.doorT-=dt; stepParticles(dt); if(L.doorT<=0) finishLevel(); }
+  else { stepPlayer(dt); if(!L.done) stepTraps(dt); stepParticles(dt);
+    const target=clamp(P.x+P.w/2-VW*.45,0,Math.max(0,L.W*TILE-VW)); camX+=(target-camX)*Math.min(1,dt*6); }
+  draw(dt);
+}
+function stepParticles(dt){ for(let i=L.parts.length-1;i>=0;i--){ const p=L.parts[i]; p.life-=dt;
+  p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=620*dt; if(p.life<=0) L.parts.splice(i,1); } }
+// boot
+$('btnMute').textContent=muted?'🔇':'🔊';
+save.unlocked=Math.min(save.unlocked,LEVELS.length); persist(); updateHud();
+$('ovStart').classList.add('on');
+// idle background level for the menu
+levelIndex=0; loadLevel(0); started=false;
+requestAnimationFrame(loop);
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

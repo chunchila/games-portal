@@ -1,0 +1,25 @@
+body.g-feed{background:#2b5a2f;overflow:hidden;height:calc(var(--vh,1vh)*100)}
+.bgb{position:fixed;inset:-20px;background:url(../../assets/bg/home.webp) center/cover;filter:blur(7px) saturate(1.2) brightness(.92)}
+.shade{position:fixed;inset:0;background:linear-gradient(rgba(0,0,0,.05),rgba(20,50,20,.45))}
+#app{position:relative;height:calc(var(--vh,1vh)*100);display:flex;flex-direction:column;align-items:center;padding:66px 12px calc(env(safe-area-inset-bottom) + 14px)}
+#stage{position:relative;flex:1;width:min(100%,560px);display:flex;align-items:flex-end;justify-content:center}
+#dino{width:96%;max-height:100%;object-fit:contain;filter:drop-shadow(0 12px 8px rgba(0,0,0,.4));transform-origin:50% 95%;animation:enter .9s cubic-bezier(.2,1.4,.4,1)}
+#dino.munch{animation:mun .5s}#dino.no{animation:nope .5s}#dino.happy{animation:happy 1s}
+@keyframes enter{from{transform:translateX(-120%) scale(.8)}}
+@keyframes mun{30%{transform:scale(1.06,.94)}60%{transform:scale(.96,1.06)}}
+@keyframes nope{20%{transform:rotate(-5deg)}40%{transform:rotate(5deg)}60%{transform:rotate(-4deg)}80%{transform:rotate(3deg)}}
+@keyframes happy{20%{transform:translateY(-50px)}40%{transform:translateY(0)}60%{transform:translateY(-30px)}80%{transform:translateY(0)}}
+#bubble{position:absolute;top:2%;right:6%;background:#fff;border-radius:26px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-weight:800;font-size:1.05rem;box-shadow:0 5px 0 rgba(0,0,0,.2);animation:pop .4s cubic-bezier(.2,1.8,.4,1);max-width:70%;z-index:5}
+#bubble::after{content:"";position:absolute;bottom:-14px;left:30px;border:10px solid transparent;border-top:16px solid #fff}
+#bubble img{width:54px;height:54px;object-fit:contain}
+@keyframes pop{from{transform:scale(0)}}
+#belly{display:flex;gap:8px;margin:6px 0}
+#belly i{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.35);border:3px solid #fff;transition:.3s}
+#belly i.on{background:#ff6b6b;transform:scale(1.15);box-shadow:0 0 14px #ff9a9a}
+#name{color:#fff;font-family:'Secular One';font-size:1.5rem;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+#tray{display:flex;gap:10px;width:100%;max-width:560px;justify-content:center;background:rgba(255,255,255,.28);backdrop-filter:blur(8px);border-radius:28px;padding:8px;border:2px solid rgba(255,255,255,.5)}
+.food{flex:1;aspect-ratio:1;max-width:120px;display:grid;place-items:center;border-radius:20px;background:rgba(255,255,255,.65)}
+.food img{width:82%;height:82%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 4px 3px rgba(0,0,0,.3))}
+.crumb{position:fixed;pointer-events:none;z-index:150;font-size:0}
+
+body::before,body::after{pointer-events:none}

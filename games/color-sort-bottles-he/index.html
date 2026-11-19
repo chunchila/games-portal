@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:color-sort-bottles-he:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1b1448">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="מיון צבעים - משחק פאזל בקבוקים. מזגו את הנוזלים עד שכל בקבוק מכיל צבע אחד. 500 שלבים.">
+<title>מיון צבעים - משחק בקבוקים</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231b1448'/%3E%3Crect x='20' y='10' width='24' height='44' rx='8' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Crect x='23' y='38' width='18' height='13' rx='4' fill='%23ef4444'/%3E%3Crect x='23' y='26' width='18' height='12' fill='%2322d3ee'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg1:#2a1b6e; --bg2:#12092e; --card:#ffffff14; --card2:#ffffff22; --line:#ffffff2e;
+  --txt:#f4f1ff; --muted:#b9b0e8; --accent:#ffcf4a; --accent2:#ff7a59; --good:#4ade80;
+  --bw:56px; --bh:180px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2);overscroll-behavior:none}
+body{
+  font-family:"Heebo","Rubik","Segoe UI",system-ui,-apple-system,Arial,sans-serif;color:var(--txt);
+  background:radial-gradient(120% 80% at 50% 0%,var(--bg1) 0%,var(--bg2) 70%) fixed;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
+}
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:900px;margin:0 auto;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:10px;padding:12px 14px 6px}
+.title{flex:1;text-align:center;line-height:1.15}
+.title b{font-size:22px;letter-spacing:.3px}
+.title small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.ibtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--txt);
+  display:grid;place-items:center;cursor:pointer;transition:transform .12s,background .15s;flex:none}
+.ibtn:active{transform:scale(.92);background:var(--card2)}
+.ibtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.coins{display:flex;align-items:center;gap:6px;padding:0 12px;height:44px;border-radius:14px;border:1px solid var(--line);
+  background:var(--card);font-weight:700;font-size:17px;min-width:84px;justify-content:center;flex:none}
+.coin{width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3a6,#ffcf4a 55%,#d98e00);
+  box-shadow:inset 0 0 0 2px #b8730055,0 1px 2px #0006;display:inline-block;flex:none}
+.coins.bump{animation:bump .4s}
+@keyframes bump{50%{transform:scale(1.18)}}
+#boardWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:6px 10px;position:relative}
+#stage{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-content:center}
+.bottle{position:relative;width:var(--bw);height:var(--bh);cursor:pointer;transition:transform .38s cubic-bezier(.3,.7,.3,1);flex:none;will-change:transform}
+.bottle .glass{position:absolute;inset:0;border-radius:calc(var(--bw)*.16) calc(var(--bw)*.16) calc(var(--bw)*.5) calc(var(--bw)*.5);
+  border:2px solid #ffffff66;background:linear-gradient(90deg,#ffffff26,#ffffff0a 40%,#ffffff12 75%,#ffffff2a);
+  box-shadow:inset 0 0 12px #ffffff1c,0 6px 14px #0005;overflow:hidden}
+.bottle .rim{position:absolute;top:-5px;left:-5px;right:-5px;height:11px;border-radius:7px;border:2px solid #ffffff77;background:#ffffff22;z-index:3}
+.bottle .shine{position:absolute;top:10%;bottom:12%;inset-inline-start:13%;width:9%;border-radius:8px;background:linear-gradient(#ffffff80,#ffffff10);z-index:4;pointer-events:none}
+.liquid{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
+.layer{flex:0 0 25%;position:relative;transition:flex-basis .3s linear;display:grid;place-items:center;overflow:hidden;
+  font-size:calc(var(--bw)*.34);color:#0000009a;font-weight:900}
+.layer::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ffffff40,#ffffff00 35%,#00000028);}
+.layer::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:#ffffff55}
+.layer.collapse{flex-basis:0}
+.layer.grow{flex-basis:0}
+.bottle.sel{transform:translateY(calc(var(--bw)*-.32))}
+.bottle.hintA .glass,.bottle.hintB .glass{border-color:var(--accent);box-shadow:0 0 0 3px #ffcf4a55,0 0 22px #ffcf4acc,inset 0 0 12px #ffffff30}
+.bottle.hintA{animation:hintA 1s ease-in-out infinite}
+@keyframes hintA{50%{transform:translateY(calc(var(--bw)*-.18))}}
+.bottle.hintB .glass{animation:glow 1s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 5px #ffcf4a33,0 0 30px #ffcf4a,inset 0 0 12px #ffffff30}}
+.bottle.pouring{z-index:30;transition:transform .42s cubic-bezier(.4,.1,.3,1)}
+.bottle.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.bottle.done .glass{border-color:#4ade80aa;box-shadow:inset 0 0 12px #ffffff1c,0 0 14px #4ade8066,0 6px 14px #0005}
+.bottle.done .rim{border-color:#4ade80cc}
+.bottle.done::after{content:"✓";position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);color:#4ade80;font-size:calc(var(--bw)*.3);font-weight:900;line-height:1}
+.stream{position:absolute;z-index:25;border-radius:4px;transform-origin:top;pointer-events:none;box-shadow:0 0 8px #fff5;animation:str .18s ease-out forwards}
+@keyframes str{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+#banner{margin:0 14px;padding:10px 14px;border-radius:14px;background:#ff7a5930;border:1px solid #ff7a5977;text-align:center;font-size:15px;display:none}
+#banner.show{display:block}
+footer{padding:8px 10px 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.tool{position:relative;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:18px;padding:9px 2px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit;font-size:13px;cursor:pointer;transition:transform .12s,background .15s,opacity .15s}
+.tool:active{transform:scale(.94);background:var(--card2)}
+.tool:disabled{opacity:.4}
+.tool svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool .price{position:absolute;top:-8px;inset-inline-start:-4px;background:linear-gradient(#ffd966,#f0a500);color:#4a2c00;border-radius:10px;font-size:11px;font-weight:800;padding:1px 6px;box-shadow:0 2px 4px #0006}
+#toast{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#0c0620ee;border:1px solid var(--line);
+  padding:10px 18px;border-radius:14px;font-size:15px;opacity:0;pointer-events:none;transition:.25s;z-index:200;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:#07031add;display:none;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal.show{display:flex;animation:fade .25s}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:440px;max-height:92vh;max-height:92dvh;overflow:auto;background:linear-gradient(180deg,#352a85,#1d1350);border:1px solid var(--line);border-radius:26px;padding:22px 20px;box-shadow:0 20px 60px #000a;animation:pop .35s cubic-bezier(.2,1.2,.4,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.sheet h2{margin:0 0 6px;text-align:center;font-size:26px}
+.sheet p{color:var(--muted);text-align:center;margin:4px 0 14px;line-height:1.5}
+.btn{display:block;width:100%;border:0;border-radius:16px;padding:14px;font:inherit;font-size:18px;font-weight:800;color:#3a2000;cursor:pointer;margin-top:10px;
+  background:linear-gradient(#ffe27a,#ffb020);box-shadow:0 4px 0 #b97800,0 8px 16px #0005;transition:transform .1s,box-shadow .1s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b97800}
+.btn.sec{background:var(--card2);color:var(--txt);box-shadow:0 4px 0 #0004;font-weight:600;font-size:16px}
+.stars{display:flex;justify-content:center;gap:8px;margin:8px 0 4px}
+.star{width:54px;height:54px;fill:#ffffff22;stroke:#ffffff44;stroke-width:1.5;transform:scale(.4);opacity:0}
+.star.on{fill:#ffcf4a;stroke:#ffe9a0;animation:starIn .5s cubic-bezier(.2,1.6,.4,1) forwards;filter:drop-shadow(0 0 8px #ffcf4a99)}
+.star.off{opacity:1;transform:scale(1)}
+@keyframes starIn{to{transform:scale(1);opacity:1}}
+.rows{display:grid;gap:8px;margin:10px 0}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card);border-radius:14px}
+.row b{font-size:17px}
+.sw{position:relative;width:50px;height:28px;border-radius:20px;background:#ffffff2a;border:0;cursor:pointer;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--good)}
+.sw.on::after{inset-inline-start:25px}
+#grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 4px}
+.lv{aspect-ratio:1;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--txt);font:inherit;font-weight:800;font-size:17px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer}
+.lv small{font-size:10px;color:var(--accent);letter-spacing:1px;height:12px}
+.lv.cur{border-color:var(--accent);box-shadow:0 0 0 2px #ffcf4a66}
+.lv.lock{opacity:.35;cursor:default}
+.lv.skip small{color:var(--muted)}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tab{flex:1;padding:9px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--txt);font:inherit;cursor:pointer}
+.tab.on{background:var(--accent);color:#3a2000;font-weight:800;border-color:var(--accent)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:150}
+.hand{display:inline-block;animation:tap 1.2s infinite}
+@keyframes tap{50%{transform:translateY(-6px)}}
+.close{position:absolute}
+@media (max-height:620px){footer{padding-bottom:8px}.tool{padding:6px 2px;font-size:12px}.title b{font-size:19px}}
+@media (min-width:700px){.tool{font-size:15px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+.modal{backdrop-filter:blur(10px)}
+.sheet{border-color:#ffffff30;box-shadow:0 30px 80px -18px #000,inset 0 1px 0 #ffffff12}
+.btn{transition:transform .15s,filter .2s}
+.btn:hover{filter:brightness(1.07)}
+.tool{transition:transform .15s,background .2s,border-color .2s}
+.tool:hover{border-color:#ffffff55}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button class="ibtn" id="btnLevels" aria-label="בחירת שלב"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></button>
+    <div class="title"><b id="lvTitle">שלב 1</b><small id="lvSub">מהלכים: 0</small></div>
+    <div class="coins" id="coins" aria-label="מטבעות"><span class="coin"></span><span id="coinN">0</span></div>
+    <button class="ibtn" id="btnMenu" aria-label="הגדרות ושיאים"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+  <div id="banner">אין עוד מהלכים אפשריים. בטלו מהלך, הוסיפו בקבוק או התחילו מחדש.</div>
+  <div id="boardWrap"><div id="stage"></div></div>
+  <footer>
+    <button class="tool" id="tUndo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>ביטול</button>
+    <button class="tool" id="tHint"><span class="price">15</span><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.800 1-2.500A6 6 0 0 0 12 3z"/></svg>רמז</button>
+    <button class="tool" id="tAdd"><span class="price">40</span><svg viewBox="0 0 24 24"><path d="M9 3h6v4l2 3v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V10l2-3z"/><path d="M12 12v5M9.500 14.500h5"/></svg>בקבוק</button>
+    <button class="tool" id="tRestart"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.700"/><path d="M3 4v5h5"/></svg>מחדש</button>
+    <button class="tool" id="tSkip"><span class="price">80</span><svg viewBox="0 0 24 24"><path d="m5 4 10 8-10 8z"/><path d="M19 5v14"/></svg>דלג</button>
+  </footer>
+</div>
+<div id="toast"></div>
+<canvas id="fx"></canvas>
+
+<div class="modal" id="mWin"><div class="sheet">
+  <h2>כל הכבוד!</h2>
+  <div class="stars" id="winStars"></div>
+  <p id="winInfo"></p>
+  <div class="rows"><div class="row"><span>מטבעות שהרווחתם</span><b id="winCoins"></b></div><div class="row"><span>שיא מהלכים בשלב</span><b id="winBest"></b></div></div>
+  <button class="btn" id="winNext">לשלב הבא</button>
+  <button class="btn sec" id="winAgain">שחקו שוב לשיפור התוצאה</button>
+</div></div>
+
+<div class="modal" id="mLevels"><div class="sheet">
+  <h2>בחירת שלב</h2>
+  <p id="lvInfo"></p>
+  <div id="grid"></div>
+  <button class="btn sec" data-close>סגירה</button>
+</div></div>
+
+<div class="modal" id="mMenu"><div class="sheet">
+  <h2>הגדרות ושיאים</h2>
+  <div class="tabs"><button class="tab on" data-tab="rec">שיאים</button><button class="tab" data-tab="set">הגדרות</button></div>
+  <div id="tabRec" class="rows"></div>
+  <div id="tabSet" class="rows" style="display:none">
+    <div class="row"><span>צלילים</span><button class="sw" id="swSound" role="switch"></button></div>
+    <div class="row"><span>רטט</span><button class="sw" id="swVib" role="switch"></button></div>
+    <div class="row"><span>מצב עיוורון צבעים (סמלים)</span><button class="sw" id="swCb" role="switch"></button></div>
+    <div class="row"><span>איך משחקים?</span><button class="btn sec" id="btnHelp" style="margin:0;width:auto;padding:8px 14px">הצג</button></div>
+    <div class="row"><span>איפוס כל ההתקדמות</span><button class="btn sec" id="btnReset" style="margin:0;width:auto;padding:8px 14px">איפוס</button></div>
+  </div>
+  <button class="btn sec" data-close>סגירה</button>
+</div></div>
+
+<div class="modal" id="mHelp"><div class="sheet">
+  <h2>איך משחקים?</h2>
+  <p style="text-align:start;color:var(--txt)">
+  1. הקישו על בקבוק כדי להרים אותו, ואז הקישו על בקבוק אחר כדי למזוג אליו.<br>
+  2. אפשר למזוג רק על אותו צבע עליון, או לתוך בקבוק ריק, ורק אם יש מקום.<br>
+  3. המטרה: כל בקבוק מכיל צבע אחד בלבד, מלא עד הסוף.<br>
+  4. תקעתם? בטלו מהלך, בקשו רמז או הוסיפו בקבוק ריק (עולים מטבעות).<br>
+  5. פחות מהלכים = יותר כוכבים ומטבעות. ההתקדמות נשמרת במכשיר.</p>
+  <button class="btn" data-close>יאללה, מתחילים</button>
+</div></div>
+
+<div class="modal" id="mConfirm"><div class="sheet">
+  <h2 id="cTitle"></h2><p id="cText"></p>
+  <button class="btn" id="cYes">אישור</button><button class="btn sec" id="cNo">ביטול</button>
+</div></div>
+
+<script>
+/*ENGINE_START*/
+const CAP = 4, MAX_LEVEL = 500;
+const PALETTE = ["#ef4444","#f59e0b","#fde047","#84cc16","#16a34a","#14b8a6","#22d3ee","#3b82f6","#7c3aed","#ec4899","#a16207","#cbd5e1"];
+const SYMS = ["●","▲","■","◆","★","♥","✚","☾","✿","♣","⬟","✖"];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function levelConfig(n){
+  let colors = 2 + Math.floor((n-1)/8) + ((n > 3 && n % 4 === 0) ? 1 : 0);
+  colors = Math.max(2, Math.min(12, colors));
+  let empties = 2;
+  if (n >= 40 && n % 5 === 0) empties = 1;
+  return {colors, empties};
+}
+function isMono(b){for(let i=1;i<b.length;i++)if(b[i]!==b[0])return false;return true}
+function topRun(b){let c=b[b.length-1],n=0;for(let i=b.length-1;i>=0&&b[i]===c;i--)n++;return n}
+function isWon(bs){return bs.every(b=>b.length===0||(b.length===CAP&&isMono(b)))}
+function canPour(bs,i,j){
+  if(i===j)return false;const s=bs[i],d=bs[j];
+  if(!s.length||d.length>=CAP)return false;
+  if(d.length&&d[d.length-1]!==s[s.length-1])return false;
+  return true;
+}
+function pourAmount(bs,i,j){return Math.min(topRun(bs[i]),CAP-bs[j].length)}
+function genMoves(bs){
+  const out=[];
+  for(let i=0;i<bs.length;i++){
+    const s=bs[i];if(!s.length)continue;
+    const mono=isMono(s);if(mono&&s.length===CAP)continue;
+    const run=topRun(s);
+    for(let j=0;j<bs.length;j++){
+      if(i===j)continue;const d=bs[j];if(d.length>=CAP)continue;
+      let sc=0;
+      if(!d.length){if(mono)continue;sc=-5}
+      else{if(d[d.length-1]!==s[s.length-1])continue;sc=10}
+      const n=Math.min(run,CAP-d.length);
+      if(d.length+n===CAP&&isMono(d))sc+=20;
+      if(n===s.length)sc+=6;
+      sc+=n;
+      out.push({i,j,n,sc});
+    }
+  }
+  out.sort((a,b)=>b.sc-a.sc);
+  return out;
+}
+function solve(start,maxNodes,depthLimit){
+  depthLimit=depthLimit||Infinity;
+  let nodes=0;const seen=new Map();const path=[];
+  const bs=start.map(b=>b.slice());
+  const key=()=>bs.map(b=>b.map(c=>String.fromCharCode(97+c)).join('')).sort().join('|');
+  function dfs(depth){
+    if(isWon(bs))return true;
+    if(depth>=depthLimit||++nodes>maxNodes)return false;
+    const k=key();const sd=seen.get(k);
+    if(sd!==undefined&&sd<=depth)return false;
+    seen.set(k,depth);
+    const mv=genMoves(bs);
+    for(const m of mv){
+      const s=bs[m.i],d=bs[m.j];
+      for(let t=0;t<m.n;t++)d.push(s.pop());
+      path.push({i:m.i,j:m.j,n:m.n});
+      if(dfs(depth+1))return true;
+      path.pop();
+      for(let t=0;t<m.n;t++)s.push(d.pop());
+      if(nodes>maxNodes)return false;
+    }
+    return false;
+  }
+  return dfs(0)?path.slice():null;
+}
+const levelCache=new Map();
+function genLevel(n){
+  if(levelCache.has(n))return levelCache.get(n);
+  const cfg=levelConfig(n);
+  let result=null;
+  for(let attempt=0;attempt<60&&!result;attempt++){
+    const emp=attempt<30?cfg.empties:2;
+    const rnd=mulberry32(n*7919+attempt*104729+13);
+    const units=[];
+    for(let c=0;c<cfg.colors;c++)for(let k=0;k<CAP;k++)units.push(c);
+    for(let i=units.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[units[i],units[j]]=[units[j],units[i]]}
+    const bottles=[];
+    for(let c=0;c<cfg.colors;c++)bottles.push(units.slice(c*CAP,c*CAP+CAP));
+    if(bottles.some(isMono))continue;
+    for(let e=0;e<emp;e++)bottles.push([]);
+    let sol=solve(bottles,40000);
+    if(!sol)continue;
+    let best=sol;
+    for(let r=0;r<4;r++){
+      const s2=solve(bottles,12000,best.length);
+      if(s2&&s2.length<best.length)best=s2;else break;
+    }
+    result={bottles,colors:cfg.colors,par:best.length};
+  }
+  if(!result){ // extremely unlikely fallback: trivially solvable layout
+    const bottles=[];for(let c=0;c<cfg.colors;c++){const b=[];for(let k=0;k<CAP;k++)b.push((c+k)%cfg.colors);bottles.push(b)}
+    bottles.push([],[]);result={bottles,colors:cfg.colors,par:cfg.colors*3};
+  }
+  levelCache.set(n,result);
+  return result;
+}
+function starsFor(moves,par){
+  if(moves<=Math.ceil(par*1.25)+1)return 3;
+  if(moves<=Math.ceil(par*1.8)+3)return 2;
+  return 1;
+}
+/*ENGINE_END*/
+
+/* ---------- State & storage ---------- */
+const KEY="colorsort.v1";
+const COST={hint:15,add:40,skip:80};
+function freshSave(){return{v:1,coins:60,maxLevel:1,stars:{},best:{},stats:{solved:0,moves:0,earned:0,hints:0,undos:0},settings:{sound:true,vib:true,cb:false},cur:null,seenHelp:false}}
+function load(){
+  try{const raw=ArcadiaStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.v===1){const f=freshSave();return Object.assign(f,s,{settings:Object.assign(f.settings,s.settings||{}),stats:Object.assign(f.stats,s.stats||{})})}}}catch(e){}
+  return freshSave();
+}
+let S=load();
+function save(){try{ArcadiaStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+let G=null, selected=-1, busy=false, hintTimer=null, hintPair=null;
+
+const $=id=>document.getElementById(id);
+const stage=$("stage");
+
+function validCur(c){
+  if(!c||!Array.isArray(c.bottles)||!c.level||c.level<1||c.level>MAX_LEVEL)return false;
+  const cnt={};let total=0;
+  for(const b of c.bottles){if(!Array.isArray(b)||b.length>CAP)return false;for(const x of b){if(!(x>=0&&x<12))return false;cnt[x]=(cnt[x]||0)+1;total++}}
+  return Object.values(cnt).every(v=>v===CAP);
+}
+function startLevel(n){
+  n=Math.max(1,Math.min(MAX_LEVEL,n));
+  const L=genLevel(n);
+  G={level:n,bottles:L.bottles.map(b=>b.slice()),hist:[],moves:0,extra:false,par:L.par,colors:L.colors,hinted:0};
+  S.cur=G;save();selected=-1;clearHint();render(true);
+}
+function resumeOrStart(){
+  if(validCur(S.cur)&&!isWon(S.cur.bottles)){
+    const L=genLevel(S.cur.level);
+    G=Object.assign({hist:[],moves:0,extra:false,hinted:0},S.cur,{par:L.par,colors:L.colors});
+    S.cur=G;render(true);
+  }else startLevel(S.maxLevel>MAX_LEVEL?MAX_LEVEL:S.maxLevel);
+}
+
+/* ---------- Sound / vibration ---------- */
+let AC=null;
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==="suspended")AC.resume();return AC}
+function tone(freq,dur,type,vol,delay,slide){
+  if(!S.settings.sound)return;const ac=audio();if(!ac)return;
+  const t=ac.currentTime+(delay||0);const o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+dur+0.02);
+}
+const sfx={
+  pick(){tone(520,.09,"sine",.09)},
+  pour(n){for(let k=0;k<2+n;k++)tone(320+Math.random()*120,.11,"sine",.07,k*.09,200+Math.random()*80)},
+  bad(){tone(160,.18,"square",.05)},
+  done(){tone(660,.12,"triangle",.1);tone(880,.16,"triangle",.1,.08)},
+  win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.28,"triangle",.12,i*.11))},
+  coin(){tone(1200,.1,"square",.04);tone(1600,.14,"square",.04,.07)}
+};
+function vib(ms){if(S.settings.vib&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
+
+/* ---------- Rendering ---------- */
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2000)}
+function layerHTML(c){return `<div class="layer" style="background:${PALETTE[c]}">${S.settings.cb?SYMS[c]:""}</div>`}
+function fit(){
+  const wrap=$("boardWrap");const W=wrap.clientWidth-20,H=wrap.clientHeight-30;
+  const n=G.bottles.length;let best={bw:0,cols:n};
+  const gx=Math.max(8,Math.min(16,W/50)),gy=26;
+  for(let cols=1;cols<=n;cols++){
+    const rows=Math.ceil(n/cols);
+    let bw=Math.min(76,(W-(cols-1)*gx)/cols);
+    const bwH=((H-(rows-1)*gy)/rows)/3.15;
+    bw=Math.min(bw,bwH);
+    if(bw>best.bw)best={bw,cols};
+  }
+  const bw=Math.max(24,Math.floor(best.bw));
+  document.documentElement.style.setProperty("--bw",bw+"px");
+  document.documentElement.style.setProperty("--bh",Math.round(bw*3.15)+"px");
+  stage.style.width=(best.cols*bw+(best.cols-1)*gx+2)+"px";
+  stage.style.columnGap=gx+"px";stage.style.rowGap=gy+"px";
+}
+function render(full){
+  $("lvTitle").textContent="שלב "+G.level;
+  $("lvSub").textContent="מהלכים: "+G.moves+"  |  יעד: "+G.par;
+  $("coinN").textContent=S.coins;
+  fit();
+  stage.innerHTML="";
+  G.bottles.forEach((b,i)=>{
+    const el=document.createElement("div");
+    el.className="bottle"+(i===selected?" sel":"")+(b.length===CAP&&isMono(b)?" done":"");
+    el.dataset.i=i;
+    el.innerHTML=`<div class="glass"><div class="liquid">${b.map(layerHTML).join("")}</div></div><div class="rim"></div><div class="shine"></div>`;
+    el.addEventListener("click",()=>onBottle(i));
+    stage.appendChild(el);
+  });
+  $("tUndo").disabled=!G.hist.length||busy;
+  $("tAdd").disabled=G.extra;
+  $("banner").classList.toggle("show",!isWon(G.bottles)&&genMoves(G.bottles).length===0);
+  if(hintPair)applyHintClasses();
+}
+function bottleEl(i){return stage.children[i]}
+function applyHintClasses(){
+  if(!hintPair)return;
+  bottleEl(hintPair.i)?.classList.add("hintA");bottleEl(hintPair.j)?.classList.add("hintB");
+}
+function clearHint(){hintPair=null;clearTimeout(hintTimer);[...stage.children].forEach(e=>e.classList.remove("hintA","hintB"))}
+
+/* ---------- Gameplay ---------- */
+function onBottle(i){
+  if(busy)return;audio();
+  clearHint();
+  if(selected===-1){
+    if(!G.bottles[i].length){return}
+    selected=i;bottleEl(i).classList.add("sel");sfx.pick();vib(8);return;
+  }
+  if(selected===i){selected=-1;bottleEl(i).classList.remove("sel");return}
+  const from=selected;
+  if(!canPour(G.bottles,from,i)){
+    bottleEl(from).classList.remove("sel");selected=-1;
+    const t=bottleEl(i);t.classList.remove("shake");void t.offsetWidth;t.classList.add("shake");sfx.bad();vib([10,40,10]);
+    if(G.bottles[i].length){selected=i;setTimeout(()=>{if(selected===i&&!busy)bottleEl(i)?.classList.add("sel")},120)}
+    return;
+  }
+  doPour(from,i,true);
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+async function doPour(i,j,record){
+  busy=true;$("tUndo").disabled=true;
+  const n=pourAmount(G.bottles,i,j);const color=G.bottles[i][G.bottles[i].length-1];
+  const src=bottleEl(i),dst=bottleEl(j);
+  selected=-1;src.classList.remove("sel");
+  const bw=src.offsetWidth,bh=src.offsetHeight;
+  const dir=(dst.offsetLeft+dst.offsetWidth/2)>=(src.offsetLeft+src.offsetWidth/2)?1:-1;
+  const th=58*Math.PI/180;
+  const mouthX=dst.offsetLeft+bw/2-dir*bw*.18, mouthY=dst.offsetTop-bw*.4;
+  const cx=mouthX-dir*Math.sin(th)*bh/2, cy=mouthY+Math.cos(th)*bh/2;
+  const dx=cx-(src.offsetLeft+bw/2), dy=cy-(src.offsetTop+bh/2);
+  src.classList.add("pouring");
+  src.style.transform=`translate(${dx}px,${dy}px) rotate(${dir*58}deg)`;
+  sfx.pour(n);vib(12);
+  await wait(430);
+  // logic update
+  const s=G.bottles[i],d=G.bottles[j];
+  for(let t=0;t<n;t++)d.push(s.pop());
+  if(record){G.hist.push({i,j,n});G.moves++;S.stats.moves++}
+  save();
+  // visuals
+  const dur=240+130*n;
+  const lq=src.querySelector(".liquid"),layers=lq.children;
+  for(let t=0;t<n;t++){const L=layers[layers.length-1-t];if(L){L.style.transitionDuration=(dur/n)+"ms";}}
+  const dl=dst.querySelector(".liquid");const dstLenBefore=dl.children.length;
+  const surfaceY=dst.offsetTop+dst.offsetHeight-2-(dstLenBefore)*((dst.offsetHeight-4)/CAP);
+  const st=document.createElement("div");st.className="stream";
+  st.style.cssText=`background:${PALETTE[color]};left:${mouthX-4}px;top:${mouthY}px;width:8px;height:${Math.max(10,surfaceY-mouthY+n*((dst.offsetHeight-4)/CAP))}px`;
+  stage.appendChild(st);
+  for(let t=0;t<n;t++){
+    const a=document.createElement("div");a.innerHTML=layerHTML(color);const L=a.firstChild;L.classList.add("grow");L.style.transitionDuration=(dur/n)+"ms";dl.appendChild(L);
+  }
+  void dl.offsetWidth;
+  // sequential-ish: shrink source layers, grow target layers
+  for(let t=0;t<n;t++){const L=layers[layers.length-1-t];if(L)L.classList.add("collapse")}
+  [...dl.children].slice(dstLenBefore).forEach(L=>L.classList.remove("grow"));
+  await wait(dur);
+  st.style.transition="opacity .15s";st.style.opacity="0";
+  src.style.transform="";
+  await wait(300);
+  st.remove();src.classList.remove("pouring");
+  busy=false;
+  render();
+  if(d.length===CAP&&isMono(d)){sfx.done();vib(25)}
+  afterMove();
+}
+function afterMove(){
+  S.cur=G;save();
+  if(isWon(G.bottles))win(false);
+}
+function undo(){
+  if(busy||!G.hist.length)return;clearHint();
+  const m=G.hist.pop();
+  const s=G.bottles[m.j],d=G.bottles[m.i];
+  for(let t=0;t<m.n;t++)d.push(s.pop());
+  G.moves=Math.max(0,G.moves-1);S.stats.undos++;selected=-1;save();render();sfx.pick();
+}
+function addCoins(n){S.coins+=n;if(n>0)S.stats.earned+=n;$("coinN").textContent=S.coins;const c=$("coins");c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");save()}
+function spend(n){if(S.coins<n){toast("אין מספיק מטבעות - סיימו שלבים כדי להרוויח עוד");sfx.bad();return false}S.coins-=n;save();$("coinN").textContent=S.coins;return true}
+function hint(){
+  if(busy)return;
+  if(isWon(G.bottles))return;
+  const mv=genMoves(G.bottles);
+  if(!mv.length){toast("אין מהלכים אפשריים - בטלו מהלך או הוסיפו בקבוק");return}
+  if(S.coins<COST.hint){toast("אין מספיק מטבעות לרמז");sfx.bad();return}
+  let sol=solve(G.bottles,120000);
+  let m=sol&&sol.length?sol[0]:null;
+  if(!m){toast("אין פתרון מהמצב הזה - נסו לבטל כמה מהלכים");return}
+  spend(COST.hint);S.stats.hints++;G.hinted++;
+  if(selected>=0){bottleEl(selected)?.classList.remove("sel");selected=-1}
+  clearHint();hintPair={i:m.i,j:m.j};applyHintClasses();sfx.pick();
+  hintTimer=setTimeout(clearHint,4000);
+  save();
+}
+function addBottle(){
+  if(busy||G.extra)return;
+  if(!spend(COST.add))return;
+  G.extra=true;G.bottles.push([]);save();render();toast("נוסף בקבוק ריק");
+}
+function confirmBox(title,text,yes){
+  $("cTitle").textContent=title;$("cText").textContent=text;show("mConfirm");
+  $("cYes").onclick=()=>{hide("mConfirm");yes()};$("cNo").onclick=()=>hide("mConfirm");
+}
+function restart(){if(busy)return;confirmBox("להתחיל מחדש?","השלב יתאפס למצב ההתחלתי.",()=>startLevel(G.level))}
+function skip(){
+  if(busy)return;
+  if(G.level>=MAX_LEVEL){toast("זה השלב האחרון!");return}
+  if(S.coins<COST.skip){toast("דילוג עולה "+COST.skip+" מטבעות");sfx.bad();return}
+  confirmBox("לדלג על השלב?","הדילוג עולה "+COST.skip+" מטבעות ולא מעניק כוכבים.",()=>{
+    spend(COST.skip);
+    if(S.stars[G.level]===undefined)S.stars[G.level]=0;
+    S.maxLevel=Math.max(S.maxLevel,G.level+1);save();startLevel(G.level+1);
+  });
+}
+
+/* ---------- Win ---------- */
+function starSVG(cls){return `<svg class="star ${cls}" viewBox="0 0 24 24"><path d="M12 2.500l2.900 6 6.600.8-4.900 4.500 1.300 6.500L12 17l-5.900 3.300 1.300-6.500L2.500 9.300l6.600-.8z" stroke-linejoin="round"/></svg>`}
+function win(){
+  busy=true;
+  const L=G.level,st=starsFor(G.moves,G.par);
+  const reward=10+G.colors*2+st*6;
+  const first=S.stars[L]===undefined;
+  const prevBest=S.best[L];
+  if(prevBest===undefined||G.moves<prevBest)S.best[L]=G.moves;
+  if(S.stars[L]===undefined||st>S.stars[L])S.stars[L]=st;
+  S.stats.solved+=first?1:0;
+  S.maxLevel=Math.max(S.maxLevel,Math.min(MAX_LEVEL,L+1));
+  const gain=first?reward:Math.max(3,Math.floor(reward/3));
+  S.cur=null;save();
+  sfx.win();vib([30,50,30,50,80]);
+  addCoins(gain);
+  setTimeout(()=>{
+    $("winStars").innerHTML=[1,2,3].map(k=>starSVG(k<=st?"on":"off")).join("");
+    [...$("winStars").children].forEach((e,k)=>{e.style.animationDelay=(0.25+k*0.25)+"s"});
+    $("winInfo").textContent=`סיימתם את שלב ${L} ב-${G.moves} מהלכים (יעד: ${G.par})`;
+    $("winCoins").textContent="+"+gain;$("winBest").textContent=S.best[L];
+    $("winNext").textContent=L>=MAX_LEVEL?"סיימתם את כל השלבים!":"לשלב הבא";
+    $("winAgain").style.display=st<3?"block":"none";
+    show("mWin");confetti();
+  },450);
+}
+$("winNext").onclick=()=>{hide("mWin");busy=false;if(G.level>=MAX_LEVEL){openLevels()}else startLevel(G.level+1)};
+$("winAgain").onclick=()=>{hide("mWin");busy=false;startLevel(G.level)};
+
+/* ---------- Confetti ---------- */
+function confetti(){
+  const cv=$("fx"),ctx=cv.getContext("2d");const dpr=window.devicePixelRatio||1;
+  cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;ctx.scale(dpr,dpr);
+  const P=[];for(let k=0;k<110;k++)P.push({x:innerWidth/2,y:innerHeight*.35,vx:(Math.random()-.5)*14,vy:-Math.random()*13-3,r:Math.random()*6+3,c:PALETTE[k%12],a:Math.random()*6,va:(Math.random()-.5)*.4});
+  let f=0;(function tick(){
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    P.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.vx*=.99;p.a+=p.va;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);ctx.restore()});
+    if(++f<150)requestAnimationFrame(tick);else ctx.clearRect(0,0,innerWidth,innerHeight);
+  })();
+}
+
+/* ---------- Modals ---------- */
+function show(id){$(id).classList.add("show")}
+function hide(id){$(id).classList.remove("show")}
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest(".modal").classList.remove("show")));
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m&&m.id!=="mWin")m.classList.remove("show")}));
+function openLevels(){
+  const g=$("grid");g.innerHTML="";let total=0;
+  for(let n=1;n<=MAX_LEVEL;n++){
+    const b=document.createElement("button");
+    const lock=n>S.maxLevel;const st=S.stars[n];
+    b.className="lv"+(lock?" lock":"")+(n===G.level?" cur":"")+(st===0?" skip":"");
+    b.innerHTML=`${n}<small>${lock?"🔒":st===undefined?"":st===0?"דולג":"★".repeat(st)}</small>`;
+    if(st)total+=st;
+    b.onclick=()=>{if(lock){toast("השלימו קודם את שלב "+S.maxLevel);return}hide("mLevels");if(n!==G.level||isWon(G.bottles)){busy=false;startLevel(n)}};
+    g.appendChild(b);
+  }
+  $("lvInfo").textContent=`נפתחו ${Math.min(S.maxLevel,MAX_LEVEL)} מתוך ${MAX_LEVEL} שלבים  |  ${total} כוכבים`;
+  show("mLevels");
+  const cur=g.children[Math.min(G.level,MAX_LEVEL)-1];if(cur)cur.scrollIntoView({block:"center"});
+}
+function openMenu(){
+  const total=Object.values(S.stars).reduce((a,b)=>a+b,0);
+  const bestLv=Object.keys(S.best).length;
+  const rows=[["שלב נוכחי",G.level],["שלבים שהושלמו",S.stats.solved],["סה\"כ כוכבים",total+" / "+MAX_LEVEL*3],["שלבים בציון מושלם",Object.values(S.stars).filter(v=>v===3).length],["מטבעות",S.coins],["סה\"כ מטבעות שהורווחו",S.stats.earned],["סה\"כ מהלכים",S.stats.moves],["רמזים ששימשו",S.stats.hints],["ביטולי מהלך",S.stats.undos]];
+  $("tabRec").innerHTML=rows.map(r=>`<div class="row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join("");
+  syncSwitches();show("mMenu");
+}
+function syncSwitches(){
+  $("swSound").classList.toggle("on",S.settings.sound);$("swVib").classList.toggle("on",S.settings.vib);$("swCb").classList.toggle("on",S.settings.cb);
+  ["swSound","swVib","swCb"].forEach(id=>$(id).setAttribute("aria-checked",$(id).classList.contains("on")));
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));
+  $("tabRec").style.display=t.dataset.tab==="rec"?"grid":"none";$("tabSet").style.display=t.dataset.tab==="set"?"grid":"none";
+});
+$("swSound").onclick=()=>{S.settings.sound=!S.settings.sound;save();syncSwitches();sfx.pick()};
+$("swVib").onclick=()=>{S.settings.vib=!S.settings.vib;save();syncSwitches();vib(20)};
+$("swCb").onclick=()=>{S.settings.cb=!S.settings.cb;save();syncSwitches();render()};
+$("btnHelp").onclick=()=>{hide("mMenu");show("mHelp")};
+$("btnReset").onclick=()=>{hide("mMenu");confirmBox("לאפס הכול?","כל ההתקדמות, המטבעות והשיאים יימחקו.",()=>{S=freshSave();save();busy=false;startLevel(1);toast("ההתקדמות אופסה")})};
+$("mHelp").querySelector("[data-close]").addEventListener("click",()=>{S.seenHelp=true;save()});
+$("btnLevels").onclick=()=>{if(!busy)openLevels()};
+$("btnMenu").onclick=()=>{if(!busy)openMenu()};
+$("tUndo").onclick=undo;$("tHint").onclick=hint;$("tAdd").onclick=addBottle;$("tRestart").onclick=restart;$("tSkip").onclick=skip;
+document.addEventListener("keydown",e=>{if(e.key==="z"&&(e.ctrlKey||e.metaKey))undo()});
+let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(G&&!busy)render()},120)});
+addEventListener("orientationchange",()=>setTimeout(()=>{if(G&&!busy)render()},250));
+document.addEventListener("gesturestart",e=>e.preventDefault());
+document.addEventListener("dblclick",e=>e.preventDefault());
+
+/* ---------- Boot ---------- */
+resumeOrStart();
+if(!S.seenHelp&&S.maxLevel===1&&G.moves===0)show("mHelp");
+window.__game={get S(){return S},get G(){return G},startLevel,genLevel,solve};
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

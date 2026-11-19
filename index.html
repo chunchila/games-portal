@@ -1,501 +1,88 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ארקדיה | כל המשחקים במקום אחד</title>
-<meta name="description" content="ארקדיה - בית לכל ה-27 משחקים שבנינו: מילים, פאזלים, ארקייד, טייקון, משחקי ילדים ועוד. כנסו ושחקו.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #070912;
-    --surface: rgba(255,255,255,0.045);
-    --surface-2: rgba(255,255,255,0.08);
-    --border: rgba(255,255,255,0.09);
-    --text: #f2f4ff;
-    --muted: #98a1c6;
-    --accent: #7c6cff;
-    --accent-2: #22d3ee;
-    --accent-3: #f472b6;
-    --radius: 22px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { scroll-behavior: smooth; }
-  body {
-    font-family: 'Heebo', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  ::selection { background: rgba(124,108,255,.4); }
-
-  /* Animated aurora background */
-  .bg-blob {
-    position: fixed; border-radius: 50%; filter: blur(120px);
-    opacity: .4; pointer-events: none; z-index: 0;
-    animation: drift 26s ease-in-out infinite alternate;
-    will-change: transform;
-  }
-  .bg-blob.b1 { width: 62vmax; height: 62vmax; background: #352a8f; top: -28vmax; right: -22vmax; }
-  .bg-blob.b2 { width: 52vmax; height: 52vmax; background: #0b4a60; bottom: -22vmax; left: -16vmax; animation-delay: -9s; }
-  .bg-blob.b3 { width: 38vmax; height: 38vmax; background: #6d1f5e; top: 42%; left: 28%; opacity: .2; animation-delay: -16s; }
-  @keyframes drift {
-    from { transform: translate(0,0) scale(1); }
-    to   { transform: translate(7vmax, 5vmax) scale(1.15); }
-  }
-  .bg-grid {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
-  }
-
-  .wrap { position: relative; z-index: 1; max-width: 1140px; margin: 0 auto; padding: 0 18px 90px; }
-
-  /* ===== Hero ===== */
-  header.hero { text-align: center; padding: clamp(48px, 9vw, 88px) 0 6px; position: relative; }
-  .hero .joystick {
-    font-size: 40px; display: inline-block;
-    animation: bob 3.2s ease-in-out infinite;
-    filter: drop-shadow(0 10px 24px rgba(124,108,255,.45));
-  }
-  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-7deg);} 50% { transform: translateY(-10px) rotate(7deg);} }
-  .hero .logo {
-    font-size: clamp(58px, 14vw, 108px);
-    font-weight: 900;
-    line-height: 1.02;
-    background: linear-gradient(115deg, #c3ccff 0%, #7c6cff 28%, #22d3ee 60%, #7cf5d3 88%);
-    background-size: 180% 100%;
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -1.5px;
-    animation: sheen 9s ease-in-out infinite alternate;
-    filter: drop-shadow(0 6px 40px rgba(124,108,255,.35));
-  }
-  @keyframes sheen { from { background-position: 0% 0; } to { background-position: 100% 0; } }
-  .hero .logo-en {
-    font-size: clamp(12px, 2.6vw, 16px);
-    letter-spacing: 15px;
-    font-weight: 600;
-    color: var(--muted);
-    margin-top: 4px;
-    padding-right: 15px; /* optical centering vs letter-spacing */
-  }
-  .hero p.tagline {
-    margin: 18px auto 0;
-    max-width: 560px;
-    color: var(--muted);
-    font-size: clamp(15px, 3.8vw, 19px);
-    font-weight: 400;
-    line-height: 1.7;
-  }
-  .hero p.tagline b { color: var(--text); font-weight: 700; }
-
-  .hero-stats {
-    display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;
-    margin-top: 26px;
-  }
-  .stat-pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 9px 18px;
-    font-size: 13.5px; font-weight: 600;
-    color: var(--muted);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .stat-pill b { color: var(--text); font-weight: 800; font-size: 15px; }
-  .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
-
-  /* ===== Controls ===== */
-  .controls {
-    position: sticky; top: 0; z-index: 20;
-    padding: 14px 0 10px;
-    margin: 30px -18px 6px;
-    padding-inline: 18px;
-    background: linear-gradient(to bottom, rgba(7,9,18,.97) 75%, rgba(7,9,18,0));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .search-row { display: flex; gap: 10px; align-items: center; }
-  .search-box {
-    flex: 1; display: flex; align-items: center; gap: 10px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 13px 16px;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,108,255,.2); }
-  .search-box svg { flex: none; opacity: .6; }
-  .search-box input {
-    flex: 1; background: none; border: none; outline: none;
-    color: var(--text); font-family: inherit; font-size: 16px;
-  }
-  .search-box input::placeholder { color: var(--muted); }
-  .sort-btn {
-    flex: none;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 16px;
-    padding: 13px 15px;
-    font-family: inherit; font-size: 14px; font-weight: 600;
-    cursor: pointer;
-    display: flex; align-items: center; gap: 7px;
-    transition: all .2s;
-  }
-  .sort-btn.active { color: #070912; background: linear-gradient(120deg, #7cf5d3, #22d3ee); border-color: transparent; }
-
-  .chips {
-    display: flex; gap: 8px; overflow-x: auto;
-    padding: 12px 2px 6px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip {
-    flex: none;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 999px;
-    padding: 8px 15px;
-    font-family: inherit; font-size: 14px; font-weight: 600;
-    cursor: pointer;
-    transition: all .18s;
-    white-space: nowrap;
-  }
-  .chip .n { opacity: .55; font-size: 12px; margin-inline-start: 4px; font-weight: 500; }
-  .chip:hover { background: var(--surface-2); color: var(--text); }
-  .chip.active {
-    color: #070912;
-    background: var(--chip-color, var(--text));
-    border-color: transparent;
-    box-shadow: 0 4px 18px -4px var(--chip-color, transparent);
-  }
-  .chip.active .n { opacity: .7; }
-
-  .result-count { color: var(--muted); font-size: 13px; padding: 6px 4px 0; min-height: 22px; }
-
-  /* ===== Grid + cards ===== */
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 18px;
-    margin-top: 16px;
-  }
-  @media (min-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 980px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
-
-  .card {
-    position: relative;
-    display: flex; flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    text-decoration: none; color: inherit;
-    overflow: hidden;
-    transition: transform .28s cubic-bezier(.34,1.56,.64,1), border-color .28s, box-shadow .28s;
-    animation: pop .5s cubic-bezier(.34,1.4,.64,1) backwards;
-  }
-  @keyframes pop { from { opacity: 0; transform: translateY(18px) scale(.96); } }
-  .card:hover, .card:focus-visible {
-    transform: translateY(-6px);
-    border-color: var(--cat-color);
-    box-shadow: 0 22px 46px -16px var(--cat-glow-strong), 0 0 0 1px var(--cat-color);
-  }
-  .card:active { transform: translateY(-2px) scale(.99); }
-
-  .thumb {
-    position: relative;
-    aspect-ratio: 16 / 10;
-    overflow: hidden;
-    background: linear-gradient(140deg, var(--cat-glow), rgba(255,255,255,0.02));
-    border-bottom: 1px solid var(--border);
-  }
-  .thumb img {
-    width: 100%; height: 100%;
-    object-fit: cover; object-position: top center;
-    display: block;
-    transform: scale(1.02);
-    transition: transform .5s cubic-bezier(.2,.7,.3,1);
-    opacity: 0;
-  }
-  .thumb img.loaded { opacity: 1; transition: transform .5s cubic-bezier(.2,.7,.3,1), opacity .45s ease; }
-  .card:hover .thumb img { transform: scale(1.07); }
-  .thumb::after {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(7,9,18,.55), transparent 45%);
-    pointer-events: none;
-  }
-  .thumb .cat-tag {
-    position: absolute; top: 12px; inset-inline-start: 12px; z-index: 2;
-    font-size: 11.5px; font-weight: 700;
-    color: #070912;
-    background: var(--cat-color);
-    padding: 4px 11px; border-radius: 999px;
-    box-shadow: 0 4px 14px -3px var(--cat-glow-strong);
-  }
-  .thumb .play-fab {
-    position: absolute; bottom: 12px; inset-inline-end: 12px; z-index: 2;
-    width: 42px; height: 42px; border-radius: 50%;
-    display: grid; place-items: center;
-    background: rgba(10,13,26,.72);
-    border: 1px solid rgba(255,255,255,.22);
-    color: #fff;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    transition: all .25s;
-  }
-  .card:hover .play-fab {
-    background: var(--cat-color);
-    color: #070912;
-    border-color: transparent;
-    transform: scale(1.12) rotate(-8deg);
-    box-shadow: 0 8px 22px -6px var(--cat-glow-strong);
-  }
-
-  .card-body { padding: 15px 17px 17px; }
-  .card-body h3 { font-size: 18px; font-weight: 800; letter-spacing: -.2px; }
-  .card-body p {
-    color: var(--muted); font-size: 13.5px; font-weight: 400;
-    margin-top: 4px; line-height: 1.55;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .new-badge {
-    position: absolute; top: 12px; inset-inline-end: 12px; z-index: 3;
-    background: linear-gradient(120deg, #7cf5d3, #22d3ee);
-    color: #062a2e;
-    font-size: 11px; font-weight: 800;
-    padding: 4px 11px;
-    border-radius: 999px;
-    letter-spacing: .4px;
-    box-shadow: 0 4px 16px -3px rgba(34,211,238,.6);
-    animation: glowpulse 2.6s ease-in-out infinite;
-  }
-  @keyframes glowpulse {
-    0%,100% { box-shadow: 0 4px 16px -3px rgba(34,211,238,.55); }
-    50%     { box-shadow: 0 4px 24px -2px rgba(34,211,238,.95); }
-  }
-
-  .empty {
-    text-align: center; padding: 70px 20px; color: var(--muted);
-  }
-  .empty .big { font-size: 46px; margin-bottom: 12px; }
-  .empty button {
-    margin-top: 14px; background: none; border: 1px solid var(--border);
-    color: var(--text); border-radius: 999px; padding: 9px 20px;
-    font-family: inherit; font-size: 14px; cursor: pointer;
-  }
-
-  footer {
-    margin-top: 72px; text-align: center; color: var(--muted);
-    font-size: 13px; line-height: 1.9;
-  }
-  footer .foot-logo { font-weight: 800; color: var(--text); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .bg-blob, .hero .joystick, .hero .logo, .new-badge { animation: none; }
-    .card { animation: none; }
-    html { scroll-behavior: auto; }
-  }
-</style>
-</head>
-<body>
-  <div class="bg-blob b1"></div>
-  <div class="bg-blob b2"></div>
-  <div class="bg-blob b3"></div>
-  <div class="bg-grid"></div>
-
-  <div class="wrap">
-    <header class="hero">
-      <span class="joystick">🕹️</span>
-      <h1 class="logo">ארקדיה</h1>
-      <div class="logo-en">ARCADIA</div>
-      <p class="tagline">כל המשחקים שבנינו, במקום אחד. <b id="total-count"></b> משחקים - מילים, פאזלים, ארקייד, טייקון ועולם שלם לילדים. בחרו ושחקו.</p>
-      <div class="hero-stats">
-        <span class="stat-pill"><span class="dot" style="background:#7c6cff"></span><b id="stat-games"></b>&nbsp;משחקים</span>
-        <span class="stat-pill"><span class="dot" style="background:#22d3ee"></span><b id="stat-cats"></b>&nbsp;קטגוריות</span>
-        <span class="stat-pill"><span class="dot" style="background:#7cf5d3"></span>חינם, בלי פרסומות</span>
-      </div>
-    </header>
-
-    <div class="controls">
-      <div class="search-row">
-        <div class="search-box">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="search" type="search" placeholder="חפשו משחק..." autocomplete="off" aria-label="חיפוש משחק">
-        </div>
-        <button class="sort-btn" id="sort-new" aria-pressed="false">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v13m0 0 4.5-4.5M12 16l-4.5-4.5"/><path d="M5 21h14"/></svg>
-          חדשים
-        </button>
-      </div>
-      <div class="chips" id="chips"></div>
-      <div class="result-count" id="result-count"></div>
-    </div>
-
-    <main class="grid" id="grid"></main>
-    <div class="empty" id="empty" hidden>
-      <div class="big">🛸</div>
-      <div>לא מצאנו משחק כזה... עדיין.</div>
-      <button id="clear-search">נקו את החיפוש</button>
-    </div>
-
-    <footer>
-      <div class="foot-logo">🕹️ ארקדיה</div>
-      <div>כל המשחקים נבנו באהבה, בחינם וללא פרסומות.</div>
-    </footer>
-  </div>
-
-<script>
-const CATEGORIES = {
-  'מילים':            { color: '#4ade80', glow: 'rgba(74,222,128,.16)',  strong: 'rgba(74,222,128,.45)' },
-  'טריוויה':          { color: '#facc15', glow: 'rgba(250,204,21,.16)',  strong: 'rgba(250,204,21,.45)' },
-  'פאזל':             { color: '#a78bfa', glow: 'rgba(167,139,250,.16)', strong: 'rgba(167,139,250,.45)' },
-  'ארקייד':           { color: '#f472b6', glow: 'rgba(244,114,182,.16)', strong: 'rgba(244,114,182,.45)' },
-  'אסטרטגיה':         { color: '#60a5fa', glow: 'rgba(96,165,250,.16)',  strong: 'rgba(96,165,250,.45)' },
-  'קלפים':            { color: '#f87171', glow: 'rgba(248,113,113,.16)', strong: 'rgba(248,113,113,.45)' },
-  'זיכרון':           { color: '#2dd4bf', glow: 'rgba(45,212,191,.16)',  strong: 'rgba(45,212,191,.45)' },
-  'טייקון וסימולציה': { color: '#fb923c', glow: 'rgba(251,146,60,.16)', strong: 'rgba(251,146,60,.45)' },
-  'מיזוג':            { color: '#22d3ee', glow: 'rgba(34,211,238,.16)',  strong: 'rgba(34,211,238,.45)' },
-  'ילדים':            { color: '#a3e635', glow: 'rgba(163,230,53,.16)',  strong: 'rgba(163,230,53,.45)' },
-};
-
-const GAMES = [
-  { name: 'וורדל',            shot: 'shots/wordle.webp',      cat: 'מילים',            desc: 'פאזל המילים היומי - נחשו את המילה בשישה ניסיונות', url: 'https://wordle-hebrew.vercel.app', added: 1 },
-  { name: 'מילולי',           shot: 'shots/miluli.webp',      cat: 'מילים',            desc: 'משחק ערבוב מילים - כמה מילים תצליחו להרכיב?', url: 'https://dino-games-2lnl3n14i-romans-projects-97b8739c.vercel.app/', added: 2 },
-  { name: 'בזק טריוויה',      shot: 'shots/trivia.webp',      cat: 'טריוויה',          desc: 'שאלות טריוויה במירוץ נגד השעון', url: 'https://dino-games-p9oddk3d8-romans-projects-97b8739c.vercel.app/', added: 3 },
-  { name: 'חשבון בזק',        shot: 'shots/math.webp',        cat: 'טריוויה',          desc: 'ספרינט חשבון - כמה תרגילים תפתרו בדקה?', url: 'https://dino-games-p7olmi32r-romans-projects-97b8739c.vercel.app/', added: 4 },
-  { name: 'זרימה',            shot: 'shots/flow.webp',        cat: 'פאזל',             desc: 'חברו את הנקודות בלי לחצות קווים', url: 'https://dino-games-kkd7dprep-romans-projects-97b8739c.vercel.app/', added: 5 },
-  { name: 'סודוקו מאסטר',     shot: 'shots/sudoku.webp',      cat: 'פאזל',             desc: 'סודוקו קלאסי בכל רמת קושי', url: 'https://dino-games-68u15mjtc-romans-projects-97b8739c.vercel.app/', added: 6 },
-  { name: 'מיון צבעים',       shot: 'shots/colorsort.webp',   cat: 'פאזל',             desc: 'מיינו את הנוזלים לבקבוקים הנכונים', url: 'https://dino-games-fhvqbpe24-romans-projects-97b8739c.vercel.app/', added: 7 },
-  { name: 'פיצוץ בלוקים',     shot: 'shots/blocks.webp',      cat: 'פאזל',             desc: 'פוצצו בלוקים ופנו את הלוח', url: 'https://dino-games-4xw0fel3r-romans-projects-97b8739c.vercel.app/', added: 8 },
-  { name: 'שובר הניאון',      shot: 'shots/neon.webp',        cat: 'ארקייד',           desc: 'ארקייד ניאון - שברו את כל הלבנים', url: 'https://dino-games-nbx3ud7sr-romans-projects-97b8739c.vercel.app/', added: 9 },
-  { name: 'מלכודות!',         shot: 'shots/malchodot.webp',   cat: 'ארקייד',           desc: 'פלטפורמר מלכודות - שרדו את כל השלבים', url: 'https://malchodot.vercel.app/', added: 22 },
-  { name: 'דינוש הקפצן',      shot: 'shots/dinojump.webp',    cat: 'ארקייד',           desc: 'קפצו, התחמקו ושברו שיאים', url: 'https://dino-games-l3id4nr01-romans-projects-97b8739c.vercel.app/', added: 11 },
-  { name: 'ארבע בשורה',       shot: 'shots/four.webp',        cat: 'אסטרטגיה',         desc: 'הקלאסיקה נגד המחשב - ארבעה ברצף מנצחים', url: 'https://dino-games-fbgfln1oo-romans-projects-97b8739c.vercel.app/', added: 12 },
-  { name: 'קרב היסודות',      shot: 'shots/elements.webp',    cat: 'קלפים',            desc: 'דו-קרב קלפים של אש, מים, אדמה ואוויר', url: 'https://dino-games-m6eqvby8l-romans-projects-97b8739c.vercel.app/', added: 13 },
-  { name: 'אותות',            shot: 'shots/otot.webp',        cat: 'זיכרון',           desc: 'משחק זיכרון - עקבו אחרי הרצף ושחזרו אותו', url: 'https://dino-games-jzic2llcf-romans-projects-97b8739c.vercel.app/', added: 14 },
-  { name: 'כפר המטבעות',      shot: 'shots/coinvillage.webp', cat: 'טייקון וסימולציה', desc: 'בנו כפר שמדפיס מטבעות', url: 'https://dino-games-p7a02kugn-romans-projects-97b8739c.vercel.app/', added: 15 },
-  { name: 'לונה פארק טייקון', shot: 'shots/lunapark.webp',    cat: 'טייקון וסימולציה', desc: 'הקימו את לונה פארק החלומות שלכם', url: 'https://dino-games-qlz6gaur3-romans-projects-97b8739c.vercel.app/', added: 16 },
-  { name: 'פארק דינו',        shot: 'shots/dinopark.webp',    cat: 'טייקון וסימולציה', desc: 'משחק Idle Tycoon - פארק הדינוזאורים שלכם', url: 'https://dino-games-rmncfhtaw-romans-projects-97b8739c.vercel.app/', added: 17 },
-  { name: 'בית הקפה שלי',     shot: 'shots/cafe.webp',        cat: 'טייקון וסימולציה', desc: 'סימולציית בית קפה - מכמהן ועד אספרסו', url: 'https://dino-games-oyq7j0lvb-romans-projects-97b8739c.vercel.app/', added: 18 },
-  { name: 'דינו Merge',       shot: 'shots/dinomerge.webp',   cat: 'מיזוג',            desc: 'גן האבולוציה - מזגו דינוזאורים וגלו מינים חדשים', url: 'https://dino-games-q4b7d1pa3-romans-projects-97b8739c.vercel.app/', added: 19 },
-  { name: 'בית הקפה מיזוג',   shot: 'shots/cafemerge.webp',   cat: 'מיזוג',            desc: 'משחק מיזוג - מזגו מנות ובנו את בית הקפה', url: 'https://dino-games-p26azxrmz-romans-projects-97b8739c.vercel.app', added: 20 },
-  { name: 'ההרפתקה הגדולה',   shot: 'shots/k-adventure.webp', cat: 'ילדים',            desc: 'אוניקס והדרקונים - רוצו, קפצו וירו כדורי צל כדי להציל את ביצת הדרקון!', url: 'https://dino-games-phi.vercel.app/games/adventure/', added: 23 },
-  { name: 'זיכרון דינוזאורים', shot: 'shots/k-memory.webp',   cat: 'ילדים',            desc: 'מצאו זוגות של דינוזאורים', url: 'https://dino-games-phi.vercel.app/games/memory/', added: 24 },
-  { name: 'ספירת ביצים',      shot: 'shots/k-eggs.webp',      cat: 'ילדים',            desc: 'כמה ביצים יש? ספרו ובחרו את התשובה', url: 'https://dino-games-phi.vercel.app/games/eggs/', added: 25 },
-  { name: 'של מי הצל?',       shot: 'shots/k-shadow.webp',    cat: 'ילדים',            desc: 'נחשו את הדינוזאור לפי הצל שלו', url: 'https://dino-games-phi.vercel.app/games/shadow/', added: 26 },
-  { name: 'האכילו את הדינוזאור', shot: 'shots/k-feed.webp',   cat: 'ילדים',            desc: 'מי אוהב מה? האכילו כל דינוזאור במאכל שלו', url: 'https://dino-games-phi.vercel.app/games/feed/', added: 27 },
-  { name: 'גרום והסדרות',     shot: 'shots/k-sequence.webp',  cat: 'ילדים',            desc: 'מה בא אחר כך? השלימו את הסדרה', url: 'https://dino-games-phi.vercel.app/games/sequence/', added: 28 },
-  { name: 'מבוך הקריסטלים',   shot: 'shots/k-maze.webp',      cat: 'ילדים',            desc: 'מצאו את הדרך במבוך', url: 'https://dino-games-phi.vercel.app/games/maze/', added: 29 },
-];
-
-const NEW_THRESHOLD = 23; // added rank >= this gets the "חדש" ribbon
-const grid = document.getElementById('grid');
-const chipsEl = document.getElementById('chips');
-const searchInput = document.getElementById('search');
-const sortBtn = document.getElementById('sort-new');
-const countEl = document.getElementById('result-count');
-const emptyEl = document.getElementById('empty');
-
-let activeCat = 'הכל';
-let query = '';
-let sortNew = false;
-
-document.getElementById('total-count').textContent = GAMES.length;
-document.getElementById('stat-games').textContent = GAMES.length;
-document.getElementById('stat-cats').textContent = new Set(GAMES.map(g => g.cat)).size;
-
-function buildChips() {
-  const cats = ['הכל', ...Object.keys(CATEGORIES)];
-  chipsEl.innerHTML = '';
-  cats.forEach(cat => {
-    const n = cat === 'הכל' ? GAMES.length : GAMES.filter(g => g.cat === cat).length;
-    const btn = document.createElement('button');
-    btn.className = 'chip' + (cat === activeCat ? ' active' : '');
-    btn.innerHTML = `${cat}<span class="n">${n}</span>`;
-    if (cat !== 'הכל') btn.style.setProperty('--chip-color', CATEGORIES[cat].color);
-    else btn.style.setProperty('--chip-color', '#f2f4ff');
-    btn.onclick = () => { activeCat = cat; buildChips(); render(); };
-    chipsEl.appendChild(btn);
-  });
-}
-
-function matches(g) {
-  if (activeCat !== 'הכל' && g.cat !== activeCat) return false;
-  if (query) {
-    const q = query.toLowerCase();
-    return g.name.toLowerCase().includes(q) || g.desc.toLowerCase().includes(q) || g.cat.includes(q);
-  }
-  return true;
-}
-
-function render() {
-  let list = GAMES.filter(matches);
-  if (sortNew) list = [...list].sort((a, b) => b.added - a.added);
-
-  grid.innerHTML = '';
-  list.forEach((g, i) => {
-    const c = CATEGORIES[g.cat];
-    const a = document.createElement('a');
-    a.className = 'card';
-    a.href = g.url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.style.setProperty('--cat-color', c.color);
-    a.style.setProperty('--cat-glow', c.glow);
-    a.style.setProperty('--cat-glow-strong', c.strong);
-    a.style.animationDelay = Math.min(i * 45, 400) + 'ms';
-    a.innerHTML = `
-      ${g.added >= NEW_THRESHOLD ? '<span class="new-badge">חדש ✦</span>' : ''}
-      <div class="thumb">
-        <img src="${g.shot}" alt="תצוגה מקדימה של ${g.name}" loading="lazy" width="760" height="473" onload="this.classList.add('loaded')">
-        <span class="cat-tag">${g.cat}</span>
-        <span class="play-fab">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.54.84l10-6.5a1 1 0 0 0 0-1.68l-10-6.5A1 1 0 0 0 8 5.5Z"/></svg>
-        </span>
-      </div>
-      <div class="card-body">
-        <h3>${g.name}</h3>
-        <p>${g.desc}</p>
-      </div>`;
-    grid.appendChild(a);
-  });
-
-  emptyEl.hidden = list.length > 0;
-  countEl.textContent = list.length === GAMES.length
-    ? ''
-    : list.length === 0 ? '' : `מציג ${list.length} מתוך ${GAMES.length} משחקים`;
-}
-
-searchInput.addEventListener('input', e => { query = e.target.value.trim(); render(); });
-sortBtn.addEventListener('click', () => {
-  sortNew = !sortNew;
-  sortBtn.classList.toggle('active', sortNew);
-  sortBtn.setAttribute('aria-pressed', sortNew);
-  render();
-});
-document.getElementById('clear-search').onclick = () => {
-  searchInput.value = ''; query = ''; activeCat = 'הכל'; buildChips(); render(); searchInput.focus();
-};
-
-buildChips();
-render();
-</script>
-</body>
-</html>
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a0c1e"><meta name="description" content="ארקדיה: 49 משחקים באתר אחד. מילים, ארקייד, פאזלים, עולמות לילדים וטייקון. בחרו הרפתקה ושחקו מיד."><title>ארקדיה | עוד סיבוב אחד</title><link rel="icon" href="assets/icon.svg"><style>
+@font-face{font-family:Rubik;src:url('assets/fonts/rubik-hebrew-400-normal.woff2');font-display:swap}@font-face{font-family:Rubik;src:url('assets/fonts/rubik-hebrew-600-normal.woff2');font-weight:600;font-display:swap}@font-face{font-family:Rubik;src:url('assets/fonts/rubik-hebrew-800-normal.woff2');font-weight:800;font-display:swap}
+:root{--bg:#070818;--panel:#101228;--line:#ffffff14;--text:#eef0ff;--muted:#9aa0c7;--violet:#8b5cf6;--cyan:#22d3ee;--pink:#f472b6;--lime:#bef264;--amber:#fbbf24}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);font:16px Rubik,system-ui,sans-serif;background:
+ radial-gradient(1100px 550px at 85% -8%,#8b5cf626,transparent 60%),
+ radial-gradient(900px 500px at -10% 22%,#22d3ee1a,transparent 60%),
+ radial-gradient(1000px 700px at 50% 115%,#f472b614,transparent 60%),var(--bg);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(#ffffff16 1px,transparent 1.4px);background-size:34px 34px;mask-image:linear-gradient(#000 0%,transparent 65%)}
+button,input,a{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button,input{font:inherit}a{color:inherit;text-decoration:none}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;border-radius:8px}
+.shell{position:relative;z-index:1;max-width:1320px;margin:auto;padding:0 28px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{display:flex;align-items:center;gap:11px;font-size:25px;font-weight:800;letter-spacing:-.5px}
+.brand i{display:grid;place-items:center;width:44px;height:44px;color:#0a0c1e;font-style:normal;font-size:24px;border-radius:14px;background:conic-gradient(from 210deg,var(--violet),var(--cyan),var(--pink),var(--violet));box-shadow:0 0 24px #8b5cf666,0 4px 12px #0008;animation:spinHue 9s linear infinite}
+@keyframes spinHue{to{filter:hue-rotate(360deg)}}
+.brand small{font-size:9.5px;display:block;letter-spacing:3.5px;font-weight:600;direction:ltr;color:var(--muted)}
+.top-note{font-size:13px;font-weight:600;background:#ffffff0a;border:1px solid var(--line);border-radius:40px;padding:10px 17px;backdrop-filter:blur(10px);color:#cdd2f2}
+.top-note::before{content:'●';color:#34d399;margin-left:8px;text-shadow:0 0 8px #34d399}
+.hero{position:relative;display:grid;grid-template-columns:1.1fr 1fr;gap:22px;padding:14px 0 40px}
+.hero-main{position:relative;isolation:isolate;overflow:hidden;border:1px solid var(--line);border-radius:30px;padding:42px 38px;min-height:380px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(150deg,#8b5cf61c,#22d3ee0d 55%,transparent),#0d0f24;box-shadow:0 30px 80px -30px #000c}
+.hero-main::before{content:'✳';position:absolute;left:-52px;bottom:-128px;font:400px system-ui;color:#8b5cf60f;z-index:-1;transform:rotate(12deg)}
+.hero-main::after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(600px 300px at 90% 0%,#8b5cf622,transparent 65%)}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:9px;color:var(--cyan)}
+.eyebrow span{border:1px solid #22d3ee44;border-radius:20px;padding:5px 12px;background:#22d3ee12;color:#9beeff}
+h1{font-size:clamp(44px,5.4vw,72px);letter-spacing:-2.5px;line-height:1.03;margin:22px 0 18px;font-weight:800}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--violet),var(--pink) 45%,var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 26px #8b5cf655)}
+p{line-height:1.65}.hero-main p{max-width:400px;font-size:16.5px;margin:0 0 26px;color:var(--muted)}
+.cta{display:inline-flex;align-items:center;gap:22px;width:fit-content;background:linear-gradient(120deg,var(--violet),#6d5cff 55%,var(--cyan));color:white;font-weight:800;padding:16px 26px;border-radius:17px;box-shadow:0 12px 34px -8px #8b5cf6aa,inset 0 1px 0 #ffffff55;transition:transform .18s,box-shadow .18s;position:relative;overflow:hidden}
+.cta::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff33 50%,transparent 70%);transform:translateX(120%);transition:transform .6s}
+.cta:hover{transform:translateY(-3px);box-shadow:0 18px 44px -8px #8b5cf6cc,inset 0 1px 0 #ffffff66}
+.cta:hover::after{transform:translateX(-120%)}
+.cta b{transition:transform .18s}.cta:hover b{transform:translateX(-4px)}
+.hero-visual{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:30px;background:#0d0f24;display:flex;align-items:end;min-height:380px;box-shadow:0 30px 80px -30px #000c}
+.hero-visual>img{position:absolute;width:100%;height:100%;object-fit:cover;object-position:center 65%;opacity:.9;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.hero-visual:hover>img{transform:scale(1.05)}
+.hero-visual::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 30%,#070818f2)}
+.featured-copy{position:relative;z-index:1;padding:28px;color:white;width:100%}
+.tag{display:inline-flex;align-items:center;gap:6px;border-radius:10px;background:#f472b622;border:1px solid #f472b655;color:#ffc7e6;padding:6px 12px;font-size:11.5px;font-weight:800;backdrop-filter:blur(8px)}
+.featured-copy h2{font-size:31px;margin:14px 0 8px;letter-spacing:-1px}
+.featured-copy p{margin:0;color:#c9cdf0;font-size:14px}
+.round-play{position:absolute;left:27px;bottom:30px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--lime),#4ade80);color:#0a0c1e;display:grid;place-items:center;font-size:23px;box-shadow:0 8px 26px -4px #bef26488;transition:transform .2s}
+.hero-visual:hover .round-play{transform:scale(1.1) rotate(-8deg)}
+.sticker{position:absolute;top:24px;left:22px;z-index:1;background:#0d0f24d9;border:1px solid var(--line);backdrop-filter:blur(12px);color:#ffe9b8;border-radius:15px;padding:11px 18px;transform:rotate(-4deg);font-size:13px;font-weight:800;box-shadow:0 10px 30px #0009}
+.section-top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:18px 0 22px}
+.section-top h2{font-size:30px;margin:0;letter-spacing:-1.2px}
+.section-top small{display:block;font-size:13.5px;font-weight:400;letter-spacing:0;color:var(--muted);margin-top:8px}
+.search{position:relative;width:320px}
+.search input{width:100%;border:1px solid var(--line);background:#ffffff08;border-radius:16px;padding:14px 44px 14px 16px;color:var(--text);transition:border-color .2s,background .2s}
+.search input::placeholder{color:#6d7399}
+.search input:focus{border-color:#8b5cf688;background:#ffffff0d;outline:none}
+.search b{position:absolute;right:16px;top:12px;font-size:20px;color:var(--muted)}
+.filters{display:flex;gap:9px;overflow:auto;scrollbar-width:none;padding:4px 2px 16px;margin-bottom:15px}
+.filters button{flex-shrink:0;background:#ffffff08;border:1px solid var(--line);color:#b9bee0;border-radius:13px;padding:11px 17px;font-size:13px;font-weight:600;transition:.2s;white-space:nowrap}
+.filters button:hover{background:#ffffff10;color:var(--text)}
+.filters button.active{background:linear-gradient(120deg,var(--violet),#6d5cff);border-color:transparent;color:white;box-shadow:0 8px 22px -6px #8b5cf6aa}
+.filters button span{opacity:.6;margin-right:8px;font-size:11px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.game{min-width:0;border:1px solid var(--line);border-radius:22px;background:linear-gradient(170deg,#ffffff09,#ffffff03),#0d0f24;overflow:hidden;transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s,border-color .25s;animation:appear .45s both}
+.game:hover{transform:translateY(-7px);border-color:#8b5cf677;box-shadow:0 24px 50px -18px #000d,0 0 0 1px #8b5cf633,0 12px 44px -12px #8b5cf655}
+.preview{position:relative;height:170px;background:#0a0c1e;overflow:hidden;border-bottom:1px solid var(--line)}
+.preview img{width:100%;height:100%;object-fit:cover;object-position:center 45%;transition:transform .5s cubic-bezier(.2,.7,.2,1);opacity:.92}
+.game:hover .preview img{transform:scale(1.08);opacity:1}
+.game .badge{position:absolute;top:11px;right:11px;background:#070818b3;border:1px solid #ffffff2a;backdrop-filter:blur(12px);color:#dfe3ff;padding:5px 10px;border-radius:9px;font-size:10.5px;font-weight:700}
+.card-play{position:absolute;left:12px;bottom:12px;background:linear-gradient(135deg,var(--cyan),#67e8f9);color:#06222b;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:14px;box-shadow:0 6px 18px -2px #22d3ee77;transition:transform .2s}
+.game:hover .card-play{transform:scale(1.12)}
+.info{padding:17px 17px 19px}
+.info h3{font-size:17px;margin:0 0 7px;letter-spacing:-.3px}
+.info p{font-size:12.5px;color:var(--muted);margin:0;line-height:1.6;min-height:40px}
+.results{font-size:12.5px;color:#7d84ad;margin:0 0 17px}
+.empty{display:none;text-align:center;padding:70px 20px;color:var(--muted)}
+.empty button{margin-top:14px;background:linear-gradient(120deg,var(--violet),var(--cyan));color:#fff;border:0;border-radius:13px;padding:12px 22px;font-weight:800}
+.bottom-banner{margin:48px 0 32px;padding:26px 32px;border:1px solid #8b5cf640;border-radius:24px;background:linear-gradient(120deg,#8b5cf61f,#22d3ee12),#0d0f24;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.bottom-banner strong{font-size:20px;letter-spacing:-.4px}
+.bottom-banner p{font-size:13.5px;margin:6px 0 0;color:var(--muted)}
+.bottom-banner span{font-size:38px;background:linear-gradient(120deg,var(--violet),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.footer{display:flex;justify-content:space-between;gap:20px;font-size:11.5px;color:#666d94;padding:0 0 26px}
+.hidden{display:none!important}
+@keyframes appear{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(min-width:1500px){.preview{height:190px}}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}.hero-main{padding:32px 28px}.hero-visual,.hero-main{min-height:340px}.hero-main p{font-size:14.5px}.hero h1{font-size:52px}}
+@media(max-width:700px){.shell{padding:0 17px}.top{padding:18px 0 8px}.brand{font-size:22px}.brand i{width:38px;height:38px;font-size:20px;border-radius:12px}.top-note{font-size:10.5px;padding:8px 11px}.hero{grid-template-columns:1fr;gap:16px;padding:6px 0 28px}.hero-main{min-height:0;border-radius:24px;padding:28px 22px}.eyebrow{font-size:10.5px}h1,.hero h1{font-size:46px;margin:18px 0 14px;letter-spacing:-2px}.hero-main p{font-size:13.5px;max-width:290px;margin-bottom:20px}.hero-main::before{font-size:270px;left:-70px;bottom:-90px}.cta{padding:13px 19px;font-size:13.5px;border-radius:14px}.hero-visual{min-height:195px;border-radius:24px}.hero-visual>img{object-position:center 40%}.featured-copy{padding:20px}.featured-copy h2{font-size:23px;margin:11px 0 5px}.featured-copy p{font-size:11.5px;max-width:235px}.round-play{width:44px;height:44px;left:18px;bottom:20px;font-size:18px}.sticker{font-size:10.5px;top:14px;left:15px;padding:8px 12px}.tag{font-size:10px;padding:5px 9px}.section-top{align-items:start;flex-direction:column;gap:16px;margin:12px 0 18px}.section-top h2{font-size:25px}.section-top small{font-size:12.5px}.search{width:100%}.search input{padding:13px 43px 13px 15px;font-size:14px}.filters{margin-left:-17px;padding-left:17px;margin-bottom:11px}.filters button{padding:10px 13px;font-size:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.game{border-radius:18px}.preview{height:126px}.info{padding:13px 12px 15px}.info h3{font-size:14px;line-height:1.4;margin-bottom:6px}.info p{font-size:10.5px;line-height:1.6;min-height:34px}.game .badge{top:8px;right:8px;font-size:8.5px;padding:4px 7px}.card-play{width:29px;height:29px;left:9px;bottom:9px;font-size:12px}.bottom-banner{padding:20px;margin-top:34px;border-radius:20px}.bottom-banner strong{font-size:16.5px}.bottom-banner p{font-size:11.5px}.bottom-banner span{font-size:28px}.footer{font-size:9.5px;line-height:1.8}.results{font-size:11.5px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style></head><body><div class="shell"><header class="top"><a class="brand" href="./"><i>✳</i><div>ארקדיה<small>ARCADIA PLAY CLUB</small></div></a><span class="top-note">49 משחקים. אתר אחד.</span></header><section class="hero"><div class="hero-main"><div class="eyebrow"><span>מועדון הכיף שלכם</span> ✦ PLAY. SMILE. REPEAT.</div><h1>רק עוד<br><em>סיבוב אחד.</em></h1><p>פאזל קטן או הרפתקה גדולה?<br>כל המשחקים שלנו כאן. בוחרים, נכנסים ומשחקים.</p><a href="#library" class="cta">מוצאים את המשחק שלי <b>←</b></a></div><a href="games/adventure/" class="hero-visual"><img src="shots/k-adventure.webp" alt="אוניקס והדרקונים מתוך ההרפתקה הגדולה"><span class="sticker">ההרפתקה מתחילה כאן ↗</span><div class="featured-copy"><span class="tag">✦ עולם הילדים</span><h2>ההרפתקה הגדולה</h2><p>רוצו, קפצו והצילו את ביצת הדרקון.</p><span class="round-play">◀</span></div></a></section><main id="library"><div class="section-top"><h2>במה משחקים היום?<small>49 סיבות לקחת הפסקה קטנה.</small></h2><label class="search"><b>⌕</b><input id="search" type="search" placeholder="מוצאים את הפייבוריט שלכם..." aria-label="חיפוש משחק"></label></div><nav class="filters" id="filters" aria-label="קטגוריות משחקים"></nav><p class="results" id="results" role="status"></p><div id="grid" class="grid"></div><div id="empty" class="empty"><h3>המשחק הזה עוד לא אצלנו :)</h3><p>נסו שם אחר או קטגוריה אחרת.</p><button id="reset">הצגת כל המשחקים</button></div></main><aside class="bottom-banner"><div><strong>קטנים, גדולים, כולם משחקים.</strong><p>בלי הרשמה, בלי קפיצה לאתר אחר. פשוט כיף.</p></div><span aria-hidden="true">✳</span></aside><footer class="footer"><span>ARCADIA © 2026 · נבנה בשביל עוד חיוך</span><span>ההתקדמות נשמרת בדפדפן ובמכשיר הזה</span></footer></div><script>
+let games=[],category='הכל',query='';const icons={'הכל':'✳','מילים':'אב','טריוויה':'⚡','פאזל':'◈','ארקייד':'🕹','אסטרטגיה':'♟','קלפים':'♠','זיכרון':'◎','טייקון וסימולציה':'🎡','מיזוג':'✦','ילדים':'🦖'};const grid=document.querySelector('#grid'),filters=document.querySelector('#filters');
+function chips(){filters.replaceChildren();['הכל',...new Set(games.map(g=>g.cat))].forEach(cat=>{const b=document.createElement('button');b.className=cat===category?'active':'';b.setAttribute('aria-pressed',cat===category);b.innerHTML=`${icons[cat]} ${cat}<span>${cat==='הכל'?games.length:games.filter(g=>g.cat===cat).length}</span>`;b.onclick=()=>{category=cat;chips();render()};filters.append(b)})}
+function render(){const list=games.filter(g=>(category==='הכל'||g.cat===category)&&(`${g.name} ${g.desc} ${g.cat}`).includes(query));grid.replaceChildren();list.forEach((g,i)=>{const a=document.createElement('a');a.className='game';a.href=g.url;a.style.animationDelay=Math.min(i*20,200)+'ms';a.innerHTML=`<div class="preview"><img src="${g.shot}" alt="צילום מתוך ${g.name}" loading="lazy" width="480" height="300"><span class="badge">${g.cat}</span><span class="card-play" aria-hidden="true">◀</span></div><div class="info"><h3>${g.name}</h3><p>${g.desc}</p></div>`;grid.append(a)});document.querySelector('#results').textContent=`${list.length} משחקים${category==='הכל'?' מחכים לכם':' בקטגוריית '+category}`;document.querySelector('#empty').style.display=list.length?'none':'block'}
+document.querySelector('#search').oninput=e=>{query=e.target.value.trim();render()};document.querySelector('#reset').onclick=()=>{category='הכל';query='';document.querySelector('#search').value='';chips();render()};fetch('games.json').then(r=>r.json()).then(g=>{games=g;chips();render()}).catch(()=>{document.querySelector('#results').textContent='לא הצלחנו לטעון את המשחקים. נסו לרענן את העמוד.'});
+</script></body></html>

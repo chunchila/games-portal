@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head><script>const ArcadiaStorage=(()=>{const s=window.localStorage,p='arcadia:signals-memory:';return{getItem:k=>s.getItem(p+k),setItem:(k,v)=>s.setItem(p+k,v),removeItem:k=>s.removeItem(p+k),clear:()=>Object.keys(s).filter(k=>k.startsWith(p)).forEach(k=>s.removeItem(k)),key:i=>Object.keys(s).filter(k=>k.startsWith(p))[i]?.slice(p.length),get length(){return Object.keys(s).filter(k=>k.startsWith(p)).length}}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>אותות - משחק זיכרון</title>
+<meta name="description" content="אותות - משחק זיכרון רצפים: צפו בסדרת האורות והצלילים וחזרו עליה. כמה רחוק תגיעו?">
+<style>
+:root{--bg:#0d1512;--card:#152420;--accent:#4ade80;--accent2:#fbbf24;--bad:#fb7185;--text:#f0fdf4;--muted:#9db8a8;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{margin:0;height:100%;}
+body{font-family:'Rubik',system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(1000px 700px at 85% -10%,#4ade8020,transparent),
+             radial-gradient(800px 600px at -10% 110%,#fbbf2412,transparent),var(--bg);
+  display:flex;flex-direction:column;align-items:center;min-height:100%;
+  padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);}
+.wrap{width:100%;max-width:520px;display:flex;flex-direction:column;flex:1;}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 6px;}
+.logo{font-weight:900;font-size:24px;background:linear-gradient(90deg,var(--accent),#bbf7d0,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.pill{background:var(--card);border:1px solid #ffffff14;border-radius:999px;padding:5px 14px;font-weight:600;font-size:14px;}
+.screen{display:none;flex-direction:column;flex:1;animation:fade .3s ease;}
+.screen.active{display:flex;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding:20px 0 40px;}
+.hero h1{font-size:54px;margin:0;background:linear-gradient(135deg,var(--accent),#bbf7d0 50%,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 30px #4ade8033);}
+.hero p{color:var(--muted);font-size:17px;max-width:330px;margin:0;line-height:1.65;}
+.btn{border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:16px;color:#052e14;
+  background:linear-gradient(135deg,var(--accent),#bbf7d0);padding:15px 42px;font-size:19px;
+  box-shadow:0 8px 24px #4ade8044,inset 0 1px 0 #ffffff88;transition:transform .12s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid #ffffff22;font-weight:600;padding:12px 24px;font-size:15px;}
+.best-chip{color:var(--accent2);font-weight:700;font-size:14px;}
+.hud{display:flex;gap:8px;margin:8px 0;}
+.hud .pill{flex:1;text-align:center;}
+.arena{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 0;}
+.pads{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(86vw,380px);aspect-ratio:1;}
+.pad{border-radius:22px;opacity:.45;transition:opacity .1s,transform .1s,box-shadow .15s;cursor:pointer;position:relative;overflow:hidden;}
+.pad::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 25%,#ffffff33,transparent 55%);}
+.pad[data-p="0"]{background:#f87171;}
+.pad[data-p="1"]{background:#60a5fa;}
+.pad[data-p="2"]{background:#fbbf24;}
+.pad[data-p="3"]{background:#4ade80;}
+.pad.lit{opacity:1;transform:scale(1.04);box-shadow:0 0 44px currentColor;}
+.pad[data-p="0"].lit{box-shadow:0 0 44px #f87171;}
+.pad[data-p="1"].lit{box-shadow:0 0 44px #60a5fa;}
+.pad[data-p="2"].lit{box-shadow:0 0 44px #fbbf24;}
+.pad[data-p="3"].lit{box-shadow:0 0 44px #4ade80;}
+.pads.locked .pad{pointer-events:none;}
+.center-status{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;}
+.status-chip{background:#0d1512dd;border:1px solid #ffffff22;border-radius:999px;padding:10px 22px;font-weight:800;font-size:16px;backdrop-filter:blur(4px);}
+.pads-wrap{position:relative;}
+.msg{min-height:26px;text-align:center;font-weight:700;font-size:15px;color:var(--muted);}
+.msg.bad{color:var(--bad);}
+.end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding-bottom:40px;}
+.end h2{margin:0;font-size:30px;}
+.end .score-big{font-size:80px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent2),#ff9b6a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.newbest{color:var(--accent2);font-weight:800;}
+</style>
+<link rel="icon" href="../../assets/icon.svg">
+
+<style id="arc-v2">
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+::selection{background:#8b5cf655;color:#fff}
+a[aria-label="חזרה לארקדיה"]{background:#0d0f24e0!important;border:1px solid #8b5cf655!important;color:#e4e7ff!important;border-radius:999px!important;padding:9px 16px!important;font:700 12.5px 'Rubik',system-ui!important;letter-spacing:.2px!important;box-shadow:0 8px 24px #00000099!important;transition:transform .2s,border-color .2s,box-shadow .2s!important}
+a[aria-label="חזרה לארקדיה"]:hover{transform:translateY(-2px)!important;border-color:#a78bfacc!important;box-shadow:0 12px 30px #000000aa,0 0 18px #8b5cf633!important}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2.5px solid #8b5cf6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
+
+body{background:radial-gradient(1100px 620px at 85% -10%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 62%),radial-gradient(900px 620px at -12% 112%,color-mix(in srgb,var(--accent2) 11%,transparent),transparent 62%),radial-gradient(#ffffff08 1px,transparent 1.4px) 0 0/32px 32px,var(--bg)}
+.logo{letter-spacing:-.5px}
+.pill{border-color:#ffffff21;box-shadow:inset 0 1px 0 #ffffff0f,0 4px 14px -6px #00000088;backdrop-filter:blur(8px)}
+.hero h1{letter-spacing:-1.5px}
+.btn{position:relative;overflow:hidden;transition:transform .15s cubic-bezier(.34,1.4,.4,1),box-shadow .25s,filter .2s}
+.btn:not(.ghost){box-shadow:0 10px 30px -8px color-mix(in srgb,var(--accent) 60%,transparent),inset 0 1px 0 #ffffff52}
+.btn:not(.ghost):hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 16px 42px -8px color-mix(in srgb,var(--accent) 72%,transparent),inset 0 1px 0 #ffffff70}
+.btn:not(.ghost):active{transform:translateY(1px) scale(.97)}
+.btn:not(.ghost)::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff2e 50%,transparent 65%);transform:translateX(130%);transition:transform .55s;pointer-events:none}
+.btn:not(.ghost):hover::after{transform:translateX(-130%)}
+.btn.ghost{transition:transform .15s,background .2s,border-color .2s}
+.btn.ghost:hover{background:#ffffff10;border-color:#ffffff3a;color:var(--text)}
+.overlay-msg{background:#04050ed2;backdrop-filter:blur(12px)}
+.ov-card{border-color:#ffffff26;box-shadow:0 30px 90px -18px #000,inset 0 1px 0 #ffffff12}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🧠 אותות</div>
+    <div class="pill">🏆 <span id="bestTop">0</span></div>
+  </header>
+
+  <section id="scrStart" class="screen active">
+    <div class="hero">
+      <h1>🧠 אותות</h1>
+      <p>צפו ברצף האורות והצלילים, ואז חזרו עליו באותו סדר. בכל סיבוב הרצף מתארך - והקצב מתגבר. טעות אחת מותרת בלבד!</p>
+      <button class="btn" id="btnStart">התחילו ▶</button>
+      <div class="best-chip" id="bestChip"></div>
+    </div>
+  </section>
+
+  <section id="scrGame" class="screen">
+    <div class="hud">
+      <div class="pill">רמה <span id="level">1</span></div>
+      <div class="pill">❤️ <span id="lives">1</span></div>
+      <div class="pill">שיא <span id="bestHud">0</span></div>
+    </div>
+    <div class="arena">
+      <div class="pads-wrap">
+        <div class="pads locked" id="pads">
+          <div class="pad" data-p="0"></div>
+          <div class="pad" data-p="1"></div>
+          <div class="pad" data-p="2"></div>
+          <div class="pad" data-p="3"></div>
+        </div>
+        <div class="center-status"><div class="status-chip" id="statusChip">צפו ברצף...</div></div>
+      </div>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section id="scrEnd" class="screen">
+    <div class="end">
+      <h2 id="endTitle">סוף המשחק</h2>
+      <div class="score-big" id="finalLevel">0</div>
+      <div style="color:var(--muted)">רמות ששרדתם</div>
+      <div class="newbest" id="newBest" hidden>🏆 שיא חדש!</div>
+      <button class="btn" id="btnAgain">עוד פעם 🔁</button>
+      <button class="btn ghost" id="btnShare">אתגרו חברים 📤</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const best=+ArcadiaStorage.getItem('signals_best')||0;
+$('bestTop').textContent=best;$('bestHud').textContent=best;
+if(best)$('bestChip').textContent='השיא שלכם: רמה '+best;
+let seq=[],pos=0,lives=1,level=0,phase='idle',ac=null;
+const FREQ=[261.63,329.63,392.0,523.25];
+function tone(i,dur=340){
+  if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+  if(ac.state==='suspended')ac.resume();
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type='sine';o.frequency.value=FREQ[i];
+  g.gain.setValueAtTime(0.0001,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.25,ac.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur/1000);
+  o.connect(g);g.connect(ac.destination);
+  o.start();o.stop(ac.currentTime+dur/1000+0.05);
+}
+function padEl(i){return document.querySelector(`.pad[data-p="${i}"]`);}
+function light(i,dur=320){
+  const el=padEl(i);el.classList.add('lit');tone(i,dur);
+  setTimeout(()=>el.classList.remove('lit'),dur);
+}
+function speed(){return Math.max(600-(level-1)*28,240);}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function setStatus(t){$('statusChip').textContent=t;}
+function start(){
+  seq=[];level=0;lives=1;pos=0;
+  $('lives').textContent=lives;
+  $('msg').textContent='';$('msg').className='msg';
+  show('scrGame');nextLevel();
+}
+function nextLevel(){
+  level++;$('level').textContent=level;
+  seq.push(Math.floor(Math.random()*4));
+  pos=0;phase='watch';
+  $('pads').classList.add('locked');
+  setStatus('צפו ברצף...');
+  const sp=speed();
+  let i=0;
+  setTimeout(function step(){
+    light(seq[i],Math.min(sp*.62,380));
+    i++;
+    if(i<seq.length)setTimeout(step,sp);
+    else setTimeout(()=>{phase='input';$('pads').classList.remove('locked');setStatus('תורכם! 🔁');},sp*.8);
+  },700);
+}
+document.querySelectorAll('.pad').forEach(el=>{
+  el.addEventListener('pointerdown',()=>{
+    if(phase!=='input')return;
+    const i=+el.dataset.p;
+    light(i,220);
+    if(i===seq[pos]){
+      pos++;
+      if(pos===seq.length){
+        phase='wait';$('pads').classList.add('locked');
+        say('יפה! עולים רמה ⬆️');
+        setTimeout(nextLevel,900);
+      }
+    }else{
+      lives--;
+      $('lives').textContent=Math.max(lives,0);
+      if(navigator.vibrate)navigator.vibrate(150);
+      if(lives<0){endGame();return;}
+      say('טעות! שימו לב הפעם 🔄','bad');
+      phase='wait';pos=0;$('pads').classList.add('locked');
+      setTimeout(()=>{replaySeq();},900);
+    }
+  });
+});
+function replaySeq(){
+  phase='watch';setStatus('צפו שוב...');
+  const sp=speed();let i=0;
+  setTimeout(function step(){
+    light(seq[i],Math.min(sp*.62,380));i++;
+    if(i<seq.length)setTimeout(step,sp);
+    else setTimeout(()=>{phase='input';pos=0;$('pads').classList.remove('locked');setStatus('תורכם! 🔁');},sp*.8);
+  },600);
+}
+function say(t,c){$('msg').textContent=t;$('msg').className='msg '+(c||'');}
+function endGame(){
+  phase='idle';
+  const nb=level>best;
+  if(nb){ArcadiaStorage.setItem('signals_best',level);$('bestTop').textContent=level;$('bestHud').textContent=level;}
+  $('newBest').hidden=!nb;
+  $('finalLevel').textContent=level;
+  $('endTitle').textContent=level>=12?'🧠 זיכרון של אלוף!':level>=8?'⚡ מרשים!':level>=4?'👏 יפה!':'🌱 מתחילים...';
+  show('scrEnd');
+}
+$('btnStart').onclick=()=>{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume();start();};
+$('btnAgain').onclick=()=>{ac&&ac.resume&&ac.resume();start();};
+$('btnShare').onclick=async()=>{
+  const txt='הגעתי לרמה '+level+' באותות 🧠 משחק הזיכרון. תנצחו אותי?';
+  if(navigator.share){try{await navigator.share({text:txt,url:location.href});}catch(e){}}
+  else{try{await navigator.clipboard.writeText(txt+' '+location.href);$('btnShare').textContent='הועתק! ✅';setTimeout(()=>$('btnShare').textContent='אתגרו חברים 📤',1800);}catch(e){}}
+};
+</script>
+<a href="../../" aria-label="חזרה לארקדיה" style="position:fixed;bottom:max(10px,env(safe-area-inset-bottom));left:10px;z-index:9999;background:#211339eF;color:#fff;border:1px solid #baa5ff;border-radius:30px;padding:8px 13px;font:700 12px system-ui;text-decoration:none;backdrop-filter:blur(10px)">🕹 ארקדיה</a></body>
+</html>

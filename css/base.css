@@ -1,0 +1,54 @@
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:400;font-display:swap;src:url(/assets/fonts/rubik-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-hebrew-600-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:600;font-display:swap;src:url(/assets/fonts/rubik-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-weight:800;font-display:swap;src:url(/assets/fonts/rubik-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Secular One';font-weight:400;font-display:swap;src:url(/assets/fonts/secular-one-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Secular One';font-weight:400;font-display:swap;src:url(/assets/fonts/secular-one-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--ink:#1d2340;--sun:#ffc93c;--orange:#ff8a3d;--red:#ff4d5e;--green:#3ecf7a;--teal:#19c2c9;--blue:#3d8bff;--purple:#8b5cf6;--cream:#fff8e8;--r:22px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:'Rubik',system-ui,sans-serif;color:var(--ink);background:
+ radial-gradient(900px 480px at 88% -6%,#ffe9a866,transparent 60%),
+ radial-gradient(760px 520px at -8% 104%,#b9ecff55,transparent 60%),
+ radial-gradient(#1d234008 1.2px,transparent 1.7px) 0 0/30px 30px,
+ var(--cream);direction:rtl;-webkit-text-size-adjust:100%;overflow-x:hidden}
+::selection{background:#8b5cf640}
+h1,h2,h3,.title{font-family:'Secular One','Rubik',sans-serif;font-weight:400;margin:0}
+button{font-family:inherit;cursor:pointer;border:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border-radius:999px;font-size:1.15rem;font-weight:800;color:#fff;background:linear-gradient(#ffab52,#ff6b2c);box-shadow:0 5px 0 #b8451a,0 12px 22px rgba(255,107,44,.35);transition:transform .12s,box-shadow .12s,filter .15s;text-decoration:none}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.05);box-shadow:0 7px 0 #b8451a,0 16px 28px rgba(255,107,44,.42)}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #b8451a,0 3px 8px rgba(0,0,0,.25)}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff38 50%,transparent 65%);transform:translateX(130%);transition:transform .55s;pointer-events:none}
+.btn:hover::after{transform:translateX(-130%)}
+.btn.alt{background:linear-gradient(#66cdff,#2f8cff);box-shadow:0 5px 0 #1a5bb8,0 12px 22px rgba(47,140,255,.35)}
+.btn.alt:hover{box-shadow:0 7px 0 #1a5bb8,0 16px 28px rgba(47,140,255,.42)}
+.btn.alt:active{box-shadow:0 1px 0 #1a5bb8,0 3px 8px rgba(0,0,0,.25)}
+.btn.green{background:linear-gradient(#57e596,#1fae5d);box-shadow:0 5px 0 #11773d,0 12px 22px rgba(31,174,93,.35)}
+.btn.green:hover{box-shadow:0 7px 0 #11773d,0 16px 28px rgba(31,174,93,.42)}
+.btn.green:active{box-shadow:0 1px 0 #11773d,0 3px 8px rgba(0,0,0,.25)}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;gap:10px;padding:max(8px,env(safe-area-inset-top)) 12px 8px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.tb-btn{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.94);box-shadow:0 3px 0 rgba(0,0,0,.22),0 8px 18px rgba(0,0,0,.28);color:var(--ink);text-decoration:none;transition:transform .15s,box-shadow .15s}
+.tb-btn:hover{transform:translateY(-2px) scale(1.04)}
+.tb-btn:active{transform:scale(.94)}
+.tb-btn svg{width:24px;height:24px}
+.tb-title{flex:1;text-align:center;font-family:'Secular One';font-size:1.3rem;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 14px rgba(0,0,0,.35);letter-spacing:.3px}
+.tb-extra{display:flex;gap:6px;align-items:center;color:#fff;font-weight:800;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.overlay{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:rgba(10,12,30,.6);backdrop-filter:blur(8px);animation:fade .25s}
+.card{width:min(92vw,420px);padding:28px 24px;border-radius:32px;background:linear-gradient(#ffffff,#fff6e3);text-align:center;border:3px solid #fff;box-shadow:0 10px 0 rgba(0,0,0,.14),0 28px 60px rgba(0,0,0,.42);animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+.card h2{font-size:2.1rem;margin-bottom:8px}
+.card p{font-size:1.15rem;margin:6px 0 16px;line-height:1.4}
+.card .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.stars{display:flex;gap:6px;justify-content:center;margin:8px 0 12px}
+.stars svg{width:54px;height:54px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.2))}
+.stars svg.on{animation:starpop .6s cubic-bezier(.2,1.8,.4,1) backwards}
+.stars svg:nth-child(2).on{animation-delay:.25s}.stars svg:nth-child(3).on{animation-delay:.5s}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{transform:scale(.5) translateY(30px);opacity:0}}
+@keyframes starpop{from{transform:scale(0) rotate(-120deg)}}
+canvas{touch-action:none;display:block}
+.noselect{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}}
