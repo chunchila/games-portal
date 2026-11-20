@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>אריחי הפסנתר</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0d0d14;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;box-shadow:0 10px 40px rgba(0,0,0,.7)}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:16px;padding:10px;color:#fff;font-size:16px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:5}
+  #hud span{background:rgba(255,255,255,.1);padding:4px 14px;border-radius:20px;backdrop-filter:blur(4px)}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,8,16,.85);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:34px;margin-bottom:10px;background:linear-gradient(90deg,#f8c8dc,#8ecae6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#cfd0e8;line-height:1.7}
+  .btn{background:linear-gradient(135deg,#f8c8dc,#b583d6);border:none;color:#1a1a2e;font-size:19px;font-weight:800;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(181,131,214,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="hud"><span id="score">נקודות: 0</span><span id="lives">♥♥♥</span><span id="best">שיא: 0</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="startOv">
+  <h1>אריחי הפסנתר</h1>
+  <p>הקישו על האריחים השחורים לפני שהם יורדים<br>אל תגעו בריק!</p>
+  <button class="btn" id="startBtn">התחל לנגן</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle">השיר נגמר</h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">נגנו שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var W,H,DPR=Math.min(window.devicePixelRatio||1,2),COLS=4;
+function resize(){
+  var aw=Math.min(window.innerWidth,420),ah=window.innerHeight;
+  if(aw/ah>0.58)aw=ah*0.58;
+  W=aw;H=ah;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();window.addEventListener('resize',resize);
+var tiles=[],particles=[],score=0,lives=3,best=0,playing=false,speed=2.2,spawnT=0,hitFlash=[];
+try{best=parseInt(localStorage.pianoBest)||0;}catch(e){}
+document.getElementById('best').textContent='שיא: '+best;
+var ac=null;
+function note(i){
+  try{
+    if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ac.createOscillator(),g=ac.createGain();
+    var scale=[523.25,587.33,659.25,783.99,880,1046.5];
+    o.frequency.value=scale[i%scale.length];
+    o.type='sine';g.gain.setValueAtTime(0.18,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.35);
+    o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+0.36);
+  }catch(e){}
+}
+function buzz(){
+  try{
+    if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ac.createOscillator(),g=ac.createGain();
+    o.frequency.value=110;o.type='square';g.gain.setValueAtTime(0.12,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.25);
+    o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+0.26);
+  }catch(e){}
+}
+function spawn(){
+  var col=Math.floor(Math.random()*COLS);
+  tiles.push({col:col,y:-H*0.22,h:H*0.2,hit:false});
+}
+function loseLife(){
+  lives--;buzz();
+  document.getElementById('lives').textContent='♥'.repeat(lives)+'♡'.repeat(3-lives);
+  if(lives<=0)endGame();
+}
+function endGame(){
+  playing=false;
+  if(score>best){best=score;try{localStorage.pianoBest=best;}catch(e){}}
+  document.getElementById('endText').textContent='ניגנת '+score+' תווים'+(score>=best?' - שיא חדש!':'');
+  document.getElementById('best').textContent='שיא: '+best;
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function update(dt){
+  if(!playing)return;
+  speed+=dt*0.03;
+  spawnT-=dt;
+  var interval=Math.max(0.32,0.85-speed*0.06);
+  if(spawnT<=0){spawn();spawnT=interval;}
+  for(var i=tiles.length-1;i>=0;i--){
+    var t=tiles[i];t.y+=speed*dt*60;
+    if(t.y>H){tiles.splice(i,1);if(!t.hit)loseLife();}
+  }
+  for(var j=particles.length-1;j>=0;j--){var p=particles[j];p.x+=p.vx;p.y+=p.vy;p.life-=0.04;if(p.life<=0)particles.splice(j,1);}
+  for(var k=hitFlash.length-1;k>=0;k--){hitFlash[k].a-=0.05;if(hitFlash[k].a<=0)hitFlash.splice(k,1);}
+}
+function draw(){
+  var cw=W/COLS;
+  var g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#232338');g.addColorStop(1,'#101018');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  for(var i=1;i<COLS;i++){x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=1.5;x.beginPath();x.moveTo(i*cw,0);x.lineTo(i*cw,H);x.stroke();}
+  hitFlash.forEach(function(f){x.fillStyle='rgba(142,202,230,'+(f.a*0.35)+')';x.fillRect(f.col*cw,0,cw,H);});
+  tiles.forEach(function(t){
+    var tg=x.createLinearGradient(0,t.y,0,t.y+t.h);
+    tg.addColorStop(0,'#2a2a3e');tg.addColorStop(0.5,'#0a0a12');tg.addColorStop(1,'#2a2a3e');
+    x.fillStyle=tg;
+    x.beginPath();x.roundRect?x.roundRect(t.col*cw+3,t.y,cw-6,t.h,8):x.rect(t.col*cw+3,t.y,cw-6,t.h);x.fill();
+    x.strokeStyle='rgba(142,202,230,.5)';x.lineWidth=1.5;x.stroke();
+    x.fillStyle='rgba(255,255,255,.25)';
+    x.beginPath();x.arc(t.col*cw+cw/2,t.y+t.h/2,7,0,7);x.fill();
+  });
+  particles.forEach(function(p){x.globalAlpha=p.life;x.fillStyle=p.col;x.beginPath();x.arc(p.x,p.y,p.r*p.life,0,7);x.fill();});
+  x.globalAlpha=1;
+  x.fillStyle='rgba(248,200,220,.9)';x.fillRect(0,H-4,W,4);
+}
+var last=0;
+function loop(ts){var dt=Math.min(0.05,(ts-last)/1000||0.016);last=ts;update(dt);draw();requestAnimationFrame(loop);}
+function onTap(px,py){
+  if(!playing)return;
+  var col=Math.floor(px/(W/COLS));
+  var hitIdx=-1;
+  for(var i=0;i<tiles.length;i++){var t=tiles[i];if(t.col===col&&py>t.y&&py<t.y+t.h){hitIdx=i;break;}}
+  if(hitIdx>=0){
+    var t2=tiles[hitIdx];tiles.splice(hitIdx,1);
+    score++;note(score);
+    document.getElementById('score').textContent='נקודות: '+score;
+    hitFlash.push({col:col,a:1});
+    for(var k=0;k<8;k++)particles.push({x:px,y:py,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:1,col:'#8ecae6',r:2+Math.random()*3});
+  }else{
+    loseLife();
+  }
+}
+cv.addEventListener('touchstart',function(e){e.preventDefault();var r=cv.getBoundingClientRect();
+  for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];onTap(t.clientX-r.left,t.clientY-r.top);}},{passive:false});
+cv.addEventListener('mousedown',function(e){var r=cv.getBoundingClientRect();onTap(e.clientX-r.left,e.clientY-r.top);});
+function start(){
+  score=0;lives=3;speed=2.2;spawnT=0.4;playing=true;tiles=[];particles=[];hitFlash=[];
+  document.getElementById('score').textContent='נקודות: 0';
+  document.getElementById('lives').textContent='♥♥♥';
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+loop(0);
+})();
+</script>
+</body>
+</html>

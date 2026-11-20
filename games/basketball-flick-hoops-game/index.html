@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>קליעה לסל</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0e1a2b;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{position:fixed;inset:0;display:block}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:14px;padding:10px;color:#fff;font-size:16px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:5}
+  #hud span{background:rgba(255,255,255,.12);padding:4px 14px;border-radius:18px;backdrop-filter:blur(4px)}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,14,26,.85);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:36px;margin-bottom:10px;background:linear-gradient(90deg,#ff9f1c,#ffd60a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#cfe0f0;line-height:1.7}
+  .btn{background:linear-gradient(135deg,#ff9f1c,#e07a1f);border:none;color:#fff;font-size:19px;font-weight:800;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(255,159,28,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><span id="score">נקודות: 0</span><span id="balls">כדורים: 10</span><span id="streak">רצף: 0</span></div>
+<div class="overlay" id="startOv">
+  <h1>קליעה לסל</h1>
+  <p>משכו את הכדור אחורה ושחררו<br>כדי לקלוע לסל. 10 כדורים!</p>
+  <button class="btn" id="startBtn">התחל לזרוק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1>המשחק נגמר</h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">שחקו שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var W,H,DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){W=window.innerWidth;H=window.innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';x.setTransform(DPR,0,0,DPR,0,0);placeHoop();resetBall();}
+var ball,hoop,dragging=false,dragStart=null,dragNow=null;
+var score=0,ballsLeft=10,streak=0,playing=false,swishes=[],confetti=[];
+function placeHoop(moving){
+  var hw=Math.min(90,W*0.22);
+  var hx=W*0.5+(moving?(Math.random()-0.5)*W*0.5:0);
+  hx=Math.max(hw,Math.min(W-hw,hx));
+  hoop={x:hx,y:H*0.3,w:hw,vx:moving?(Math.random()<0.5?-1:1)*(0.4+Math.random()*0.8):0};
+}
+function resetBall(){
+  ball={x:W/2,y:H*0.82,r:Math.min(26,W*0.06),vx:0,vy:0,flying:false,rot:0,scored:false};
+}
+resize();window.addEventListener('resize',resize);
+function drawCourt(){
+  var g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1b3a5c');g.addColorStop(0.55,'#2b5a85');g.addColorStop(0.56,'#c8874a');g.addColorStop(1,'#a5652f');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(255,255,255,.25)';x.lineWidth=3;
+  x.beginPath();x.ellipse(W/2,H*0.8,W*0.3,H*0.1,0,0,7);x.stroke();
+  for(var i=0;i<40;i++){x.fillStyle='rgba(255,255,255,.5)';x.fillRect((i*97)%W,(i*53)%(H*0.5),2,2);}
+}
+function drawHoop(){
+  var hx=hoop.x,hy=hoop.y,hw=hoop.w;
+  x.fillStyle='#e8e8e8';x.fillRect(hx-hw*0.15,hy-hw*0.75,hw*0.3,hw*0.75);
+  x.fillStyle='#f5f5f5';
+  x.strokeStyle='#c62828';x.lineWidth=4;
+  x.fillRect(hx-hw*0.62,hy-hw*0.78,hw*1.24,hw*0.6);
+  x.strokeRect(hx-hw*0.62,hy-hw*0.78,hw*1.24,hw*0.6);
+  x.strokeRect(hx-hw*0.3,hy-hw*0.5,hw*0.6,hw*0.32);
+  x.strokeStyle='#e64a19';x.lineWidth=5;
+  x.beginPath();x.ellipse(hx,hy,hw*0.42,hw*0.12,0,0,7);x.stroke();
+  x.strokeStyle='rgba(255,255,255,.75)';x.lineWidth=2;
+  for(var i=0;i<=5;i++){
+    var t=i/5,px=hx-hw*0.4+t*hw*0.8;
+    x.beginPath();x.moveTo(px,hy+hw*0.05);
+    x.quadraticCurveTo(hx-hw*0.25+t*hw*0.5,hy+hw*0.5,hx-hw*0.18+t*hw*0.36,hy+hw*0.62);
+    x.stroke();
+  }
+}
+function drawBall(){
+  x.save();x.translate(ball.x,ball.y);x.rotate(ball.rot);
+  var g=x.createRadialGradient(-ball.r*0.3,-ball.r*0.3,ball.r*0.15,0,0,ball.r);
+  g.addColorStop(0,'#ffb25e');g.addColorStop(1,'#d95f02');
+  x.fillStyle=g;x.beginPath();x.arc(0,0,ball.r,0,7);x.fill();
+  x.strokeStyle='#7a3300';x.lineWidth=2.5;
+  x.beginPath();x.arc(0,0,ball.r,0,7);x.stroke();
+  x.beginPath();x.moveTo(-ball.r,0);x.lineTo(ball.r,0);x.stroke();
+  x.beginPath();x.moveTo(0,-ball.r);x.lineTo(0,ball.r);x.stroke();
+  x.beginPath();x.arc(-ball.r*1.5,0,ball.r*1.2,-0.6,0.6);x.stroke();
+  x.beginPath();x.arc(ball.r*1.5,0,ball.r*1.2,Math.PI-0.6,Math.PI+0.6);x.stroke();
+  x.restore();
+}
+function update(dt){
+  if(!playing)return;
+  if(hoop.vx){hoop.x+=hoop.vx*dt*60;if(hoop.x<hoop.w||hoop.x>W-hoop.w)hoop.vx=-hoop.vx;}
+  if(ball.flying){
+    ball.x+=ball.vx;ball.y+=ball.vy;ball.vy+=H*0.0011;ball.rot+=0.08;
+    var rimY=hoop.y;
+    if(!ball.scored&&ball.vy>0&&Math.abs(ball.y-rimY)<ball.r*0.7&&Math.abs(ball.x-hoop.x)<hoop.w*0.32){
+      ball.scored=true;streak++;
+      var pts=streak>=3?3:2;
+      score+=pts;
+      document.getElementById('score').textContent='נקודות: '+score;
+      document.getElementById('streak').textContent='רצף: '+streak;
+      swishes.push({x:hoop.x,y:rimY,t:1,pts:pts});
+      for(var i=0;i<14;i++)confetti.push({x:hoop.x+(Math.random()-0.5)*hoop.w,y:rimY,vx:(Math.random()-0.5)*4,vy:-Math.random()*4-1,life:1,col:['#ffd60a','#ff9f1c','#06d6a0','#4cc9f0'][i%4]});
+      if(score>=8&&!hoop.vx)hoop.vx=0.6;
+    }
+    if(ball.y>H+ball.r*2||ball.x<-60||ball.x>W+60){
+      if(!ball.scored){streak=0;document.getElementById('streak').textContent='רצף: 0';}
+      ballsLeft--;
+      document.getElementById('balls').textContent='כדורים: '+ballsLeft;
+      if(ballsLeft<=0){endGame();return;}
+      placeHoop(score>=8);
+      resetBall();
+    }
+  }
+  for(var i=confetti.length-1;i>=0;i--){var c=confetti[i];c.x+=c.vx;c.y+=c.vy;c.vy+=0.15;c.life-=0.02;if(c.life<=0)confetti.splice(i,1);}
+  for(var j=swishes.length-1;j>=0;j--){var s=swishes[j];s.t-=0.02;s.y-=1;if(s.t<=0)swishes.splice(j,1);}
+}
+function draw(){
+  drawCourt();drawHoop();
+  confetti.forEach(function(c){x.globalAlpha=c.life;x.fillStyle=c.col;x.fillRect(c.x,c.y,6,6);});
+  x.globalAlpha=1;
+  swishes.forEach(function(s){
+    x.globalAlpha=s.t;x.fillStyle='#06d6a0';x.font='800 28px Arial';x.textAlign='center';
+    x.fillText('+'+s.pts,s.x,s.y-20);
+  });
+  x.globalAlpha=1;
+  drawBall();
+  if(dragging&&dragStart&&dragNow&&!ball.flying){
+    x.save();x.setLineDash([5,7]);x.strokeStyle='rgba(255,255,255,.6)';x.lineWidth=2;
+    x.beginPath();x.moveTo(ball.x,ball.y);
+    var vx=(dragNow.x-dragStart.x)*0.16,vy=(dragNow.y-dragStart.y)*0.16;
+    var px=ball.x,py=ball.y,tvx=vx,tvy=vy;
+    for(var i=0;i<22;i++){px+=tvx;py+=tvy;tvy+=H*0.0011;x.lineTo(px,py);}
+    x.stroke();x.restore();
+    x.strokeStyle='#ffd60a';x.lineWidth=3;
+    x.beginPath();x.moveTo(dragStart.x,dragStart.y);x.lineTo(dragNow.x,dragNow.y);x.stroke();
+  }
+}
+var last=0;
+function loop(ts){var dt=Math.min(0.05,(ts-last)/1000||0.016);last=ts;update(dt);draw();requestAnimationFrame(loop);}
+function pt(e){var t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
+function nearBall(p){var dx=p.x-ball.x,dy=p.y-ball.y;return dx*dx+dy*dy<(ball.r*3)*(ball.r*3);}
+cv.addEventListener('touchstart',function(e){e.preventDefault();if(!playing||ball.flying)return;var p=pt(e);if(nearBall(p)){dragging=true;dragStart=p;dragNow=p;}},{passive:false});
+cv.addEventListener('touchmove',function(e){e.preventDefault();if(dragging)dragNow=pt(e);},{passive:false});
+cv.addEventListener('touchend',function(e){e.preventDefault();
+  if(!dragging)return;dragging=false;
+  var vx=(dragNow.x-dragStart.x)*0.16,vy=(dragNow.y-dragStart.y)*0.16;
+  if(Math.abs(vx)+Math.abs(vy)>2){ball.vx=vx;ball.vy=vy;ball.flying=true;}
+  dragStart=dragNow=null;
+},{passive:false});
+cv.addEventListener('mousedown',function(e){if(!playing||ball.flying)return;var p=pt(e);if(nearBall(p)){dragging=true;dragStart=p;dragNow=p;}});
+cv.addEventListener('mousemove',function(e){if(dragging)dragNow=pt(e);});
+cv.addEventListener('mouseup',function(e){
+  if(!dragging)return;dragging=false;
+  var vx=(dragNow.x-dragStart.x)*0.16,vy=(dragNow.y-dragStart.y)*0.16;
+  if(Math.abs(vx)+Math.abs(vy)>2){ball.vx=vx;ball.vy=vy;ball.flying=true;}
+  dragStart=dragNow=null;
+});
+function endGame(){
+  playing=false;
+  document.getElementById('endText').textContent='קלעתם '+score+' נקודות ב-10 זריקות!';
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function start(){
+  score=0;ballsLeft=10;streak=0;playing=true;confetti=[];swishes=[];
+  placeHoop(false);resetBall();
+  document.getElementById('score').textContent='נקודות: 0';
+  document.getElementById('balls').textContent='כדורים: 10';
+  document.getElementById('streak').textContent='רצף: 0';
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+loop(0);
+})();
+</script>
+</body>
+</html>

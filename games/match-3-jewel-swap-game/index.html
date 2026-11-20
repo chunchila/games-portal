@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>מיזוג אבני החן</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#151030;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:12px;padding:10px;color:#fff;font-size:15px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:5}
+  #hud span{background:rgba(255,255,255,.12);padding:4px 12px;border-radius:18px;backdrop-filter:blur(4px)}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(12,8,30,.87);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:34px;margin-bottom:10px;background:linear-gradient(90deg,#f15bb5,#fee440,#00f5d4);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#d5d0f0;line-height:1.7}
+  .btn{background:linear-gradient(135deg,#f15bb5,#9b5de5);border:none;color:#fff;font-size:19px;font-weight:800;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(241,91,181,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="hud"><span id="score">נקודות: 0</span><span id="moves">מהלכים: 30</span><span id="target">יעד: 1500</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="startOv">
+  <h1>מיזוג אבני החן</h1>
+  <p>החליפו אבנים סמוכות וצרו שורה של 3+<br>הגיעו ליעד לפני שנגמרים המהלכים!</p>
+  <button class="btn" id="startBtn">התחל לשחק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">שחקו שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var N=8,W,H,CELL,DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){
+  var aw=Math.min(window.innerWidth,460),ah=window.innerHeight;
+  CELL=Math.min((aw-12)/N,(ah-90)/N);
+  W=H=CELL*N;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();window.addEventListener('resize',resize);
+var TYPES=[
+ {c1:'#ff5d8f',c2:'#b5174a',shape:'diamond'},
+ {c1:'#ffd166',c2:'#d9930a',shape:'circle'},
+ {c1:'#06d6a0',c2:'#04845f',shape:'square'},
+ {c1:'#4cc9f0',c2:'#1a6dc2',shape:'triangle'},
+ {c1:'#c77dff',c2:'#7b2cbf',shape:'hex'}
+];
+var grid=[],score=0,moves=30,target=1500,playing=false,sel=null,particles=[],busy=false;
+function rnd(){return Math.floor(Math.random()*TYPES.length);}
+function init(){
+  grid=[];
+  for(var r=0;r<N;r++){var row=[];for(var c=0;c<N;c++){var t;do{t=rnd();}while((c>=2&&row[c-1]===t&&row[c-2]===t)||(r>=2&&grid[r-1][c]===t&&grid[r-2][c]===t));row.push(t);}grid.push(row);}
+}
+function findMatches(){
+  var found={};
+  for(var r=0;r<N;r++)for(var c=0;c<N-2;c++){
+    var t=grid[r][c];if(t<0)continue;
+    if(grid[r][c+1]===t&&grid[r][c+2]===t){found[r+','+c]=1;found[r+','+(c+1)]=1;found[r+','+(c+2)]=1;}
+  }
+  for(var c2=0;c2<N;c2++)for(var r2=0;r2<N-2;r2++){
+    var t2=grid[r2][c2];if(t2<0)continue;
+    if(grid[r2+1][c2]===t2&&grid[r2+2][c2]===t2){found[r2+','+c2]=1;found[(r2+1)+','+c2]=1;found[(r2+2)+','+c2]=1;}
+  }
+  return Object.keys(found).map(function(k){return k.split(',').map(Number);});
+}
+function cascade(){
+  var chain=0;
+  while(true){
+    var m=findMatches();if(!m.length)break;
+    chain++;
+    m.forEach(function(p){
+      var t=grid[p[0]][p[1]];
+      var pal=TYPES[t];
+      for(var k=0;k<6;k++)particles.push({x:p[1]*CELL+CELL/2,y:p[0]*CELL+CELL/2,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:1,col:pal.c1,r:2+Math.random()*3});
+      grid[p[0]][p[1]]=-1;
+    });
+    score+=m.length*10*chain;
+    for(var c=0;c<N;c++){
+      var write=N-1;
+      for(var r=N-1;r>=0;r--){if(grid[r][c]>=0){grid[write][c]=grid[r][c];if(write!==r)grid[r][c]=-1;write--;}}
+      for(;write>=0;write--)grid[write][c]=rnd();
+    }
+  }
+  if(chain>0){
+    document.getElementById('score').textContent='נקודות: '+score;
+    if(score>=target){endGame(true);}
+  }
+  return chain;
+}
+function swap(a,b){
+  var t=grid[a[0]][a[1]];grid[a[0]][a[1]]=grid[b[0]][b[1]];grid[b[0]][b[1]]=t;
+}
+function trySwap(a,b){
+  if(busy||!playing)return;
+  busy=true;
+  swap(a,b);
+  var m=findMatches();
+  if(!m.length){swap(a,b);sel=null;busy=false;return;}
+  moves--;document.getElementById('moves').textContent='מהלכים: '+moves;
+  sel=null;
+  cascade();
+  busy=false;
+  if(moves<=0&&score<target)endGame(false);
+}
+function endGame(won){
+  playing=false;
+  document.getElementById('endTitle').textContent=won?'כל הכבוד!':'נגמרו המהלכים';
+  document.getElementById('endText').textContent=won?'הגעתם ל-'+score+' נקודות ועברתם את היעד!':'צברתם '+score+' נקודות מתוך יעד '+target;
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function drawGem(t,cx,cy,s,alpha){
+  var pal=TYPES[t];
+  x.globalAlpha=alpha===undefined?1:alpha;
+  var g=x.createRadialGradient(cx-s*0.3,cy-s*0.3,s*0.1,cx,cy,s);
+  g.addColorStop(0,'#ffffff');g.addColorStop(0.3,pal.c1);g.addColorStop(1,pal.c2);
+  x.fillStyle=g;
+  x.beginPath();
+  if(pal.shape==='circle')x.arc(cx,cy,s*0.42,0,7);
+  else if(pal.shape==='square'){var q=s*0.36;x.moveTo(cx-q,cy-q);x.lineTo(cx+q,cy-q);x.lineTo(cx+q,cy+q);x.lineTo(cx-q,cy+q);x.closePath();}
+  else if(pal.shape==='diamond'){x.moveTo(cx,cy-s*0.44);x.lineTo(cx+s*0.36,cy);x.lineTo(cx,cy+s*0.44);x.lineTo(cx-s*0.36,cy);x.closePath();}
+  else if(pal.shape==='triangle'){x.moveTo(cx,cy-s*0.42);x.lineTo(cx+s*0.4,cy+s*0.32);x.lineTo(cx-s*0.4,cy+s*0.32);x.closePath();}
+  else{for(var i=0;i<6;i++){var a=i*Math.PI/3-Math.PI/6;var px=cx+Math.cos(a)*s*0.42,py=cy+Math.sin(a)*s*0.42;i?x.lineTo(px,py):x.moveTo(px,py);}x.closePath();}
+  x.fill();
+  x.globalAlpha=1;
+}
+function draw(){
+  var g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,'#231d4f');g.addColorStop(1,'#151030');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    x.fillStyle=(r+c)%2?'rgba(255,255,255,.045)':'rgba(0,0,0,.12)';
+    x.fillRect(c*CELL,r*CELL,CELL,CELL);
+    if(grid[r][c]>=0)drawGem(grid[r][c],c*CELL+CELL/2,r*CELL+CELL/2,CELL);
+  }
+  if(sel){
+    x.strokeStyle='#fee440';x.lineWidth=3;
+    x.strokeRect(sel[1]*CELL+2,sel[0]*CELL+2,CELL-4,CELL-4);
+  }
+  particles.forEach(function(p){x.globalAlpha=p.life;x.fillStyle=p.col;x.beginPath();x.arc(p.x,p.y,p.r*p.life,0,7);x.fill();});
+  x.globalAlpha=1;
+}
+function update(){
+  for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=0.04;if(p.life<=0)particles.splice(i,1);}
+}
+function loop(){update();draw();requestAnimationFrame(loop);}
+function cellAt(e){
+  var r=cv.getBoundingClientRect();
+  var px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  var py=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  var c=Math.floor(px/CELL),rw=Math.floor(py/CELL);
+  if(c<0||c>=N||rw<0||rw>=N)return null;
+  return[rw,c];
+}
+function onTap(cell){
+  if(!cell||!playing||busy)return;
+  if(!sel){sel=cell;return;}
+  if(sel[0]===cell[0]&&sel[1]===cell[1]){sel=null;return;}
+  if(Math.abs(sel[0]-cell[0])+Math.abs(sel[1]-cell[1])===1){trySwap(sel,cell);}
+  else sel=cell;
+}
+cv.addEventListener('touchstart',function(e){e.preventDefault();onTap(cellAt(e));},{passive:false});
+cv.addEventListener('mousedown',function(e){onTap(cellAt(e));});
+function start(){
+  score=0;moves=30;playing=true;sel=null;particles=[];busy=false;
+  init();
+  document.getElementById('score').textContent='נקודות: 0';
+  document.getElementById('moves').textContent='מהלכים: '+moves;
+  document.getElementById('target').textContent='יעד: '+target;
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+init();loop();
+})();
+</script>
+</body>
+</html>
