@@ -1,0 +1,29 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>הוקי אוויר נגד המחשב</title><style>*{margin:0;box-sizing:border-box}body{background:#071a2b;color:#fff;font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;min-height:100vh}h1{margin:10px;font-size:22px;color:#4dd8ff}canvas{width:min(96vw,360px);aspect-ratio:9/14;border-radius:16px;border:4px solid #4dd8ff}p{opacity:.7;font-size:14px;margin:6px}</style></head><body><h1>הוקי אוויר</h1><canvas id="c" width="360" height="560"></canvas><p>גררו את המחבט הכחול · ראשון ל-7 מנצח</p>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';const W=360,H=560,PR=26,UR=16,GW=120;let pk,me,ai,sm,sa,msg,mt=0,down=false,best=+localStorage.hockeyWins||0;
+function init(){sm=0;sa=0;msg='';serve(1)}
+function serve(d){pk={x:W/2,y:H/2,vx:0,vy:0};me={x:W/2,y:H-70};ai={x:W/2,y:70};pk.vy=d*2;pk.vx=(Math.random()-.5)*3}
+function mv(e){const r=c.getBoundingClientRect();me.x=Math.max(PR,Math.min(W-PR,(e.clientX-r.left)*W/r.width));me.y=Math.max(H/2+PR,Math.min(H-PR,(e.clientY-r.top)*H/r.height))}
+c.addEventListener('pointerdown',e=>{if(sm>=7||sa>=7){init();return}mv(e);down=true});c.addEventListener('pointermove',e=>{if(down||e.pointerType=='mouse')mv(e)});addEventListener('pointerup',()=>down=false);
+function hit(p){const dx=pk.x-p.x,dy=pk.y-p.y,d=Math.hypot(dx,dy);if(d<PR+UR){const nx=dx/d,ny=dy/d;pk.x=p.x+nx*(PR+UR);pk.y=p.y+ny*(PR+UR);const sp=Math.hypot(pk.vx,pk.vy);const ns=Math.min(14,Math.max(sp,3)+3.5);pk.vx=nx*ns+(p.dx||0)*.4;pk.vy=ny*ns+(p.dy||0)*.4}}
+function loop(){mt++;let ox=me.x,oy=me.y;
+if(sm<7&&sa<7){pk.x+=pk.vx;pk.y+=pk.vy;pk.vx*=.995;pk.vy*=.995;
+ if(pk.x<UR){pk.x=UR;pk.vx*=-1}if(pk.x>W-UR){pk.x=W-UR;pk.vx*=-1}
+ const inG=pk.x>(W-GW)/2&&pk.x<(W+GW)/2;
+ if(pk.y<UR&&!inG){pk.y=UR;pk.vy*=-1}if(pk.y>H-UR&&!inG){pk.y=H-UR;pk.vy*=-1}
+ if(pk.y<-UR){sm++;check(-1)}if(pk.y>H+UR){sa++;check(1)}
+ // ai
+ const tx=pk.y<H/2+40?pk.x:W/2,ty=pk.vy<0&&pk.y<H/2?Math.max(40,Math.min(H/2-40,pk.y-50)):70;const spd=3.4+Math.min(2,(sm)*.25);
+ const ddx=tx-ai.x,ddy=ty-ai.y,dd=Math.hypot(ddx,ddy);ai.dx=dd>spd?ddx/dd*spd:ddx;ai.dy=dd>spd?ddy/dd*spd:ddy;ai.x+=ai.dx;ai.y+=ai.dy;ai.x=Math.max(PR,Math.min(W-PR,ai.x));
+ me.dx=me.x-(me.px||me.x);me.dy=me.y-(me.py||me.y);me.px=me.x;me.py=me.y;hit(me);hit(ai)}
+function check(d){if(sm>=7){msg='ניצחתם!';if(sm>=7){best++;localStorage.hockeyWins=best}}else if(sa>=7)msg='המחשב ניצח';else serve(d)}
+x.fillStyle='#0b3a5c';x.fillRect(0,0,W,H);x.strokeStyle='#4dd8ff66';x.lineWidth=3;x.beginPath();x.moveTo(0,H/2);x.lineTo(W,H/2);x.stroke();x.beginPath();x.arc(W/2,H/2,60,0,7);x.stroke();
+x.fillStyle='#000';x.fillRect((W-GW)/2,0,GW,8);x.fillRect((W-GW)/2,H-8,GW,8);
+function pad(p,col,col2){x.fillStyle=col2;x.beginPath();x.arc(p.x,p.y+4,PR,0,7);x.fill();x.fillStyle=col;x.beginPath();x.arc(p.x,p.y,PR,0,7);x.fill();x.fillStyle='#fff6';x.beginPath();x.arc(p.x,p.y,PR*.55,0,7);x.fill()}
+pad(ai,'#ff5a6e','#a02034');pad(me,'#4dd8ff','#1f7fa0');
+x.fillStyle='#111';x.beginPath();x.arc(pk.x,pk.y+3,UR,0,7);x.fill();x.fillStyle='#f4f4f4';x.beginPath();x.arc(pk.x,pk.y,UR,0,7);x.fill();x.fillStyle='#bbb';x.beginPath();x.arc(pk.x,pk.y,UR*.5,0,7);x.fill();
+x.fillStyle='#fff';x.font='bold 40px system-ui';x.textAlign='left';x.fillText(sa,14,H/2-14);x.fillText(sm,14,H/2+46);
+if(msg){x.fillStyle='#000b';x.fillRect(40,230,280,100);x.fillStyle='#fff';x.textAlign='center';x.font='bold 30px system-ui';x.fillText(msg,180,278);x.font='16px system-ui';x.fillText('לחצו למשחק חדש',180,310)}
+requestAnimationFrame(loop)}
+init();loop();
+</script></body></html>

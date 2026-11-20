@@ -1,0 +1,25 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>חתול החלל - בורח מאסטרואידים</title><style>*{margin:0;box-sizing:border-box}body{background:#000;color:#7CFC9A;font-family:"Courier New",monospace;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;min-height:100vh}h1{margin:10px;font-size:20px;letter-spacing:2px;text-shadow:0 0 8px #0f0}canvas{width:min(96vw,360px);aspect-ratio:9/14;image-rendering:pixelated;border:3px solid #7CFC9A;box-shadow:0 0 20px #0f08}p{opacity:.8;font-size:13px;margin:6px}</style></head><body><h1>>> חתול החלל <<</h1><canvas id="c" width="180" height="280"></canvas><p>החליקו ימינה/שמאלה או לחצו בצדדים · אספו דגים</p>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';x.imageSmoothingEnabled=false;let best=+localStorage.catBest||0,lane,it,sc,t,over,hp;
+function init(){lane=1;it=[];sc=0;t=0;over=false;hp=3}
+function go(d){if(over){init();return}lane=Math.max(0,Math.min(2,lane+d))}
+let sx;c.addEventListener('pointerdown',e=>{sx=e.clientX;const r=c.getBoundingClientRect();if(over){init();return}if(e.pointerType=='mouse'||true){}});
+c.addEventListener('pointerup',e=>{const dx=e.clientX-sx;if(over)return;if(Math.abs(dx)>25)go(dx>0?1:-1);else{const r=c.getBoundingClientRect();go(e.clientX<r.left+r.width/2?-1:1)}});
+addEventListener('keydown',e=>{if(e.key=='ArrowLeft')go(-1);if(e.key=='ArrowRight')go(1)});
+const stars=Array.from({length:40},()=>({x:Math.random()*180,y:Math.random()*280,s:Math.random()*2+1}));
+function rocket(cx,t){const y=226;x.fillStyle='#ff9f1a';x.beginPath();x.moveTo(cx-4,y+40);x.lineTo(cx,y+48+Math.sin(t*.8)*5);x.lineTo(cx+4,y+40);x.fill();x.fillStyle='#ff4d6d';x.beginPath();x.moveTo(cx-10,y+22);x.lineTo(cx-18,y+40);x.lineTo(cx-10,y+38);x.fill();x.beginPath();x.moveTo(cx+10,y+22);x.lineTo(cx+18,y+40);x.lineTo(cx+10,y+38);x.fill();
+x.fillStyle='#e8ecff';x.fillRect(cx-10,y+8,20,32);x.fillStyle='#ff4d6d';x.beginPath();x.moveTo(cx-10,y+8);x.lineTo(cx,y-6);x.lineTo(cx+10,y+8);x.fill();
+x.fillStyle='#5ad1ff';x.beginPath();x.arc(cx,y+22,9,0,7);x.fill();x.fillStyle='#9aa0b8';x.beginPath();x.arc(cx,y+23,7,0,7);x.fill();x.beginPath();x.moveTo(cx-7,y+19);x.lineTo(cx-6,y+11);x.lineTo(cx-2,y+17);x.fill();x.beginPath();x.moveTo(cx+7,y+19);x.lineTo(cx+6,y+11);x.lineTo(cx+2,y+17);x.fill();x.fillStyle='#7CFC9A';x.fillRect(cx-4,y+21,2,2);x.fillRect(cx+2,y+21,2,2)}
+function rock(cx,cy){x.fillStyle='#8a6a4f';x.beginPath();[[-13,-4],[-8,-12],[4,-13],[13,-5],[12,7],[3,13],[-9,10]].forEach(([a,b])=>x.lineTo(cx+a,cy+b));x.fill();x.fillStyle='#5e4632';x.fillRect(cx-6,cy-3,5,4);x.fillRect(cx+3,cy+3,4,4);x.fillRect(cx+2,cy-8,3,3)}
+function fish(cx,cy){x.fillStyle='#35d0ff';x.beginPath();x.ellipse(cx,cy,10,6,0,0,7);x.fill();x.beginPath();x.moveTo(cx+8,cy);x.lineTo(cx+16,cy-6);x.lineTo(cx+16,cy+6);x.fill();x.fillStyle='#fff';x.fillRect(cx-6,cy-3,3,3);x.fillStyle='#000';x.fillRect(cx-5,cy-2,1,1)}
+function loop(){t++;x.fillStyle='#05000f';x.fillRect(0,0,180,280);x.fillStyle='#fff';stars.forEach(s=>{s.y=(s.y+s.s)%280;x.fillRect(s.x|0,s.y|0,1,1)});
+x.fillStyle='#ffffff10';[60,120].forEach(l=>x.fillRect(l,0,1,280));
+if(!over){if(t%Math.max(14,34-(sc/80|0))==0)it.push({l:Math.random()*3|0,y:-16,f:Math.random()<.35,v:1.8+sc/400});
+ it.forEach(o=>{o.y+=o.v;if(o.y>218&&o.y<262&&o.l==lane){o.d=1;if(o.f)sc+=10;else{hp--;if(hp<=0){over=true;if(sc>best){best=sc;localStorage.catBest=best}}}}else if(o.y>290)o.d=1});it=it.filter(o=>!o.d);sc+=.05}
+it.forEach(o=>o.f?fish(o.l*60+30,o.y+8):rock(o.l*60+30,o.y+8));
+rocket(lane*60+30,t);
+x.fillStyle='#7CFC9A';x.font='bold 10px Courier New';x.fillText('SCORE '+(sc|0)+'  HP '+Math.max(0,hp)+'  BEST '+(best|0),4,12);
+if(over){x.fillStyle='#000c';x.fillRect(10,100,160,70);x.fillStyle='#ff6bd6';x.font='bold 16px Courier New';x.fillText('GAME OVER',44,128);x.fillStyle='#7CFC9A';x.font='10px Courier New';x.fillText('tap to retry',54,150)}
+requestAnimationFrame(loop)}
+init();loop();
+</script></body></html>

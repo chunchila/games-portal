@@ -1,0 +1,25 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>דבורת הדבש - טיסה בין הפרחים</title><style>*{margin:0;box-sizing:border-box}body{background:#fff6c9;font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;min-height:100vh}h1{margin:10px;font-size:22px;color:#b8650b}canvas{width:min(96vw,360px);aspect-ratio:9/14;border-radius:18px;border:4px solid #f5b800}p{opacity:.7;font-size:14px;margin:6px;color:#6b4a00}</style></head><body><h1>דבורת הדבש</h1><canvas id="c" width="360" height="560"></canvas><p>לחיצה = מנפנפים כנפיים · עברו בין גבעולי הפרחים</p>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';let best=+localStorage.beeBest||0,B,P,t,sc,st;
+function init(){B={y:260,v:0};P=[];t=0;sc=0;st='ready'}
+function flap(){if(st=='over'){init();return}if(st=='ready')st='play';B.v=-7.2}
+c.addEventListener('pointerdown',flap);addEventListener('keydown',e=>{if(e.code=='Space'||e.key=='ArrowUp'){e.preventDefault();flap()}});
+function flower(cx,y,up){x.fillStyle='#ff6fa5';for(let i=0;i<8;i++){x.beginPath();x.ellipse(cx+Math.cos(i*.785)*15,y+Math.sin(i*.785)*15,9,9,0,0,7);x.fill()}x.fillStyle='#ffd23a';x.beginPath();x.arc(cx,y,10,0,7);x.fill()}
+function bee(cy,v,t){x.save();x.translate(90,cy);x.rotate(Math.max(-.5,Math.min(.8,v*.07)));
+x.fillStyle='#cfeeff';x.strokeStyle='#8fc9e8';const fl=Math.sin(t*.9)*8;x.beginPath();x.ellipse(-4,-14-fl/2,10,16+fl/2,-.4,0,7);x.fill();x.stroke();x.beginPath();x.ellipse(8,-13-fl/2,9,14+fl/2,.3,0,7);x.fill();x.stroke();
+x.fillStyle='#ffd23a';x.beginPath();x.ellipse(0,0,22,15,0,0,7);x.fill();x.fillStyle='#222';x.fillRect(-9,-14,6,28);x.fillRect(3,-14,6,28);x.beginPath();x.moveTo(-22,0);x.lineTo(-31,-2);x.lineTo(-31,3);x.fill();
+x.fillStyle='#ffd23a';x.beginPath();x.arc(17,-3,10,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(21,-6,4,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(22,-6,2,0,7);x.fill();x.strokeStyle='#222';x.lineWidth=2;x.beginPath();x.moveTo(17,-12);x.lineTo(21,-20);x.moveTo(21,-11);x.lineTo(28,-17);x.stroke();x.restore()}
+function loop(){t++;const g=x.createLinearGradient(0,0,0,560);g.addColorStop(0,'#9bdcff');g.addColorStop(1,'#e5f7ff');x.fillStyle=g;x.fillRect(0,0,360,560);
+x.fillStyle='#fff';[[60,90],[250,150],[150,60]].forEach(([a,b],i)=>{const ax=(a-t*.3*(i+1)*.5+720)%520-80;x.beginPath();x.arc(ax,b,18,0,7);x.arc(ax+22,b-8,22,0,7);x.arc(ax+44,b,16,0,7);x.fill()});
+x.fillStyle='#4caf50';x.fillRect(0,520,360,40);x.fillStyle='#388e3c';for(let i=0;i<20;i++)x.fillRect(((i*24-t*2)%380+380)%380,520,8,8);
+if(st=='play'){B.v+=.42;B.y+=B.v;if(t%88==0)P.push({x:370,gy:130+Math.random()*250,s:0});
+ P.forEach(p=>{p.x-=2.6+sc*.04;if(!p.s&&p.x<60){p.s=1;sc++}if(p.x<112&&p.x>68&&(B.y-12<p.gy-70||B.y+12>p.gy+70))end()});P=P.filter(p=>p.x>-60);if(B.y>505||B.y<10)end()}
+function end(){if(st!='play')return;st='over';if(sc>best){best=sc;localStorage.beeBest=best}}
+if(st=='ready')B.y=260+Math.sin(t/12)*10;
+P.forEach(p=>{x.fillStyle='#2e9a3f';x.fillRect(p.x-8,0,16,p.gy-70);x.fillRect(p.x-8,p.gy+70,16,560-p.gy-70);x.fillStyle='#43b957';x.fillRect(p.x-4,0,5,p.gy-70);x.fillRect(p.x-4,p.gy+70,5,560-p.gy-70);flower(p.x,p.gy-70-4,0);flower(p.x,p.gy+70+4,1)});
+bee(B.y,B.v,t);x.fillStyle='#b8650b';x.font='bold 34px system-ui';x.textAlign='center';x.fillText(sc,180,56);x.font='14px system-ui';x.fillText('שיא '+best,180,76);
+if(st=='ready'){x.fillStyle='#0008';x.fillRect(40,230,280,70);x.fillStyle='#fff';x.font='bold 20px system-ui';x.fillText('לחצו כדי להתחיל',180,272)}
+if(st=='over'){x.fillStyle='#000b';x.fillRect(40,200,280,120);x.fillStyle='#fff';x.font='bold 28px system-ui';x.fillText('הדבורה נפלה!',180,250);x.font='18px system-ui';x.fillText('ניקוד '+sc+' · לחצו לנסות שוב',180,288)}
+requestAnimationFrame(loop)}
+init();loop();
+</script></body></html>

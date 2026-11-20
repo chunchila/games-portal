@@ -1,0 +1,16 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>2048</title><style>*{box-sizing:border-box;margin:0}body{background:#0b1020;color:#fff;font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;touch-action:manipulation;user-select:none}h1{font-size:22px;margin:12px 0 4px}#hud{display:flex;gap:18px;margin:6px;font-size:18px}canvas{background:#111936;border-radius:12px;max-width:96vw;box-shadow:0 0 30px #4af3}button{background:#38bdf8;border:0;border-radius:10px;padding:10px 20px;font-size:17px;font-weight:700;margin:8px;cursor:pointer}p{opacity:.7;font-size:14px;margin:4px}#g{display:grid;grid-template-columns:repeat(4,76px);gap:8px;background:#223;padding:8px;border-radius:12px;margin:10px;position:relative}.t{width:76px;height:76px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;background:#1b2347;color:#111;transition:transform .08s}</style></head><body>
+<h1>🔢 2048 מיזוג מספרים</h1><div id="hud"><span>ניקוד: <b id="s">0</b></span><span>שיא: <b id="b">0</b></span></div><div id="g"></div><p>חצים / החלקה על הלוח · חברו מספרים זהים עד 2048</p><button id="r">משחק חדש</button>
+<script>
+let B,sc,best=+localStorage.m2048||0,won=false;b.textContent=best;const col={2:'#fde68a',4:'#fcd34d',8:'#fb923c',16:'#f97316',32:'#f87171',64:'#ef4444',128:'#a78bfa',256:'#8b5cf6',512:'#38bdf8',1024:'#22d3ee',2048:'#4ade80'};
+function init(){B=Array(16).fill(0);sc=0;won=false;add();add();draw()}
+function add(){const e=B.map((v,i)=>v?-1:i).filter(i=>i>=0);if(e.length)B[e[Math.random()*e.length|0]]=Math.random()<.9?2:4}
+function line(a){let r=a.filter(v=>v),o=[];for(let i=0;i<r.length;i++){if(r[i]==r[i+1]){o.push(r[i]*2);sc+=r[i]*2;i++}else o.push(r[i])}while(o.length<4)o.push(0);return o}
+function move(dir){let ch=false;const nb=B.slice();for(let k=0;k<4;k++){let idx=[0,1,2,3].map(j=>dir<2?k*4+j:j*4+k);if(dir%2)idx.reverse();const o=line(idx.map(i=>B[i]));idx.forEach((i,j)=>{if(nb[i]!=o[j])ch=true;nb[i]=o[j]})}
+ if(!ch)return;B=nb;add();if(sc>best){best=sc;localStorage.m2048=best}draw();
+ if(!won&&B.includes(2048)){won=true;setTimeout(()=>alert('🏆 הגעתם ל-2048! אפשר להמשיך'),50)}else if(over())setTimeout(()=>alert('אין יותר מהלכים. ניקוד: '+sc),50)}
+function over(){if(B.includes(0))return false;for(let i=0;i<16;i++){if(i%4<3&&B[i]==B[i+1])return false;if(i<12&&B[i]==B[i+4])return false}return true}
+function draw(){s.textContent=sc;b.textContent=best;g.innerHTML='';B.forEach(v=>{const d=document.createElement('div');d.className='t';if(v){d.textContent=v;d.style.background=col[v]||'#4ade80';if(v>4)d.style.color='#fff';if(v>=1024)d.style.fontSize='22px'}g.appendChild(d)})}
+addEventListener('keydown',e=>{const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}[e.key];if(m!=null){e.preventDefault();move(m)}});
+let t0;g.addEventListener('touchstart',e=>t0=e.touches[0],{passive:true});g.addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;if(Math.hypot(dx,dy)<20)return;move(Math.abs(dx)>Math.abs(dy)?(dx<0?0:1):(dy<0?2:3))});
+g.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});r.onclick=init;init();
+</script></body></html>

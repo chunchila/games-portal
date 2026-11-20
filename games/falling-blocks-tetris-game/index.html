@@ -1,0 +1,29 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>קוביות נופלות - טטריס</title><style>*{margin:0;box-sizing:border-box}body{background:#0f1020;color:#fff;font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;touch-action:manipulation;user-select:none}h1{margin:8px;font-size:22px;color:#6ee7ff}#w{display:flex;gap:12px;align-items:flex-start}canvas{border:3px solid #6ee7ff;border-radius:8px;background:#05060f;height:min(62vh,460px);aspect-ratio:1/2}#side{font-size:15px;min-width:80px}#side b{display:block;font-size:22px;margin-bottom:8px}#nx{width:80px;height:80px;background:#05060f;border:2px solid #333;border-radius:8px}.row{display:flex;gap:10px;margin:10px}.k{width:64px;height:54px;border:0;border-radius:12px;background:#2a2d57;display:flex;align-items:center;justify-content:center}.k svg{width:28px;height:28px;fill:#6ee7ff}button.s{background:#6ee7ff;color:#111;border:0;border-radius:10px;padding:8px 14px;font-weight:800;margin-top:10px}</style></head><body><h1>קוביות נופלות</h1><div id="w"><canvas id="c" width="200" height="400"></canvas><div id="side">ניקוד<b id="sc">0</b>שורות<b id="ln">0</b>שיא<b id="bs">0</b><canvas id="nx" width="80" height="80"></canvas><button class="s" id="rs">משחק חדש</button></div></div>
+<div class="row"><button class="k" id="L"><svg viewBox="0 0 24 24"><path d="M15 4v16L5 12z"/></svg></button><button class="k" id="Rt"><svg viewBox="0 0 24 24"><path d="M9 4v16l10-8z"/></svg></button><button class="k" id="Ro"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8h-3a5 5 0 1 1-5-5v3l5-4-5-4z"/></svg></button><button class="k" id="D"><svg viewBox="0 0 24 24"><path d="M4 9h16l-8 10z"/></svg></button><button class="k" id="Hd"><svg viewBox="0 0 24 24"><path d="M5 4h14v3H5zM12 20 5 10h5V8h4v2h5z"/></svg></button></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d'),nxc=document.getElementById('nx').getContext('2d');const C=20,COLS=10,ROWS=20;
+const SH={I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],O:[[1,1],[1,1]],T:[[0,1,0],[1,1,1],[0,0,0]],S:[[0,1,1],[1,1,0],[0,0,0]],Z:[[1,1,0],[0,1,1],[0,0,0]],J:[[1,0,0],[1,1,1],[0,0,0]],L:[[0,0,1],[1,1,1],[0,0,0]]};
+const COL={I:'#3fe0ff',O:'#ffd23a',T:'#c77dff',S:'#4ade80',Z:'#ff5a6e',J:'#4f7cff',L:'#ff9f43'};
+let G,cur,nxt,score,lines,over,dt,last,best=+localStorage.tetBest||0;bs.textContent=best;
+const bag=()=>{const k=Object.keys(SH);return k[Math.random()*k.length|0]};
+const mk=k=>({k,m:SH[k].map(r=>r.slice()),x:(COLS-SH[k][0].length)/2|0,y:0});
+function init(){G=Array.from({length:ROWS},()=>Array(COLS).fill(0));score=0;lines=0;over=false;dt=0;cur=mk(bag());nxt=bag();upd()}
+function upd(){sc.textContent=score;ln.textContent=lines;nxc.clearRect(0,0,80,80);const m=SH[nxt];m.forEach((r,j)=>r.forEach((v,i)=>{if(v){nxc.fillStyle=COL[nxt];nxc.fillRect(10+i*15,12+j*15,14,14)}}))}
+function ok(m,px,py){for(let j=0;j<m.length;j++)for(let i=0;i<m[j].length;i++)if(m[j][i]){const X=px+i,Y=py+j;if(X<0||X>=COLS||Y>=ROWS||(Y>=0&&G[Y][X]))return false}return true}
+function rot(m){return m[0].map((_,i)=>m.map(r=>r[i]).reverse())}
+function lock(){cur.m.forEach((r,j)=>r.forEach((v,i)=>{if(v&&cur.y+j>=0)G[cur.y+j][cur.x+i]=cur.k}));let n=0;for(let j=ROWS-1;j>=0;j--){if(G[j].every(v=>v)){G.splice(j,1);G.unshift(Array(COLS).fill(0));n++;j++}}if(n){lines+=n;score+=[0,100,300,500,800][n]}cur=mk(nxt);nxt=bag();upd();if(!ok(cur.m,cur.x,cur.y)){over=true;if(score>best){best=score;localStorage.tetBest=best;bs.textContent=best}}}
+function drop(){if(ok(cur.m,cur.x,cur.y+1))cur.y++;else lock()}
+function mvx(d){if(!over&&ok(cur.m,cur.x+d,cur.y))cur.x+=d}
+function rt(){if(over)return;const r=rot(cur.m);for(const k of[0,-1,1,-2,2])if(ok(r,cur.x+k,cur.y)){cur.m=r;cur.x+=k;return}}
+function hard(){if(over)return;while(ok(cur.m,cur.x,cur.y+1)){cur.y++;score+=2}lock()}
+function cell(X,Y,k,a=1){x.globalAlpha=a;x.fillStyle=COL[k];x.fillRect(X*C+1,Y*C+1,C-2,C-2);x.fillStyle='#fff3';x.fillRect(X*C+1,Y*C+1,C-2,4);x.globalAlpha=1}
+function draw(){x.fillStyle='#05060f';x.fillRect(0,0,200,400);x.strokeStyle='#ffffff10';for(let i=1;i<COLS;i++){x.beginPath();x.moveTo(i*C,0);x.lineTo(i*C,400);x.stroke()}for(let j=1;j<ROWS;j++){x.beginPath();x.moveTo(0,j*C);x.lineTo(200,j*C);x.stroke()}
+ G.forEach((r,j)=>r.forEach((v,i)=>v&&cell(i,j,v)));
+ let gy=cur.y;while(ok(cur.m,cur.x,gy+1))gy++;cur.m.forEach((r,j)=>r.forEach((v,i)=>v&&cell(cur.x+i,gy+j,cur.k,.2)));cur.m.forEach((r,j)=>r.forEach((v,i)=>v&&cell(cur.x+i,cur.y+j,cur.k)));
+ if(over){x.fillStyle='#000b';x.fillRect(10,160,180,80);x.fillStyle='#fff';x.font='bold 22px system-ui';x.textAlign='center';x.fillText('נגמר המשחק',100,195);x.font='13px system-ui';x.fillText('לחצו "משחק חדש"',100,220)}}
+function loop(t){const dtm=Math.max(90,700-lines*25);if(!over&&t-last>dtm){drop();last=t}draw();requestAnimationFrame(loop)}
+const bind=(id,f)=>document.getElementById(id).addEventListener('pointerdown',e=>{e.preventDefault();f()});bind('L',()=>mvx(-1));bind('Rt',()=>mvx(1));bind('Ro',rt);bind('D',()=>{if(!over){drop();score++}});bind('Hd',hard);rs.onclick=init;
+addEventListener('keydown',e=>{const m={ArrowLeft:()=>mvx(-1),ArrowRight:()=>mvx(1),ArrowUp:rt,ArrowDown:()=>drop(),' ':hard}[e.key];if(m){e.preventDefault();m()}});
+let sx,sy;c.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});c.addEventListener('touchend',e=>{const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)<12&&Math.abs(dy)<12)rt();else if(Math.abs(dx)>Math.abs(dy))mvx(dx>0?1:-1);else if(dy>0)hard()});
+last=0;init();requestAnimationFrame(loop);
+</script></body></html>

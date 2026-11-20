@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>ארבע בשורה נגד המחשב</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0d1b2a;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  canvas{display:block;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.6);touch-action:none}
+  #status{color:#fff;font-size:17px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.7);min-height:24px;text-align:center}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,14,26,.85);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:32px;margin-bottom:10px;background:linear-gradient(90deg,#ffd60a,#ef476f);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#cfd6ff;line-height:1.7}
+  .btn{background:linear-gradient(135deg,#ef476f,#9b5de5);border:none;color:#fff;font-size:19px;font-weight:700;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(155,93,229,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+  #wins{display:flex;gap:16px;color:#fff;font-size:14px;font-weight:600}
+  #wins span{background:rgba(255,255,255,.1);padding:4px 14px;border-radius:16px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="status">התור שלך</div>
+  <canvas id="c"></canvas>
+  <div id="wins"><span id="pw">אתה: 0</span><span id="aw">מחשב: 0</span></div>
+</div>
+<div class="overlay" id="startOv">
+  <h1>ארבע בשורה</h1>
+  <p>הקש על עמודה כדי להפיל דיסקית<br>השג 4 ברצף לפני המחשב!</p>
+  <button class="btn" id="startBtn">התחל לשחק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">עוד משחק</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var COLS=7,ROWS=6,W,H,CELL,DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){
+  var aw=Math.min(window.innerWidth-16,440),ah=window.innerHeight-110;
+  CELL=Math.min(aw/COLS,ah/(ROWS+1));
+  W=CELL*COLS;H=CELL*(ROWS+1);
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();window.addEventListener('resize',resize);
+var board,falling=null,playing=false,busy=false,winCells=null,pw=0,aw=0,hoverCol=-1;
+function newBoard(){board=[];for(var r=0;r<ROWS;r++){board.push([0,0,0,0,0,0,0]);}}
+function dropRow(c){for(var r=ROWS-1;r>=0;r--)if(!board[r][c])return r;return -1;}
+function checkWin(b,pl){
+  var dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    if(b[r][c]!==pl)continue;
+    for(var d=0;d<4;d++){
+      var cells=[[r,c]],ok=true;
+      for(var k=1;k<4;k++){var nr=r+dirs[d][0]*k,nc=c+dirs[d][1]*k;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS||b[nr][nc]!==pl){ok=false;break;}
+        cells.push([nr,nc]);}
+      if(ok)return cells;
+    }
+  }
+  return null;
+}
+function boardFull(b){for(var c=0;c<COLS;c++)if(!b[0][c])return false;return true;}
+function scoreWindow(w,pl){
+  var op=pl===1?2:1,mine=0,opp=0,empty=0;
+  w.forEach(function(v){if(v===pl)mine++;else if(v===op)opp++;else empty++;});
+  if(mine===4)return 10000;
+  if(mine===3&&empty===1)return 60;
+  if(mine===2&&empty===2)return 8;
+  if(opp===3&&empty===1)return -90;
+  if(opp===2&&empty===2)return -10;
+  return 0;
+}
+function evalBoard(b,pl){
+  var s=0;
+  for(var c=0;c<ROWS;c++)if(b[c][3]===pl)s+=4;
+  for(var r=0;r<ROWS;r++)for(var c2=0;c2<=COLS-4;c2++)s+=scoreWindow([b[r][c2],b[r][c2+1],b[r][c2+2],b[r][c2+3]],pl);
+  for(var c3=0;c3<COLS;c3++)for(var r2=0;r2<=ROWS-4;r2++)s+=scoreWindow([b[r2][c3],b[r2+1][c3],b[r2+2][c3],b[r2+3][c3]],pl);
+  for(var r3=0;r3<=ROWS-4;r3++)for(var c4=0;c4<=COLS-4;c4++){
+    s+=scoreWindow([b[r3][c4],b[r3+1][c4+1],b[r3+2][c4+2],b[r3+3][c4+3]],pl);
+    s+=scoreWindow([b[r3+3][c4],b[r3+2][c4+1],b[r3+1][c4+2],b[r3][c4+3]],pl);
+  }
+  return s;
+}
+function minimax(b,depth,alpha,beta,maximizing){
+  if(checkWin(b,2))return{v:100000+depth};
+  if(checkWin(b,1))return{v:-100000-depth};
+  if(depth===0||boardFull(b))return{v:evalBoard(b,2)};
+  var cols=[3,2,4,1,5,0,6];
+  if(maximizing){
+    var best={v:-Infinity,c:3};
+    for(var i=0;i<7;i++){var c=cols[i];var r=dropRowIn(b,c);if(r<0)continue;
+      b[r][c]=2;var res=minimax(b,depth-1,alpha,beta,false);b[r][c]=0;
+      if(res.v>best.v)best={v:res.v,c:c};
+      alpha=Math.max(alpha,best.v);if(beta<=alpha)break;}
+    return best;
+  }else{
+    var best2={v:Infinity,c:3};
+    for(var j=0;j<7;j++){var c2=cols[j];var r2=dropRowIn(b,c2);if(r2<0)continue;
+      b[r2][c2]=1;var res2=minimax(b,depth-1,alpha,beta,true);b[r2][c2]=0;
+      if(res2.v<best2.v)best2={v:res2.v,c:c2};
+      beta=Math.min(beta,best2.v);if(beta<=alpha)break;}
+    return best2;
+  }
+}
+function dropRowIn(b,c){for(var r=ROWS-1;r>=0;r--)if(!b[r][c])return r;return -1;}
+function aiMove(){
+  busy=true;setStatus('המחשב חושב...');
+  setTimeout(function(){
+    var res=minimax(board,5,-Infinity,Infinity,true);
+    startDrop(res.c,2);
+  },350);
+}
+function startDrop(c,pl){
+  var r=dropRow(c);if(r<0)return;
+  falling={c:c,r:r,y:-CELL,pl:pl};
+}
+function landDrop(){
+  board[falling.r][falling.c]=falling.pl;
+  var win=checkWin(board,falling.pl);
+  falling=null;
+  if(win){
+    winCells=win;playing=false;
+    if(board[win[0][0]][win[0][1]]===1){pw++;setStatus('');showEnd('ניצחת!','ארבע בשורה! כל הכבוד!');}
+    else{aw++;setStatus('');showEnd('המחשב ניצח','נסה שוב, אתה יכול!');}
+    updateWins();return;
+  }
+  if(boardFull(board)){playing=false;showEnd('תיקו!','הלוח מלא. עוד אחד?');return;}
+  var nextPl=arguments[0];
+  if(nextPl===2){aiMove();}
+  else{busy=false;setStatus('התור שלך');}
+}
+function setStatus(t){document.getElementById('status').textContent=t;}
+function updateWins(){
+  document.getElementById('pw').textContent='אתה: '+pw;
+  document.getElementById('aw').textContent='מחשב: '+aw;
+}
+function showEnd(t,p){
+  document.getElementById('endTitle').textContent=t;
+  document.getElementById('endText').textContent=p;
+  setTimeout(function(){document.getElementById('endOv').classList.remove('hidden');},900);
+}
+function drawDisc(cx,cy,pl,scale){
+  scale=scale||1;var r=CELL*0.4*scale;
+  var g=x.createRadialGradient(cx-r*0.3,cy-r*0.3,r*0.1,cx,cy,r);
+  if(pl===1){g.addColorStop(0,'#ffe066');g.addColorStop(1,'#e09f3e');}
+  else{g.addColorStop(0,'#ff8fa3');g.addColorStop(1,'#c9184a');}
+  x.fillStyle=g;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();
+  x.fillStyle='rgba(255,255,255,.35)';x.beginPath();x.arc(cx-r*0.3,cy-r*0.35,r*0.25,0,7);x.fill();
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  var oy=CELL;
+  if(playing&&!busy&&hoverCol>=0&&!falling){
+    x.globalAlpha=0.4;drawDisc(hoverCol*CELL+CELL/2,CELL/2,1);x.globalAlpha=1;
+  }
+  var g=x.createLinearGradient(0,oy,0,H);g.addColorStop(0,'#1266f1');g.addColorStop(1,'#0a3d91');
+  x.fillStyle=g;
+  x.beginPath();
+  if(x.roundRect)x.roundRect(0,oy,W,H-oy,12);else x.rect(0,oy,W,H-oy);
+  x.fill();
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    var cx=c*CELL+CELL/2,cy=oy+r*CELL+CELL/2;
+    x.save();
+    x.globalCompositeOperation='destination-out';
+    x.beginPath();x.arc(cx,cy,CELL*0.4,0,7);x.fill();
+    x.restore();
+    x.fillStyle='#0d1b2a';x.beginPath();x.arc(cx,cy,CELL*0.4,0,7);x.fill();
+  }
+  for(var r2=0;r2<ROWS;r2++)for(var c2=0;c2<COLS;c2++){
+    if(board[r2][c2])drawDisc(c2*CELL+CELL/2,oy+r2*CELL+CELL/2,board[r2][c2]);
+  }
+  if(falling)drawDisc(falling.c*CELL+CELL/2,falling.y+CELL/2,falling.pl);
+  if(winCells){
+    var pulse=0.5+0.5*Math.sin(Date.now()/180);
+    x.strokeStyle='rgba(255,255,255,'+(0.5+pulse*0.5)+')';x.lineWidth=4;
+    winCells.forEach(function(wc){
+      x.beginPath();x.arc(wc[1]*CELL+CELL/2,oy+wc[0]*CELL+CELL/2,CELL*0.44,0,7);x.stroke();
+    });
+  }
+}
+function update(dt){
+  if(falling){
+    falling.y+=dt*CELL*14;
+    var targetY=CELL+falling.r*CELL;
+    if(falling.y>=targetY){falling.y=targetY;var pl=falling.pl;landDrop(pl===1?2:1);}
+  }
+}
+var last=0;
+function loop(ts){var dt=Math.min(0.05,(ts-last)/1000||0.016);last=ts;update(dt);draw();requestAnimationFrame(loop);}
+function colFromEvent(e){
+  var r=cv.getBoundingClientRect();
+  var px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  return Math.max(0,Math.min(COLS-1,Math.floor(px/CELL)));
+}
+cv.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if(!playing||busy||falling)return;
+  var c=colFromEvent(e);
+  if(dropRow(c)<0)return;
+  busy=true;startDrop(c,1);
+},{passive:false});
+cv.addEventListener('mousemove',function(e){hoverCol=colFromEvent(e);});
+cv.addEventListener('click',function(e){
+  if(!playing||busy||falling)return;
+  var c=colFromEvent(e);if(dropRow(c)<0)return;
+  busy=true;startDrop(c,1);
+});
+function start(){
+  newBoard();falling=null;winCells=null;busy=false;playing=true;
+  setStatus('התור שלך');updateWins();
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+newBoard();loop(0);
+})();
+</script>
+</body>
+</html>

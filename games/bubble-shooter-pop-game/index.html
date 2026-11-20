@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>יורה הבועות</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#101830;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:18px;padding:10px;color:#fff;font-size:15px;font-weight:600;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.7);z-index:5}
+  #hud span{background:rgba(255,255,255,.12);padding:4px 12px;border-radius:20px;backdrop-filter:blur(4px)}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,30,.85);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:34px;margin-bottom:10px;background:linear-gradient(90deg,#4cc9f0,#f72585);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#cfd6ff;line-height:1.6}
+  .btn{background:linear-gradient(135deg,#f72585,#7209b7);border:none;color:#fff;font-size:19px;font-weight:700;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(247,37,133,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="hud"><span id="score">נקודות: 0</span><span id="shots">יריות: 0</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="startOv">
+  <h1>יורה הבועות</h1>
+  <p>כוון ושחרר כדי לירות<br>התאם 3 בועות או יותר באותו צבע!</p>
+  <button class="btn" id="startBtn">התחל לשחק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">שחק שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var W,H,DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){
+  var aw=Math.min(window.innerWidth,480),ah=window.innerHeight;
+  if(aw/ah>0.6)aw=ah*0.6;
+  W=aw;H=ah;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);computeGrid();
+}
+var R=16,COLS=10,ROWH=28,grid=[],shots=0,score=0,misses=0;
+var shooter={x:0,y:0,angle:-Math.PI/2};
+var flying=null,nextColor=0,currentColor=0,particles=[],falling=[];
+var COLORS=[['#f72585','#a4133c'],['#4cc9f0','#1266f1'],['#ffd60a','#e09f3e'],['#80ed99','#2d6a4f'],['#c77dff','#7209b7']];
+var playing=false,gameOver=false,aiming=false;
+function computeGrid(){
+  R=Math.floor((W-20)/(COLS*2));ROWH=Math.floor(R*1.74);
+  shooter.x=W/2;shooter.y=H-60;
+}
+function cellPos(r,c){return{x:10+R+c*2*R+(r%2?R:0),y:10+R+r*ROWH};}
+function newRow(fill){
+  var row=[];var colorsInGrid=activeColors();
+  for(var c=0;c<COLS;c++)row.push(fill?{col:colorsInGrid[Math.floor(Math.random()*colorsInGrid.length)]}:null);
+  return row;
+}
+function activeColors(){
+  var set={};grid.forEach(function(row){row.forEach(function(b){if(b)set[b.col]=1;});});
+  var k=Object.keys(set).map(Number);
+  if(k.length<3)k=[0,1,2,3];
+  return k;
+}
+function initGrid(){
+  grid=[];for(var r=0;r<5;r++)grid.push(newRow(true));
+  for(var r2=0;r2<4;r2++)grid.push(newRow(false));
+  currentColor=pickColor();nextColor=pickColor();
+}
+function pickColor(){var a=activeColors();return a[Math.floor(Math.random()*a.length)];}
+function neighbors(r,c){
+  var odd=r%2===1;
+  var d=odd?[[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]]:[[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]];
+  var out=[];d.forEach(function(dd){var nr=r+dd[0],nc=c+dd[1];if(nr>=0&&nr<grid.length&&nc>=0&&nc<COLS)out.push([nr,nc]);});
+  return out;
+}
+function findCluster(r,c){
+  var col=grid[r][c].col,seen={},stack=[[r,c]],out=[];
+  seen[r+','+c]=1;
+  while(stack.length){var p=stack.pop();out.push(p);neighbors(p[0],p[1]).forEach(function(n){var k=n[0]+','+n[1];if(!seen[k]&&grid[n[0]][n[1]]&&grid[n[0]][n[1]].col===col){seen[k]=1;stack.push(n);}});}
+  return out;
+}
+function dropFloating(){
+  var connected={},stack=[];
+  for(var c=0;c<COLS;c++)if(grid[0][c]){stack.push([0,c]);connected['0,'+c]=1;}
+  while(stack.length){var p=stack.pop();neighbors(p[0],p[1]).forEach(function(n){var k=n[0]+','+n[1];if(!connected[k]&&grid[n[0]][n[1]]){connected[k]=1;stack.push(n);}});}
+  var dropped=0;
+  for(var r=0;r<grid.length;r++)for(var c2=0;c2<COLS;c2++){
+    if(grid[r][c2]&&!connected[r+','+c2]){
+      var pos=cellPos(r,c2);
+      falling.push({x:pos.x,y:pos.y,vy:0,col:grid[r][c2].col});
+      grid[r][c2]=null;dropped++;
+    }
+  }
+  return dropped;
+}
+function snapBubble(bx,by,col){
+  var best=null,bestD=1e9;
+  for(var r=0;r<grid.length;r++)for(var c=0;c<COLS;c++){
+    if(grid[r][c])continue;
+    var pos=cellPos(r,c);var d=(pos.x-bx)*(pos.x-bx)+(pos.y-by)*(pos.y-by);
+    if(d<bestD){bestD=d;best=[r,c];}
+  }
+  if(!best)return;
+  grid[best[0]][best[1]]={col:col};
+  var cluster=findCluster(best[0],best[1]);
+  if(cluster.length>=3){
+    cluster.forEach(function(p){var pos=cellPos(p[0],p[1]);spawnPop(pos.x,pos.y,COLORS[grid[p[0]][p[1]].col][0]);grid[p[0]][p[1]]=null;});
+    score+=cluster.length*10;
+    var dropped=dropFloating();
+    score+=dropped*20;misses=0;
+  }else{
+    misses++;
+    if(misses>=5){misses=0;addRow();}
+  }
+  var anyLeft=false;grid.forEach(function(row){row.forEach(function(b){if(b)anyLeft=true;});});
+  if(!anyLeft){score+=200;initGrid();}
+  checkLose();
+  updateHUD();
+}
+function addRow(){
+  for(var r=grid.length-1;r>0;r--)grid[r]=grid[r-1];
+  grid[0]=newRow(true);
+}
+function checkLose(){
+  var gy=10+R+(grid.length-1)*ROWH+R;
+  for(var r=0;r<grid.length;r++)for(var c=0;c<COLS;c++){
+    if(grid[r][c]&&cellPos(r,c).y>shooter.y-30){endGame(false);return;}
+  }
+}
+function spawnPop(px,py,col){
+  for(var i=0;i<8;i++)particles.push({x:px,y:py,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:1,col:col,r:2+Math.random()*2.5});
+}
+function shoot(){
+  if(flying||!playing||gameOver)return;
+  var a=shooter.angle;
+  flying={x:shooter.x,y:shooter.y,vx:Math.cos(a)*11,vy:Math.sin(a)*11,col:currentColor};
+  currentColor=nextColor;nextColor=pickColor();shots++;updateHUD();
+}
+function update(){
+  if(flying){
+    flying.x+=flying.vx;flying.y+=flying.vy;
+    if(flying.x<10+R){flying.x=10+R;flying.vx=Math.abs(flying.vx);}
+    if(flying.x>W-10-R){flying.x=W-10-R;flying.vx=-Math.abs(flying.vx);}
+    var hit=flying.y<10+R*2;
+    if(!hit)outer:
+    for(var r=0;r<grid.length;r++)for(var c=0;c<COLS;c++){
+      var b=grid[r][c];if(!b)continue;
+      var pos=cellPos(r,c),dx=flying.x-pos.x,dy=flying.y-pos.y;
+      if(dx*dx+dy*dy<(2*R-2)*(2*R-2)){hit=true;break outer;}
+    }
+    if(hit){snapBubble(flying.x,flying.y,flying.col);flying=null;}
+  }
+  for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=0.04;if(p.life<=0)particles.splice(i,1);}
+  for(var j=falling.length-1;j>=0;j--){var f=falling[j];f.y+=f.vy;f.vy+=0.5;if(f.y>H+40)falling.splice(j,1);}
+}
+function drawBubble(bx,by,col,scale){
+  scale=scale||1;var pal=COLORS[col];
+  var g=x.createRadialGradient(bx-R*0.35*scale,by-R*0.35*scale,R*0.1,bx,by,R*scale);
+  g.addColorStop(0,'#ffffff');g.addColorStop(0.25,pal[0]);g.addColorStop(1,pal[1]);
+  x.fillStyle=g;x.beginPath();x.arc(bx,by,R*scale-1,0,7);x.fill();
+  x.fillStyle='rgba(255,255,255,.7)';x.beginPath();x.arc(bx-R*0.35*scale,by-R*0.4*scale,R*0.22*scale,0,7);x.fill();
+}
+function draw(){
+  var g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1b2545');g.addColorStop(1,'#101830');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(255,255,255,.06)';x.lineWidth=1;
+  for(var i=0;i<6;i++){x.beginPath();x.moveTo(0,H*0.2+i*40);x.lineTo(W,H*0.15+i*50);x.stroke();}
+  grid.forEach(function(row,r){row.forEach(function(b,c){if(!b)return;var pos=cellPos(r,c);drawBubble(pos.x,pos.y,b.col);});});
+  falling.forEach(function(f){drawBubble(f.x,f.y,f.col);});
+  if(playing&&!gameOver){
+    x.save();x.translate(shooter.x,shooter.y);x.rotate(shooter.angle+Math.PI/2);
+    var bg=x.createLinearGradient(0,-30,0,10);bg.addColorStop(0,'#4cc9f0');bg.addColorStop(1,'#1266f1');
+    x.fillStyle=bg;x.beginPath();x.moveTo(0,-26);x.lineTo(14,10);x.lineTo(-14,10);x.closePath();x.fill();
+    x.fillStyle='#0b1026';x.beginPath();x.arc(0,4,10,0,7);x.fill();
+    x.restore();
+    if(aiming){
+      x.save();x.setLineDash([4,8]);x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=2;
+      x.beginPath();x.moveTo(shooter.x,shooter.y);
+      var ax=shooter.x,ay=shooter.y,vx=Math.cos(shooter.angle)*14,vy=Math.sin(shooter.angle)*14;
+      for(var s=0;s<30;s++){ax+=vx;ay+=vy;if(ax<10+R||ax>W-10-R)vx=-vx;x.lineTo(ax,ay);if(ay<20)break;}
+      x.stroke();x.restore();
+    }
+    drawBubble(shooter.x,shooter.y,currentColor);
+    drawBubble(shooter.x+42,shooter.y+18,nextColor,0.6);
+    x.fillStyle='rgba(255,255,255,.6)';x.font='600 12px Arial';x.textAlign='center';
+    x.fillText('הבא',shooter.x+42,shooter.y+44);
+  }
+  if(flying)drawBubble(flying.x,flying.y,flying.col);
+  particles.forEach(function(p){x.globalAlpha=p.life;x.fillStyle=p.col;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill();});
+  x.globalAlpha=1;
+}
+function loop(){update();draw();requestAnimationFrame(loop);}
+function updateHUD(){
+  document.getElementById('score').textContent='נקודות: '+score;
+  document.getElementById('shots').textContent='יריות: '+shots;
+}
+function endGame(win){
+  gameOver=true;playing=false;
+  document.getElementById('endTitle').textContent='המשחק נגמר';
+  document.getElementById('endText').textContent='צברת '+score+' נקודות ב-'+shots+' יריות';
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function setAim(e){
+  var r=cv.getBoundingClientRect();
+  var px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  var py=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  var a=Math.atan2(py-shooter.y,px-shooter.x);
+  var lim=0.22;
+  if(a>-Math.PI/2-lim&&a<-Math.PI/2+lim)a=a<-Math.PI/2?-Math.PI/2-lim:-Math.PI/2+lim;
+  if(a>-lim&&a<Math.PI/2)a=-lim;
+  if(a>=Math.PI/2||a<-Math.PI+lim)a=-Math.PI+lim;
+  shooter.angle=a;
+}
+cv.addEventListener('touchstart',function(e){if(!playing)return;e.preventDefault();aiming=true;setAim(e);},{passive:false});
+cv.addEventListener('touchmove',function(e){if(!playing)return;e.preventDefault();setAim(e);},{passive:false});
+cv.addEventListener('touchend',function(e){if(!playing)return;e.preventDefault();if(aiming){setAim(e.changedTouches?{touches:e.changedTouches}:e);aiming=false;shoot();}},{passive:false});
+cv.addEventListener('mousemove',function(e){if(playing)setAim(e);});
+cv.addEventListener('mousedown',function(e){if(playing){aiming=true;setAim(e);}});
+cv.addEventListener('mouseup',function(e){if(playing&&aiming){setAim(e);aiming=false;shoot();}});
+function start(){
+  score=0;shots=0;misses=0;gameOver=false;playing=true;flying=null;particles=[];falling=[];
+  initGrid();updateHUD();
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+resize();window.addEventListener('resize',resize);
+initGrid();updateHUD();loop();
+})();
+</script>
+</body>
+</html>

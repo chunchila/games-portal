@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>הצפרדע חוצה את הכביש</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#1b4332;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:14px;padding:10px;color:#fff;font-size:15px;font-weight:600;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.7);z-index:5}
+  #hud span{background:rgba(0,0,0,.35);padding:4px 12px;border-radius:20px}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,20,12,.85);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:32px;margin-bottom:10px;background:linear-gradient(90deg,#95d5b2,#ffd60a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#d8f3dc;line-height:1.7}
+  .btn{background:linear-gradient(135deg,#52b788,#1b4332);border:none;color:#fff;font-size:19px;font-weight:700;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(82,183,136,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="hud"><span id="score">נקודות: 0</span><span id="lives">♥♥♥</span><span id="time">⏱ 30</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="startOv">
+  <h1>הצפרדע חוצה את הכביש</h1>
+  <p>החלק או הקש כדי לקפוץ<br>הימנע ממכוניות, קפוץ על בולי עץ<br>והגע לחוף הנגדי!</p>
+  <button class="btn" id="startBtn">התחל לשחק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">שחק שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var W,H,CELL,DPR=Math.min(window.devicePixelRatio||1,2);
+var COLS=9,ROWS=12;
+function resize(){
+  var aw=Math.min(window.innerWidth,440),ah=window.innerHeight-8;
+  if(aw/ah>COLS/ROWS)aw=ah*COLS/ROWS;else ah=aw*ROWS/COLS;
+  W=aw;H=ah;CELL=W/COLS;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();window.addEventListener('resize',resize);
+// rows: 0 goal, 1-4 water(logs), 5 bank, 6-9 road(cars), 10 grass, 11 start
+var LANES=[
+ {type:'goal'},
+ {type:'water',dir:-1,speed:0.9,size:3,gap:2},
+ {type:'water',dir:1,speed:1.2,size:2,gap:3},
+ {type:'water',dir:-1,speed:1.5,size:3,gap:2},
+ {type:'water',dir:1,speed:0.7,size:2,gap:2},
+ {type:'bank'},
+ {type:'road',dir:1,speed:1.4,size:1,gap:3},
+ {type:'road',dir:-1,speed:1.8,size:2,gap:3},
+ {type:'road',dir:1,speed:1.1,size:1,gap:2},
+ {type:'road',dir:-1,speed:2.2,size:1,gap:4},
+ {type:'grass'},
+ {type:'start'}
+];
+var CAR_COLORS=['#ef476f','#ffd166','#06d6a0','#118ab2','#9b5de5'];
+var obstacles=[],frog,score=0,lives=3,timeLeft=30,playing=false,hopAnim=0,maxRow=ROWS-1;
+function buildObstacles(){
+  obstacles=[];
+  for(var r=1;r<ROWS;r++){var L=LANES[r];if(L.type!=='road'&&L.type!=='water')continue;
+    var n=Math.ceil(COLS/(L.size+L.gap))+1;
+    for(var i=0;i<n;i++)obstacles.push({row:r,x:i*(L.size+L.gap)*CELL+((r*37)%80),w:L.size*CELL,speed:L.speed*L.dir*(CELL/40),color:CAR_COLORS[(r+i)%CAR_COLORS.length]});
+  }
+}
+function resetFrog(){frog={c:4,r:ROWS-1,px:0,py:0};frog.px=frog.c*CELL;frog.py=frog.r*CELL;timeLeft=30;updateHUD();}
+function updateHUD(){
+  document.getElementById('score').textContent='נקודות: '+score;
+  document.getElementById('lives').textContent='♥'.repeat(lives)+'♡'.repeat(3-lives);
+  document.getElementById('time').textContent='⏱ '+Math.ceil(timeLeft);
+}
+function hop(dc,dr){
+  if(!playing||hopAnim>0)return;
+  var nc=frog.c+dc,nr=frog.r+dr;
+  if(nc<0||nc>=COLS||nr<0||nr>=ROWS)return;
+  frog.c=nc;frog.r=nr;hopAnim=1;
+  if(nr<maxRow){score+=(maxRow-nr)*10;maxRow=nr;}
+  if(nr===0){score+=100+Math.ceil(timeLeft)*2;maxRow=ROWS-1;resetFrog();score=score;}
+  updateHUD();
+}
+var secT=0;
+function update(dt){
+  if(!playing)return;
+  secT+=dt;
+  if(secT>=1){secT-=1;timeLeft--;updateHUD();if(timeLeft<=0){die();return;}}
+  var ds=1+score/800;
+  obstacles.forEach(function(o){
+    var lane=LANES[o.row];
+    var total=(COLS+lane.size+lane.gap)*CELL;
+    o.x+=o.speed*ds*dt*60;
+    if(o.x>W+CELL)o.x-=total;
+    if(o.x<-o.w-CELL)o.x+=total;
+  });
+  if(hopAnim>0)hopAnim=Math.max(0,hopAnim-dt*6);
+  var tx=frog.c*CELL,ty=frog.r*CELL;
+  frog.px+=(tx-frog.px)*Math.min(1,dt*14);
+  frog.py+=(ty-frog.py)*Math.min(1,dt*14);
+  var fr=frog.r,fc=frog.px;
+  if(LANES[fr].type==='road'){
+    for(var i=0;i<obstacles.length;i++){var o=obstacles[i];
+      if(o.row!==fr)continue;
+      if(fc+CELL*0.7>o.x&&fc+CELL*0.3<o.x+o.w){die();return;}}
+  }else if(LANES[fr].type==='water'){
+    var onLog=false;
+    for(var j=0;j<obstacles.length;j++){var ob=obstacles[j];
+      if(ob.row!==fr)continue;
+      if(fc+CELL*0.75>ob.x&&fc+CELL*0.25<ob.x+ob.w){onLog=true;frog.px+=ob.speed*ds*dt*60;frog.c=frog.px/CELL;break;}}
+    if(!onLog){die();return;}
+    if(frog.px<-CELL||frog.px>W){die();return;}
+  }
+}
+function die(){
+  lives--;updateHUD();
+  if(lives<=0){endGame();return;}
+  maxRow=ROWS-1;resetFrog();
+}
+function endGame(){
+  playing=false;
+  document.getElementById('endTitle').textContent='המשחק נגמר';
+  document.getElementById('endText').textContent='צברת '+score+' נקודות';
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function drawFrog(px,py){
+  var s=CELL*0.42,hop=hopAnim>0?Math.sin(hopAnim*Math.PI)*CELL*0.15:0;
+  x.save();x.translate(px+CELL/2,py+CELL/2-hop);
+  x.fillStyle='#52b788';
+  x.beginPath();x.ellipse(0,2,s,s*0.85,0,0,7);x.fill();
+  x.fillStyle='#40916c';
+  x.beginPath();x.ellipse(-s*0.8,s*0.6,s*0.35,s*0.25,-0.5,0,7);x.fill();
+  x.beginPath();x.ellipse(s*0.8,s*0.6,s*0.35,s*0.25,0.5,0,7);x.fill();
+  x.fillStyle='#74c69d';x.beginPath();x.ellipse(0,s*0.35,s*0.6,s*0.4,0,0,7);x.fill();
+  x.fillStyle='#52b788';
+  x.beginPath();x.arc(-s*0.45,-s*0.65,s*0.32,0,7);x.fill();
+  x.beginPath();x.arc(s*0.45,-s*0.65,s*0.32,0,7);x.fill();
+  x.fillStyle='#fff';
+  x.beginPath();x.arc(-s*0.45,-s*0.68,s*0.2,0,7);x.fill();
+  x.beginPath();x.arc(s*0.45,-s*0.68,s*0.2,0,7);x.fill();
+  x.fillStyle='#111';
+  x.beginPath();x.arc(-s*0.45,-s*0.68,s*0.1,0,7);x.fill();
+  x.beginPath();x.arc(s*0.45,-s*0.68,s*0.1,0,7);x.fill();
+  x.restore();
+}
+function drawCar(o,ry){
+  x.save();x.translate(o.x,ry);
+  var dir=LANES[o.row].dir;if(dir<0){x.translate(o.w,0);x.scale(-1,1);}
+  x.fillStyle=o.color;
+  x.beginPath();x.roundRect?x.roundRect(2,CELL*0.15,o.w-4,CELL*0.7,8):x.rect(2,CELL*0.15,o.w-4,CELL*0.7);x.fill();
+  x.fillStyle='rgba(255,255,255,.55)';
+  x.beginPath();x.roundRect?x.roundRect(o.w*0.3,CELL*0.24,o.w*0.35,CELL*0.24,4):x.rect(o.w*0.3,CELL*0.24,o.w*0.35,CELL*0.24);x.fill();
+  x.fillStyle='#ffd60a';x.fillRect(o.w-7,CELL*0.28,5,CELL*0.14);x.fillRect(o.w-7,CELL*0.58,5,CELL*0.14);
+  x.fillStyle='#222';
+  x.beginPath();x.arc(o.w*0.25,CELL*0.88,CELL*0.14,0,7);x.arc(o.w*0.75,CELL*0.88,CELL*0.14,0,7);x.fill();
+  x.restore();
+}
+function drawLog(o,ry){
+  x.save();x.translate(o.x,ry);
+  x.fillStyle='#7f5539';
+  x.beginPath();x.roundRect?x.roundRect(0,CELL*0.12,o.w,CELL*0.76,CELL*0.3):x.rect(0,CELL*0.12,o.w,CELL*0.76);x.fill();
+  x.strokeStyle='#5c3d24';x.lineWidth=2;
+  x.beginPath();x.moveTo(o.w*0.2,CELL*0.18);x.lineTo(o.w*0.2,CELL*0.82);x.stroke();
+  x.beginPath();x.moveTo(o.w*0.6,CELL*0.18);x.lineTo(o.w*0.6,CELL*0.82);x.stroke();
+  x.strokeStyle='#9c6644';x.beginPath();x.ellipse(o.w-CELL*0.25,CELL/2,CELL*0.16,CELL*0.3,0,0,7);x.stroke();
+  x.restore();
+}
+function draw(){
+  x.fillStyle='#1b4332';x.fillRect(0,0,W,H);
+  for(var r=0;r<ROWS;r++){
+    var L=LANES[r],ry=r*CELL;
+    if(L.type==='water'){var wg=x.createLinearGradient(0,ry,0,ry+CELL);wg.addColorStop(0,'#1266f1');wg.addColorStop(1,'#0a4fc4');x.fillStyle=wg;x.fillRect(0,ry,W,CELL);
+      x.strokeStyle='rgba(255,255,255,.15)';x.lineWidth=1.5;
+      var off=(Date.now()/40*L.speed)%40;
+      for(var wx=-40;wx<W+40;wx+=40){x.beginPath();x.moveTo(wx+off,ry+CELL*0.3);x.quadraticCurveTo(wx+10+off,ry+CELL*0.2,wx+20+off,ry+CELL*0.3);x.stroke();}
+    }
+    else if(L.type==='road'){x.fillStyle=r%2?'#343a40':'#3d444c';x.fillRect(0,ry,W,CELL);
+      x.fillStyle='rgba(255,255,255,.25)';for(var d=0;d<W;d+=30)x.fillRect(d,ry+CELL/2-1,15,2);}
+    else if(L.type==='goal'){x.fillStyle='#2d6a4f';x.fillRect(0,ry,W,CELL);
+      for(var ly=0;ly<COLS;ly+=2){x.fillStyle='#e9c46a';x.beginPath();x.ellipse(ly*CELL+CELL/2,ry+CELL/2,CELL*0.32,CELL*0.22,0.3,0,7);x.fill();x.fillStyle='#2d6a4f';x.beginPath();x.moveTo(ly*CELL+CELL/2,ry+CELL/2);x.lineTo(ly*CELL+CELL*0.85,ry+CELL*0.2);x.lineTo(ly*CELL+CELL*0.85,ry+CELL*0.8);x.closePath();x.fill();}}
+    else if(L.type==='bank'){x.fillStyle='#b08968';x.fillRect(0,ry,W,CELL);x.fillStyle='rgba(0,0,0,.1)';for(var st=0;st<W;st+=24)x.fillRect(st,ry+((st*7)%CELL*0.7),3,3);}
+    else{x.fillStyle=r===ROWS-1?'#40916c':'#1b4332';x.fillRect(0,ry,W,CELL);}
+  }
+  obstacles.forEach(function(o){
+    var ry=o.row*CELL;
+    if(LANES[o.row].type==='road')drawCar(o,ry);else drawLog(o,ry);
+  });
+  if(playing||hopAnim>0)drawFrog(frog.px,frog.py);
+}
+var last=0;
+function loop(ts){var dt=Math.min(0.05,(ts-last)/1000||0.016);last=ts;update(dt);draw();requestAnimationFrame(loop);}
+var tsx=0,tsy=0;
+cv.addEventListener('touchstart',function(e){e.preventDefault();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:false});
+cv.addEventListener('touchend',function(e){
+  e.preventDefault();
+  var dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20){
+    var r=cv.getBoundingClientRect(),px=tsx-r.left,py=tsy-r.top;
+    var fc=frog.px+CELL/2,fy=frog.py+CELL/2;
+    if(py<fy-CELL*0.4)hop(0,-1);else if(py>fy+CELL*0.4)hop(0,1);else if(px<fc)hop(-1,0);else hop(1,0);
+    return;
+  }
+  if(Math.abs(dx)>Math.abs(dy))hop(dx>0?1:-1,0);else hop(0,dy>0?1:-1);
+},{passive:false});
+window.addEventListener('keydown',function(e){
+  if(e.key==='ArrowUp')hop(0,-1);else if(e.key==='ArrowDown')hop(0,1);
+  else if(e.key==='ArrowLeft')hop(-1,0);else if(e.key==='ArrowRight')hop(1,0);
+});
+function start(){
+  score=0;lives=3;maxRow=ROWS-1;playing=true;hopAnim=0;
+  buildObstacles();resetFrog();
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+buildObstacles();resetFrog();loop(0);
+})();
+</script>
+</body>
+</html>

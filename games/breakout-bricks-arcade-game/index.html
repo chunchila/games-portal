@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>שובר הלבנים</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0b1026;font-family:-apple-system,'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:18px;padding:10px;color:#fff;font-size:15px;font-weight:600;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.7);z-index:5}
+  #hud span{background:rgba(255,255,255,.12);padding:4px 12px;border-radius:20px;backdrop-filter:blur(4px)}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,30,.82);backdrop-filter:blur(6px);z-index:10;color:#fff;text-align:center;padding:20px}
+  .overlay h1{font-size:34px;margin-bottom:10px;background:linear-gradient(90deg,#ffd166,#ef476f);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay p{font-size:17px;margin-bottom:22px;color:#cfd6ff;line-height:1.6}
+  .btn{background:linear-gradient(135deg,#06d6a0,#118ab2);border:none;color:#fff;font-size:19px;font-weight:700;padding:14px 42px;border-radius:40px;cursor:pointer;box-shadow:0 6px 20px rgba(6,214,160,.4);font-family:inherit}
+  .btn:active{transform:scale(.95)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="hud"><span id="score">נקודות: 0</span><span id="lives">♥♥♥</span><span id="level">שלב 1</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="startOv">
+  <h1>שובר הלבנים</h1>
+  <p>גרור את המשטח כדי לפגוע בכדור<br>ושבור את כל הלבנים!</p>
+  <button class="btn" id="startBtn">התחל לשחק</button>
+</div>
+<div class="overlay hidden" id="endOv">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">שחק שוב</button>
+</div>
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('c'),x=cv.getContext('2d');
+x.direction='ltr';
+var W,H,DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){
+  var aw=Math.min(window.innerWidth,480),ah=window.innerHeight;
+  if(aw/ah>0.62)aw=ah*0.62;
+  W=aw;H=ah;
+  cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(DPR,0,0,DPR,0,0);
+}
+resize();window.addEventListener('resize',resize);
+var score=0,lives=3,level=1,playing=false,launched=false,gameOver=false;
+var paddle={w:90,h:14,x:0,y:0};
+var ball={x:0,y:0,r:8,vx:0,vy:0,speed:5};
+var bricks=[],particles=[],trail=[];
+var ROWS=5,COLS=7;
+var PALETTE=[['#ef476f','#c9184a'],['#ffd166','#f4a261'],['#06d6a0','#048a64'],['#118ab2','#0a5f7d'],['#9b5de5','#6a3ba8'],['#f15bb5','#b83a8a']];
+function buildLevel(){
+  bricks=[];var top=H*0.12,gap=5,bw=(W-gap*(COLS+1))/COLS,bh=Math.min(26,H*0.032);
+  var rows=Math.min(ROWS+level-1,8);
+  for(var r=0;r<rows;r++)for(var c=0;c<COLS;c++){
+    var hp=r<2&&level>1?2:1;
+    bricks.push({x:gap+c*(bw+gap),y:top+r*(bh+gap),w:bw,h:bh,hp:hp,maxhp:hp,pal:PALETTE[r%PALETTE.length],alive:true});
+  }
+}
+function resetBall(){
+  paddle.w=Math.max(70,100-(level-1)*6);paddle.x=W/2;paddle.y=H-H*0.09;
+  ball.x=paddle.x;ball.y=paddle.y-ball.r-2;ball.speed=Math.min(4.6+level*0.5,8.5);
+  ball.vx=0;ball.vy=0;launched=false;trail=[];
+}
+function launch(){
+  if(launched)return;launched=true;
+  var a=(-60+Math.random()*60)*Math.PI/180;
+  ball.vx=Math.sin(a)*ball.speed;ball.vy=-Math.cos(a)*ball.speed;
+}
+function spawnP(px,py,col){
+  for(var i=0;i<10;i++)particles.push({x:px,y:py,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5-1,life:1,col:col,r:2+Math.random()*3});
+}
+function update(){
+  if(!playing||gameOver)return;
+  if(launched){
+    ball.x+=ball.vx;ball.y+=ball.vy;
+    trail.push({x:ball.x,y:ball.y});if(trail.length>10)trail.shift();
+    if(ball.x<ball.r){ball.x=ball.r;ball.vx=Math.abs(ball.vx);}
+    if(ball.x>W-ball.r){ball.x=W-ball.r;ball.vx=-Math.abs(ball.vx);}
+    if(ball.y<ball.r){ball.y=ball.r;ball.vy=Math.abs(ball.vy);}
+    if(ball.y>H+ball.r){
+      lives--;updateHUD();
+      if(lives<=0){endGame(false);return;}
+      resetBall();return;
+    }
+    if(ball.vy>0&&ball.y+ball.r>paddle.y&&ball.y-ball.r<paddle.y+paddle.h&&Math.abs(ball.x-paddle.x)<paddle.w/2+ball.r){
+      var off=(ball.x-paddle.x)/(paddle.w/2);
+      var a=off*1.1;
+      ball.vx=Math.sin(a)*ball.speed;ball.vy=-Math.abs(Math.cos(a)*ball.speed);
+      ball.y=paddle.y-ball.r-1;
+      spawnP(ball.x,paddle.y,'#ffffff');
+    }
+    for(var i=0;i<bricks.length;i++){var b=bricks[i];if(!b.alive)continue;
+      if(ball.x+ball.r>b.x&&ball.x-ball.r<b.x+b.w&&ball.y+ball.r>b.y&&ball.y-ball.r<b.y+b.h){
+        var dxl=ball.x-b.x,dxr=b.x+b.w-ball.x,dyt=ball.y-b.y,dyb=b.y+b.h-ball.y;
+        var m=Math.min(dxl,dxr,dyt,dyb);
+        if(m===dxl||m===dxr)ball.vx=-ball.vx;else ball.vy=-ball.vy;
+        b.hp--;
+        if(b.hp<=0){b.alive=false;score+=10*level;spawnP(b.x+b.w/2,b.y+b.h/2,b.pal[0]);}
+        else{score+=5;spawnP(ball.x,ball.y,'#ffd166');}
+        updateHUD();break;
+      }
+    }
+    if(bricks.every(function(b){return !b.alive;})){
+      level++;score+=100;updateHUD();buildLevel();resetBall();
+    }
+  }else{ball.x=paddle.x;ball.y=paddle.y-ball.r-2;}
+  for(var j=particles.length-1;j>=0;j--){var p=particles[j];p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life-=0.03;if(p.life<=0)particles.splice(j,1);}
+}
+function roundRect(x0,y0,w,h,r){x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath();}
+function draw(){
+  var g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1f4b');g.addColorStop(1,'#0b1026');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(255,255,255,.5)';
+  for(var s=0;s<24;s++){var sx=(s*97.3)%W,sy=(s*57.7)%H;x.globalAlpha=0.15+0.25*Math.abs(Math.sin(Date.now()/900+s));x.fillRect(sx,sy,2,2);}
+  x.globalAlpha=1;
+  bricks.forEach(function(b){if(!b.alive)return;
+    var bg=x.createLinearGradient(b.x,b.y,b.x,b.y+b.h);bg.addColorStop(0,b.pal[0]);bg.addColorStop(1,b.pal[1]);
+    x.fillStyle=bg;roundRect(b.x,b.y,b.w,b.h,5);x.fill();
+    x.fillStyle='rgba(255,255,255,.35)';roundRect(b.x+2,b.y+2,b.w-4,b.h/3,3);x.fill();
+    if(b.hp<b.maxhp){x.strokeStyle='rgba(0,0,0,.5)';x.lineWidth=1.5;x.beginPath();x.moveTo(b.x+6,b.y+3);x.lineTo(b.x+b.w/2,b.y+b.h-3);x.lineTo(b.x+b.w-6,b.y+5);x.stroke();}
+  });
+  trail.forEach(function(t,i){x.globalAlpha=i/trail.length*0.3;x.fillStyle='#8ecae6';x.beginPath();x.arc(t.x,t.y,ball.r*(i/trail.length),0,7);x.fill();});
+  x.globalAlpha=1;
+  var rg=x.createRadialGradient(ball.x-3,ball.y-3,1,ball.x,ball.y,ball.r);rg.addColorStop(0,'#ffffff');rg.addColorStop(1,'#8ecae6');
+  x.fillStyle=rg;x.beginPath();x.arc(ball.x,ball.y,ball.r,0,7);x.fill();
+  var pg=x.createLinearGradient(0,paddle.y,0,paddle.y+paddle.h);pg.addColorStop(0,'#06d6a0');pg.addColorStop(1,'#048a64');
+  x.fillStyle=pg;roundRect(paddle.x-paddle.w/2,paddle.y,paddle.w,paddle.h,7);x.fill();
+  x.fillStyle='rgba(255,255,255,.4)';roundRect(paddle.x-paddle.w/2+4,paddle.y+2,paddle.w-8,4,2);x.fill();
+  particles.forEach(function(p){x.globalAlpha=p.life;x.fillStyle=p.col;x.beginPath();x.arc(p.x,p.y,p.r*p.life,0,7);x.fill();});
+  x.globalAlpha=1;
+  if(!launched&&playing&&!gameOver){
+    x.fillStyle='rgba(255,255,255,.75)';x.font='600 15px Arial';x.textAlign='center';
+    x.fillText('הקש כדי לשגר',W/2,paddle.y-40);
+  }
+}
+function loop(){update();draw();requestAnimationFrame(loop);}
+function updateHUD(){
+  document.getElementById('score').textContent='נקודות: '+score;
+  document.getElementById('lives').textContent='♥'.repeat(lives)+'♡'.repeat(Math.max(0,3-lives));
+  document.getElementById('level').textContent='שלב '+level;
+}
+function endGame(win){
+  gameOver=true;playing=false;
+  document.getElementById('endTitle').textContent=win?'כל הכבוד!':'המשחק נגמר';
+  document.getElementById('endText').textContent='צברת '+score+' נקודות והגעת לשלב '+level;
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function pointerX(e){var r=cv.getBoundingClientRect();var cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;return Math.max(paddle.w/2,Math.min(W-paddle.w/2,cx));}
+function onMove(e){if(!playing)return;e.preventDefault();paddle.x=pointerX(e);}
+cv.addEventListener('touchmove',onMove,{passive:false});
+cv.addEventListener('mousemove',onMove);
+cv.addEventListener('touchstart',function(e){e.preventDefault();paddle.x=pointerX(e);if(playing)launch();},{passive:false});
+cv.addEventListener('mousedown',function(e){paddle.x=pointerX(e);if(playing)launch();});
+function start(){
+  score=0;lives=3;level=1;gameOver=false;playing=true;
+  buildLevel();resetBall();updateHUD();
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('againBtn').addEventListener('click',start);
+buildLevel();resetBall();updateHUD();loop();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>נינג'ה שועל - ריצת גגות</title><style>*{margin:0;box-sizing:border-box}body{background:#2b1331;color:#ffe9c7;font-family:Georgia,serif;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;min-height:100vh}h1{margin:10px;font-size:22px;color:#ffb347}canvas{width:min(96vw,420px);aspect-ratio:3/4;border-radius:6px;border:4px solid #ffb347}p{opacity:.7;font-size:14px;margin:6px}</style></head><body><h1>נינג'ה שועל · ריצת גגות</h1><canvas id="c" width="420" height="560"></canvas><p>לחיצה = קפיצה · לחיצה שנייה באוויר = קפיצה כפולה</p>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';let best=+localStorage.foxBest||0,st,fox,obs,t,sp,sc,over;
+function init(){fox={y:400,vy:0,j:0};obs=[];t=0;sp=5;sc=0;over=false}
+function jump(){if(over){init();return}if(fox.j<2){fox.vy=-13;fox.j++}}
+['pointerdown'].forEach(e=>c.addEventListener(e,jump));addEventListener('keydown',e=>{if(e.code=='Space'||e.key=='ArrowUp'){e.preventDefault();jump()}});
+function drawFox(cx,fy,spin,t){x.save();x.translate(cx,fy);if(spin){x.translate(0,-18);x.rotate(t*.3);x.translate(0,18)}
+x.fillStyle='#ff7a1a';x.beginPath();x.ellipse(-20,-14,18,7,-.6,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.ellipse(-33,-21,6,5,-.6,0,7);x.fill();
+x.fillStyle='#3a1236';const sw=Math.sin(t*.5)*4;x.fillRect(-8+sw,-8,6,8);x.fillRect(4-sw,-8,6,8);
+x.fillStyle='#ff7a1a';x.beginPath();x.ellipse(0,-17,15,10,0,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.ellipse(4,-13,8,5,0,0,7);x.fill();
+x.fillStyle='#ff7a1a';x.beginPath();x.arc(13,-30,11,0,7);x.fill();
+x.beginPath();x.moveTo(5,-37);x.lineTo(7,-52);x.lineTo(15,-39);x.fill();x.beginPath();x.moveTo(14,-39);x.lineTo(22,-52);x.lineTo(24,-35);x.fill();
+x.fillStyle='#fff';x.beginPath();x.moveTo(15,-26);x.lineTo(30,-27);x.lineTo(20,-19);x.fill();x.fillStyle='#222';x.beginPath();x.arc(30,-27,2.4,0,7);x.fill();
+x.fillStyle='#d6204a';x.fillRect(2,-36,22,5);x.beginPath();x.moveTo(3,-34);x.lineTo(-8,-30+sw/2);x.lineTo(-6,-38);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(18,-31,3.2,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(19,-31,1.6,0,7);x.fill();x.restore()}
+function drawStar(cx,cy,t){x.save();x.translate(cx,cy);x.rotate(t*.25);x.fillStyle='#e8e8f0';x.beginPath();for(let i=0;i<8;i++){const r=i%2?7:17,a=i*Math.PI/4;x.lineTo(Math.cos(a)*r,Math.sin(a)*r)}x.fill();x.fillStyle='#3a1236';x.beginPath();x.arc(0,0,4,0,7);x.fill();x.restore()}
+function loop(){t++;
+const g=x.createLinearGradient(0,0,0,560);g.addColorStop(0,'#ff6b6b');g.addColorStop(.5,'#ffb347');g.addColorStop(1,'#ffe29a');x.fillStyle=g;x.fillRect(0,0,420,560);
+x.fillStyle='#fff3';x.beginPath();x.arc(320,120,60,0,7);x.fill();
+for(let l=0;l<3;l++){x.fillStyle=['#7a2e5e','#5a1f4a','#3a1236'][l];for(let i=0;i<8;i++){const bx=((i*90-(t*(l+1)*.5))%720+720)%720-100,h=80+((i*37+l*53)%90)+l*30;x.fillRect(bx,440-h-l*20,70,h+l*20)}}
+x.fillStyle='#2b1331';x.fillRect(0,460,420,100);x.fillStyle='#ffb347';x.fillRect(0,460,420,6);
+if(!over){fox.vy+=.65;fox.y+=fox.vy;if(fox.y>=430){fox.y=430;fox.vy=0;fox.j=0}sp=5+sc/400;sc+=1;
+ if(t%Math.max(45,95-(sc/40|0))==0)obs.push({x:440,w:28+Math.random()*20,h:34+Math.random()*30,type:Math.random()<.3?'star':'box'});
+ obs.forEach(o=>o.x-=sp);obs=obs.filter(o=>o.x>-60);
+ for(const o of obs){const oy=o.type=='star'?340:460-o.h;const oh=o.type=='star'?30:o.h;if(o.x<86&&o.x+o.w>50&&fox.y+8>oy&&fox.y-34<oy+oh){over=true;if(sc>best){best=sc;localStorage.foxBest=best}}}}
+obs.forEach(o=>{if(o.type=='star'){drawStar(o.x+14,356,t)}else{x.fillStyle='#8b3a62';x.fillRect(o.x,460-o.h,o.w,o.h);x.fillStyle='#ffb347';x.fillRect(o.x,460-o.h,o.w,5)}});
+drawFox(68,fox.y+8,fox.j>1||fox.vy<-6,t);
+x.fillStyle='#2b1331';x.font='bold 22px Georgia';x.textAlign='left';x.fillText('ניקוד '+(sc/10|0)+'   שיא '+(best/10|0),12,30);
+if(over){x.fillStyle='#000b';x.fillRect(40,200,340,130);x.fillStyle='#fff';x.textAlign='center';x.font='bold 30px Georgia';x.fillText('השועל נפל!',210,250);x.font='18px Georgia';x.fillText('לחצו לריצה חדשה',210,290)}
+x.textAlign='left';requestAnimationFrame(loop)}
+init();loop();
+</script></body></html>
