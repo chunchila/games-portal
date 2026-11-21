@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>קרב צוללות</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#06121f;font-family:'Segoe UI',Arial,sans-serif;color:#eaf6ff;touch-action:none;user-select:none}
+#wrap{height:100%;display:flex;flex-direction:column;align-items:center;max-width:440px;margin:0 auto;padding:6px}
+h1{font-size:22px;font-weight:800;background:linear-gradient(90deg,#4cc9f0,#ffd60a);-webkit-background-clip:text;background-clip:text;color:transparent;margin:2px 0}
+#hud{display:flex;gap:8px;margin:4px 0;flex-wrap:wrap;justify-content:center}
+.pill{background:#0e2438;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700}
+#msg{font-size:15px;font-weight:700;min-height:22px;color:#ffd60a;text-align:center}
+canvas{display:block;border-radius:12px}
+#c2{margin-top:6px}
+.ov{position:fixed;inset:0;background:rgba(4,12,22,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;text-align:center;padding:20px}
+.ov h2{font-size:30px;background:linear-gradient(90deg,#4cc9f0,#ffd60a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ov p{font-size:16px;color:#b8d4e8;max-width:320px;line-height:1.5}
+.btn{background:linear-gradient(135deg,#ffd60a,#ff9f1c);color:#221800;border:none;padding:14px 38px;font-size:19px;font-weight:800;border-radius:40px;cursor:pointer;box-shadow:0 6px 22px rgba(255,159,28,.4)}
+.hidden{display:none}
+#fleetRow{font-size:12px;color:#8fb8d8;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="wrap">
+<h1>קרב צוללות</h1>
+<div id="hud">
+  <div class="pill" id="mine">הצי שלי: 5</div>
+  <div class="pill" id="theirs">צי האויב: 5</div>
+  <div class="pill" id="wins">נצחונות: 0</div>
+</div>
+<div id="msg">הקישו על לוח האויב לירי</div>
+<canvas id="c"></canvas>
+<canvas id="c2"></canvas>
+<div id="fleetRow">הלוח התחתון: הצי שלכם (יריקות האויב מסומנות)</div>
+</div>
+<div class="ov" id="startOv">
+  <h2>קרב צוללות</h2>
+  <p>הטביעו את כל 5 ספינות האויב לפני שהוא מטביע את שלכם. הקישו על משבצת בלוח העליון כדי לירות. פגיעה מעניקה תור נוסף!</p>
+  <button class="btn" id="startBtn">לקרב!</button>
+</div>
+<div class="ov hidden" id="endOv">
+  <h2 id="endTitle"></h2>
+  <p id="endText"></p>
+  <button class="btn" id="againBtn">קרב חדש</button>
+</div>
+<script>
+(function(){
+'use strict';
+var c1=document.getElementById('c'),g1=c1.getContext('2d');
+var c2=document.getElementById('c2'),g2=c2.getContext('2d');
+g1.direction='ltr';g2.direction='ltr';
+var N=8,SHIPS=[4,3,3,2,2];
+var W=Math.min(window.innerWidth-12,420);
+var cellE=Math.floor(W/N);c1.width=cellE*N;c1.height=cellE*N;
+var cellM=Math.floor(W*0.52/N);c2.width=cellM*N;c2.height=cellM*N;
+var enemy,mine,enemyShots,myShots,playing=false,turn='me',busy=false;
+var wins=+(localStorage.getItem('bs_wins')||0);
+document.getElementById('wins').textContent='נצחונות: '+wins;
+var splashes=[],boils=[];
+function emptyBoard(){var b=[];for(var i=0;i<N;i++){b.push([]);for(var j=0;j<N;j++)b[i].push({ship:0,hit:false});}return b;}
+function placeAll(b){
+  var ships=[],id=1;
+  SHIPS.forEach(function(len){
+    var placed=false,guard=0;
+    while(!placed&&guard++<500){
+      var horiz=Math.random()<0.5;
+      var r=Math.floor(Math.random()*(horiz?N:N-len+1));
+      var cc=Math.floor(Math.random()*(horiz?N-len+1:N));
+      var ok=true;
+      for(var i=0;i<len;i++){var rr=horiz?r:r+i,cc2=horiz?cc+i:cc;if(b[rr][cc2].ship)ok=false;}
+      if(!ok)continue;
+      var cells=[];
+      for(var i2=0;i2<len;i2++){var rr2=horiz?r:r+i2,cc3=horiz?cc+i2:cc;b[rr2][cc3].ship=id;cells.push([rr2,cc3]);}
+      ships.push({id:id,cells:cells,sunk:false});id++;placed=true;
+    }
+  });
+  return ships;
+}
+var enemyShips,myShips;
+function newGame(){
+  enemy=emptyBoard();mine=emptyBoard();
+  enemyShips=placeAll(enemy);myShips=placeAll(mine);
+  enemyShots=0;myShots=0;turn='me';busy=false;playing=true;
+  splashes=[];boils=[];
+  updateHud();
+  document.getElementById('msg').textContent='הקישו על לוח האויב לירי';
+}
+function leftAlive(ships){return ships.filter(function(s){return !s.sunk;}).length;}
+function updateHud(){
+  document.getElementById('mine').textContent='הצי שלי: '+leftAlive(myShips);
+  document.getElementById('theirs').textContent='צי האויב: '+leftAlive(enemyShips);
+}
+function checkSunk(board,ships,r,cc){
+  var id=board[r][cc].ship;
+  var ship=ships.find(function(s){return s.id===id;});
+  var allHit=ship.cells.every(function(cl){return board[cl[0]][cl[1]].hit;});
+  if(allHit){ship.sunk=true;ship.cells.forEach(function(cl){for(var i=0;i<8;i++)boils.push({x:cl[1],y:cl[0],t:Math.random()});});}
+  return allHit;
+}
+function fireEnemy(r,cc){
+  if(enemy[r][cc].hit)return 'again';
+  enemy[r][cc].hit=true;myShots++;
+  splashes.push({x:cc,y:r,t:0,mine:false,hit:!!enemy[r][cc].ship});
+  if(enemy[r][cc].ship){
+    var sunk=checkSunk(enemy,enemyShips,r,cc);
+    updateHud();
+    if(!leftAlive(enemyShips)){endGame(true);return 'win';}
+    document.getElementById('msg').textContent=sunk?'הטבעתם ספינה! ירו שוב':'פגיעה! ירו שוב';
+    return 'hit';
+  }
+  document.getElementById('msg').textContent='החטאה... תור האויב';
+  return 'miss';
+}
+var aiQueue=[];
+function aiTurn(){
+  if(!playing)return;
+  busy=true;
+  setTimeout(function(){
+    if(!playing)return;
+    var r,cc,tries=0;
+    while(true){
+      if(aiQueue.length){var q=aiQueue.shift();r=q[0];cc=q[1];}
+      else{r=Math.floor(Math.random()*N);cc=Math.floor(Math.random()*N);}
+      if(!mine[r][cc].hit)break;
+      if(++tries>200)break;
+    }
+    mine[r][cc].hit=true;
+    splashes.push({x:cc,y:r,t:0,mine:true,hit:!!mine[r][cc].ship});
+    if(mine[r][cc].ship){
+      var sunk=checkSunk(mine,myShips,r,cc);
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+        var nr=r+d[0],nc=cc+d[1];
+        if(nr>=0&&nr<N&&nc>=0&&nc<N&&!mine[nr][nc].hit)aiQueue.push([nr,nc]);
+      });
+      updateHud();
+      if(!leftAlive(myShips)){endGame(false);return;}
+      document.getElementById('msg').textContent=sunk?'האויב הטביע ספינה שלכם!':'האויב פגע בספינה שלכם!';
+      aiTurn();return;
+    }
+    document.getElementById('msg').textContent='האויב החטיא! תורכם';
+    busy=false;
+  },700);
+}
+function endGame(won){
+  playing=false;
+  if(won){wins++;localStorage.setItem('bs_wins',wins);document.getElementById('wins').textContent='נצחונות: '+wins;}
+  document.getElementById('endTitle').textContent=won?'ניצחון במלחמה!':'הצי שלכם טבע...';
+  document.getElementById('endText').textContent=won?'הטבעתם את כל צי האויב ב-'+myShots+' יריות.':'האויב הטביע את כל הספינות שלכם. נסו שוב!';
+  setTimeout(function(){document.getElementById('endOv').classList.remove('hidden');},900);
+}
+function drawSea(g,rn,cn,cell,t){
+  for(var r=0;r<rn;r++)for(var cc=0;cc<cn;cc++){
+    var x0=cc*cell,y0=r*cell;
+    var grad=g.createLinearGradient(x0,y0,x0,y0+cell);
+    grad.addColorStop(0,'#0d2f4a');grad.addColorStop(1,'#0a2540');
+    g.fillStyle=grad;g.fillRect(x0,y0,cell,cell);
+    var wv=Math.sin(t*2+r*1.3+cc*0.9)*0.5+0.5;
+    g.strokeStyle='rgba(80,180,255,'+(0.05+wv*0.08)+')';
+    g.lineWidth=1.5;
+    g.beginPath();g.arc(x0+cell*0.5,y0+cell*0.6,cell*0.22,Math.PI*1.1,Math.PI*1.9);g.stroke();
+  }
+}
+function drawShipCell(g,x0,y0,cell,sunk){
+  g.fillStyle=sunk?'#5a2323':'#4a5a6a';
+  g.beginPath();
+  if(g.roundRect)g.roundRect(x0+cell*0.12,y0+cell*0.28,cell*0.76,cell*0.44,cell*0.1);else g.rect(x0+cell*0.12,y0+cell*0.28,cell*0.76,cell*0.44);
+  g.fill();
+  g.fillStyle=sunk?'#7a3535':'#6a7d90';
+  g.fillRect(x0+cell*0.32,y0+cell*0.16,cell*0.36,cell*0.18);
+}
+function drawGrid(g,rn,cn,cell){
+  g.strokeStyle='rgba(120,200,255,0.25)';g.lineWidth=1;
+  for(var i=0;i<=rn;i++){g.beginPath();g.moveTo(0,i*cell);g.lineTo(cn*cell,i*cell);g.stroke();g.beginPath();g.moveTo(i*cell,0);g.lineTo(i*cell,rn*cell);g.stroke();}
+}
+var T0=Date.now();
+function loop(){
+  var t=(Date.now()-T0)/1000;
+  drawSea(g1,N,N,cellE,t);
+  for(var r=0;r<N;r++)for(var cc=0;cc<N;cc++){
+    var c=enemy[r][cc];
+    if(c.hit&&c.ship)drawShipCell(g1,cc*cellE,r*cellE,cellE,enemyShips.find(function(s){return s.id===c.ship;}).sunk);
+    if(c.hit&&!c.ship){g1.fillStyle='rgba(160,220,255,0.7)';g1.beginPath();g1.arc(cc*cellE+cellE/2,r*cellE+cellE/2,cellE*0.12,0,7);g1.fill();}
+    if(c.hit&&c.ship){g1.strokeStyle='#ff5533';g1.lineWidth=3;g1.beginPath();g1.moveTo(cc*cellE+cellE*0.3,r*cellE+cellE*0.3);g1.lineTo(cc*cellE+cellE*0.7,r*cellE+cellE*0.7);g1.moveTo(cc*cellE+cellE*0.7,r*cellE+cellE*0.3);g1.lineTo(cc*cellE+cellE*0.3,r*cellE+cellE*0.7);g1.stroke();}
+  }
+  drawGrid(g1,N,N,cellE);
+  drawSea(g2,N,N,cellM,t+2);
+  for(var r2=0;r2<N;r2++)for(var cc2=0;cc2<N;cc2++){
+    var c2=mine[r2][cc2];
+    if(c2.ship)drawShipCell(g2,cc2*cellM,r2*cellM,cellM,myShips.find(function(s){return s.id===c2.ship;}).sunk);
+    if(c2.hit&&!c2.ship){g2.fillStyle='rgba(160,220,255,0.7)';g2.beginPath();g2.arc(cc2*cellM+cellM/2,r2*cellM+cellM/2,cellM*0.14,0,7);g2.fill();}
+    if(c2.hit&&c2.ship){g2.strokeStyle='#ff5533';g2.lineWidth=2.5;g2.beginPath();g2.moveTo(cc2*cellM+cellM*0.3,r2*cellM+cellM*0.3);g2.lineTo(cc2*cellM+cellM*0.7,r2*cellM+cellM*0.7);g2.moveTo(cc2*cellM+cellM*0.7,r2*cellM+cellM*0.3);g2.lineTo(cc2*cellM+cellM*0.3,r2*cellM+cellM*0.7);g2.stroke();}
+  }
+  drawGrid(g2,N,N,cellM);
+  for(var i=splashes.length-1;i>=0;i--){
+    var s=splashes[i];s.t+=0.03;
+    var g=s.mine?g2:g1,cell=s.mine?cellM:cellE;
+    var cx=s.x*cell+cell/2,cy=s.y*cell+cell/2;
+    g.strokeStyle=s.hit?'rgba(255,120,50,'+(1-s.t)+')':'rgba(150,220,255,'+(1-s.t)+')';
+    g.lineWidth=2.5;
+    g.beginPath();g.arc(cx,cy,cell*0.15+s.t*cell*0.55,0,7);g.stroke();
+    if(s.t>=1)splashes.splice(i,1);
+  }
+  for(var j=boils.length-1;j>=0;j--){
+    var b=boils[j];b.t+=0.008;
+    g1.fillStyle='rgba(255,'+Math.floor(120+Math.sin(b.t*20)*60)+',40,0.5)';
+    g1.beginPath();g1.arc(b.x*cellE+cellE*(0.3+0.4*((b.t*7)%1)),b.y*cellE+cellE*0.5,3,0,7);g1.fill();
+    if(b.t>4)boils.splice(j,1);
+  }
+  requestAnimationFrame(loop);
+}
+c1.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if(!playing||busy||turn!=='me')return;
+  var rect=c1.getBoundingClientRect();
+  var t=e.changedTouches[0];
+  var cc=Math.floor((t.clientX-rect.left)/cellE),r=Math.floor((t.clientY-rect.top)/cellE);
+  if(r<0||r>=N||cc<0||cc>=N)return;
+  var res=fireEnemy(r,cc);
+  if(res==='miss'){turn='ai';aiTurn();setTimeout(function(){turn='me';},750);}
+  else if(res==='again'){document.getElementById('msg').textContent='כבר יריתם כאן - בחרו משבצת אחרת';}
+},{passive:false});
+document.getElementById('startBtn').addEventListener('click',function(){document.getElementById('startOv').classList.add('hidden');newGame();});
+document.getElementById('againBtn').addEventListener('click',function(){document.getElementById('endOv').classList.add('hidden');newGame();});
+newGame();playing=false;
+loop();
+})();
+</script>
+</body>
+</html>

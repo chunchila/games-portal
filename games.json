@@ -538,5 +538,55 @@
   "added": 56,
   "slug": "basketball-flick-hoops-game",
   "source": "https://github.com/chunchila/basketball-flick-hoops-game"
+ },
+ {
+  "name": "קרב צוללות",
+  "shot": "shots/battleship.webp",
+  "cat": "אסטרטגיה",
+  "desc": "הטביעו את צי האויב לפני שהוא מטביע את שלכם",
+  "url": "games/battleship-navy-fleet-game/",
+  "added": 57,
+  "slug": "battleship-navy-fleet-game",
+  "source": "https://github.com/chunchila/battleship-navy-fleet-game"
+ },
+ {
+  "name": "מצאו את הגוון",
+  "shot": "shots/spot.webp",
+  "cat": "ארקייד",
+  "desc": "אחד הריבועים שונה - מצאו אותו לפני שהזמן נגמר",
+  "url": "games/spot-different-color-game/",
+  "added": 58,
+  "slug": "spot-different-color-game",
+  "source": "https://github.com/chunchila/spot-different-color-game"
+ },
+ {
+  "name": "דוחף הארגזים",
+  "shot": "shots/sokoban.webp",
+  "cat": "פאזל",
+  "desc": "דחפו את הארגזים אל המטרות - בלי להיתקע",
+  "url": "games/sokoban-box-pusher-game/",
+  "added": 59,
+  "slug": "sokoban-box-pusher-game",
+  "source": "https://github.com/chunchila/sokoban-box-pusher-game"
+ },
+ {
+  "name": "פיצוח הקוד",
+  "shot": "shots/mastermind.webp",
+  "cat": "פאזל",
+  "desc": "פצחו את קוד הצבעים הסודי ב-10 ניסיונות",
+  "url": "games/mastermind-code-breaker-game/",
+  "added": 60,
+  "slug": "mastermind-code-breaker-game",
+  "source": "https://github.com/chunchila/mastermind-code-breaker-game"
+ },
+ {
+  "name": "מיני גולף",
+  "shot": "shots/golf.webp",
+  "cat": "ארקייד",
+  "desc": "חמש גומות, קירות וחול - כמה מכות יצא לכם?",
+  "url": "games/mini-golf-putt-game/",
+  "added": 61,
+  "slug": "mini-golf-putt-game",
+  "source": "https://github.com/chunchila/mini-golf-putt-game"
  }
 ]
