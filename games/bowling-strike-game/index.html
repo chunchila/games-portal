@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>באולינג סטרייק</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:#191410;font-family:system-ui,-apple-system,sans-serif;color:#f3e9dd}
+body{display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:520px;padding:12px 18px 2px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:21px;font-weight:800}
+#score{font-size:13px;background:#2b2118;border:1px solid #54402c;padding:6px 12px;border-radius:18px}
+#msg{min-height:22px;font-size:14px;color:#ffce8a;margin:2px 0;text-align:center;padding:0 10px}
+canvas{display:block;touch-action:none;border-radius:14px;box-shadow:0 18px 50px -14px #000}
+#ov{position:fixed;inset:0;background:#0f0b07ee;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#2b2118,#1a130c);border:1px solid #54402c;border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%}
+.panel h2{font-size:26px;margin-bottom:8px}
+.panel p{font-size:14px;line-height:1.7;color:#d8c4ac;margin-bottom:14px}
+.panel .big{font-size:15px;font-weight:800;color:#ffce8a;margin-bottom:16px}
+button{padding:13px 26px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#f59e0b,#d97706);color:#2a1700}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>באולינג סטרייק</h1><div id="score">פריים 1/5 · זריקה 1</div></header>
+<div id="msg">החזיקי את הכדור והעיפי למעלה!</div>
+<canvas id="c"></canvas>
+<div id="ov"><div class="panel">
+<h2>באולינג סטרייק</h2>
+<p>העיפי את הכדור במסלול — הכיוון והמהירות של המחווה קובעים. 5 פריימים, 2 זריקות בכל פריים. סטרייק שווה בונוס!</p>
+<div class="big" id="best"></div>
+<button id="startBtn">למסלול</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const scoreEl=document.getElementById('score'),msgEl=document.getElementById('msg'),ov=document.getElementById('ov');
+let W=0,H=0;
+let pins=[],ball=null,phase='aim',frame=1,throwN=1,total=0,frames=[];
+let dragging=false,dragPts=[];
+const PIN_R=14,BALL_R=17;
+function laneX(t){ // t:0 top(pins) .. 1 bottom(player)
+  return{half:W*(0.16+0.30*t)};
+}
+function pinPos(i){
+  // 10 pins, rows 0..3
+  const rows=[[0],[1,2],[3,4,5],[6,7,8,9]];
+  let row=0,idx=0;
+  for(let r=0;r<4;r++){if(rows[r].includes(i)){row=r;idx=rows[r].indexOf(i);break;}}
+  const t=0.10+row*0.055;
+  const y=H*t;
+  const{half}=laneX(t);
+  const spread=half*0.72;
+  const n=row+1;
+  const px=n===1?W/2:W/2-spread+2*spread*(idx/(n-1));
+  return{x:px,y};
+}
+function setupPins(keep){
+  if(keep){pins=pins.filter(p=>!p.down);pins.forEach(p=>{p.vx=0;p.vy=0;p.fallen=false;});}
+  else{pins=[];for(let i=0;i<10;i++){const{x:px,y}=pinPos(i);pins.push({x:px,y,ox:px,oy:y,vx:0,vy:0,down:false,fallen:false,ang:0});}}
+}
+function resetBall(){
+  ball={x:W/2,y:H*0.90,vx:0,vy:0,spin:0,thrown:false,gone:false};
+  dragging=false;dragPts=[];phase='aim';
+}
+function startThrow(){
+  setupPins(throwN===2);
+  resetBall();
+  scoreEl.textContent=`פריים ${frame}/5 · זריקה ${throwN}`;
+  msgEl.textContent='החזיקי את הכדור והעיפי למעלה!';
+  draw();
+}
+function update(dt){
+  if(!ball||!ball.thrown)return;
+  ball.vy*=(1-0.25*dt);ball.vx*=(1-0.12*dt);
+  ball.vx+=ball.spin*dt*14;ball.spin*=(1-0.8*dt);
+  ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+  // gutters
+  const t=Math.max(0,Math.min(1,1-ball.y/H));
+  const{half}=laneX(1-ball.y/H);
+  if(Math.abs(ball.x-W/2)>half-BALL_R*0.3){ball.vx*=0.98;ball.x+=Math.sign(ball.x-W/2)*30*dt;ball.vy*=0.995;}
+  // pin collisions
+  for(const p of pins){
+    if(p.down&&Math.hypot(p.vx,p.vy)<5)continue;
+    const dx=p.x-ball.x,dy=p.y-ball.y,d=Math.hypot(dx,dy);
+    if(d<PIN_R+BALL_R&&d>0){
+      const nx=dx/d,ny=dy/d;
+      const sp=Math.hypot(ball.vx,ball.vy);
+      p.vx=nx*sp*0.85+ball.vx*0.3;p.vy=ny*sp*0.85+ball.vy*0.3;
+      p.fallen=true;p.ang=Math.atan2(ny,nx);
+      ball.vx-=nx*sp*0.12;ball.vy*=0.92;
+    }
+  }
+  // pin physics + chain
+  for(const p of pins){
+    if(!p.fallen)continue;
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=(1-2.2*dt);p.vy*=(1-2.2*dt);
+    for(const q of pins){
+      if(q===p||q.fallen)continue;
+      const dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
+      if(d<PIN_R*2&&d>0){
+        const sp=Math.hypot(p.vx,p.vy);
+        if(sp>30){q.vx=dx/d*sp*0.8;q.vy=dy/d*sp*0.8;q.fallen=true;q.ang=Math.atan2(dy,dx);}
+      }
+    }
+    if(Math.hypot(p.x-p.ox,p.y-p.oy)>PIN_R*1.1)p.down=true;
+  }
+  if(ball.y<-BALL_R*2||Math.hypot(ball.vx,ball.vy)<26&&ball.thrown){
+    setTimeout(endThrow,900);ball.thrown=false;ball.gone=true;
+  }
+}
+function endThrow(){
+  const down=pins.filter(p=>p.down).length;
+  total+=down;
+  let m;
+  if(throwN===1&&down===10){m='סטרייק! 🎳 +5 בונוס';total+=5;frame++;throwN=1;frames.push('X');}
+  else if(throwN===1){m=`הפלת ${down} קלטות`;throwN=2;frames.push(down);}
+  else{
+    const f=frames[frames.length-1];
+    if(f!=='X'&&f+down===10){m='ספייר! +3 בונוס';total+=3;}
+    else m=down?`עוד ${down} קלטות`:'פספוס…';
+    frame++;throwN=1;frames.push('/');
+  }
+  if(frame>5){
+    const best=+(localStorage.getItem('bowlingBest')||0);
+    const nb=total>best;if(nb)localStorage.setItem('bowlingBest',total);
+    ov.querySelector('h2').textContent='סיום משחק!';
+    ov.querySelector('p').textContent=`הפלת ${total} נקודות ב-5 פריימים.`;
+    ov.querySelector('.big').textContent='שיא: '+Math.max(total,best);
+    ov.querySelector('button').textContent='עוד משחק';
+    ov.classList.remove('hidden');
+    return;
+  }
+  msgEl.textContent=m;
+  draw();
+  setTimeout(startThrow,1300);
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  // lane
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#8a5a2b');g.addColorStop(1,'#c8995c');
+  x.fillStyle='#241a10';x.fillRect(0,0,W,H);
+  x.beginPath();
+  const t0=laneX(0),t1=laneX(1);
+  x.moveTo(W/2-t0.half,0);x.lineTo(W/2+t0.half,0);x.lineTo(W/2+t1.half,H);x.lineTo(W/2-t1.half,H);x.closePath();
+  x.fillStyle=g;x.fill();
+  // boards
+  x.strokeStyle='#00000018';x.lineWidth=1;
+  for(let i=-4;i<=4;i++){x.beginPath();x.moveTo(W/2+i*t0.half/5,0);x.lineTo(W/2+i*t1.half/5,H);x.stroke();}
+  // arrows
+  x.fillStyle='#ffffff30';
+  for(let i=-2;i<=2;i++){const ay=H*0.55;x.beginPath();x.moveTo(W/2+i*36,ay);x.lineTo(W/2+i*36-6,ay+16);x.lineTo(W/2+i*36+6,ay+16);x.closePath();x.fill();}
+  // gutters
+  x.fillStyle='#150e08';
+  x.beginPath();x.moveTo(W/2-t0.half-14,0);x.lineTo(W/2-t0.half,0);x.lineTo(W/2-t1.half,H);x.lineTo(W/2-t1.half-20,H);x.closePath();x.fill();
+  x.beginPath();x.moveTo(W/2+t0.half+14,0);x.lineTo(W/2+t0.half,0);x.lineTo(W/2+t1.half,H);x.lineTo(W/2+t1.half+20,H);x.closePath();x.fill();
+  // pins
+  for(const p of pins){
+    x.save();x.translate(p.x,p.y);
+    if(p.fallen){x.rotate(p.ang+Math.PI/2);x.globalAlpha=0.85;}
+    x.fillStyle='#0005';x.beginPath();x.ellipse(2,3,PIN_R*0.9,PIN_R*0.5,0,0,7);x.fill();
+    const pg=x.createLinearGradient(-PIN_R,0,PIN_R,0);
+    pg.addColorStop(0,'#e8e0d0');pg.addColorStop(0.5,'#fffdf6');pg.addColorStop(1,'#cfc4ae');
+    x.fillStyle=pg;
+    x.beginPath();
+    x.moveTo(0,-PIN_R*1.3);
+    x.bezierCurveTo(PIN_R*0.75,-PIN_R*1.2,PIN_R*0.55,-PIN_R*0.5,PIN_R*0.9,-PIN_R*0.1);
+    x.bezierCurveTo(PIN_R*1.05,PIN_R*0.5,PIN_R*0.5,PIN_R*1.2,0,PIN_R*1.25);
+    x.bezierCurveTo(-PIN_R*0.5,PIN_R*1.2,-PIN_R*1.05,PIN_R*0.5,-PIN_R*0.9,-PIN_R*0.1);
+    x.bezierCurveTo(-PIN_R*0.55,-PIN_R*0.5,-PIN_R*0.75,-PIN_R*1.2,0,-PIN_R*1.3);
+    x.fill();
+    x.fillStyle='#d33';
+    x.fillRect(-PIN_R*0.62,-PIN_R*0.85,PIN_R*1.24,PIN_R*0.28);
+    x.restore();
+  }
+  // ball
+  if(ball&&!ball.gone){
+    const bg=x.createRadialGradient(ball.x-6,ball.y-7,3,ball.x,ball.y,BALL_R);
+    bg.addColorStop(0,'#7dd3fc');bg.addColorStop(0.6,'#2563eb');bg.addColorStop(1,'#0d2a7a');
+    x.fillStyle='#0006';x.beginPath();x.ellipse(ball.x+3,ball.y+5,BALL_R,BALL_R*0.55,0,0,7);x.fill();
+    x.fillStyle=bg;x.beginPath();x.arc(ball.x,ball.y,BALL_R,0,7);x.fill();
+    x.fillStyle='#0a1c4d';
+    x.beginPath();x.arc(ball.x+4,ball.y-6,2.4,0,7);x.fill();
+    x.beginPath();x.arc(ball.x+8,ball.y-2,2.4,0,7);x.fill();
+    x.beginPath();x.arc(ball.x+2,ball.y-1,2.4,0,7);x.fill();
+  }
+  // drag guide
+  if(dragging&&dragPts.length>1){
+    const a=dragPts[0],b=dragPts[dragPts.length-1];
+    const dx=b.x-a.x,dy=b.y-a.y;
+    x.strokeStyle='#67e8f9aa';x.lineWidth=4;x.setLineDash([8,8]);
+    x.beginPath();x.moveTo(ball.x,ball.y);x.lineTo(ball.x+dx*1.6,ball.y+dy*1.6);x.stroke();x.setLineDash([]);
+  }
+}
+let lastT=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.033,(t-lastT)/1000||0.016);lastT=t;
+  update(dt);draw();
+}
+function pt(e){const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+function down(e){if(phase!=='aim'||!ball||ball.thrown)return;
+  const p=pt(e);
+  if(Math.hypot(p.x-ball.x,p.y-ball.y)<BALL_R*2.4){dragging=true;dragPts=[p];}}
+function move(e){if(!dragging)return;e.preventDefault();dragPts.push(pt(e));if(dragPts.length>20)dragPts.shift();}
+function up(){if(!dragging)return;dragging=false;
+  if(dragPts.length<2)return;
+  const a=dragPts[0],b=dragPts[dragPts.length-1];
+  const dx=b.x-a.x,dy=b.y-a.y;
+  if(dy>-28){msgEl.textContent='העיפי כלפי מעלה!';draw();return;}
+  const pow=Math.min(1,Math.hypot(dx,dy)/240);
+  ball.vy=dy*4.4;ball.vx=dx*3.4;ball.spin=dx*0.012;
+  ball.thrown=true;phase='fly';
+  msgEl.textContent='';
+}
+cv.addEventListener('mousedown',down);cv.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});cv.addEventListener('touchend',up);
+document.getElementById('startBtn').onclick=()=>{
+  ov.classList.add('hidden');
+  frame=1;throwN=1;total=0;frames=[];
+  startThrow();
+};
+function resize(){
+  W=Math.min(window.innerWidth-16,460);H=Math.min(window.innerHeight-160,W*1.5);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  draw();
+}
+const bb=+(localStorage.getItem('bowlingBest')||0);
+if(bb)document.getElementById('best').textContent='השיא שלך: '+bb;
+window.addEventListener('resize',resize);
+resetBall();setupPins(false);resize();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

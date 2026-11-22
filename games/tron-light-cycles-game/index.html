@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>אופנועי אור</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:#05060f;font-family:system-ui,-apple-system,sans-serif;color:#dfe8ff}
+body{display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:520px;padding:12px 18px 4px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:21px;font-weight:800;color:#67e8f9;text-shadow:0 0 14px #22d3ee66}
+#score{font-size:13px;background:#0b1030;border:1px solid #1e2a6e;padding:6px 12px;border-radius:18px}
+#msg{min-height:22px;font-size:14px;color:#8fd3ff;margin:2px 0;text-align:center}
+canvas{display:block;touch-action:none;border-radius:12px;box-shadow:0 0 0 2px #22d3ee33,0 0 44px -6px #22d3ee44}
+#hint{font-size:12px;color:#5a6a9e;padding:10px 0 4px;text-align:center}
+#pad{display:flex;gap:10px;padding:4px 0 14px}
+#pad button{width:64px;height:48px;border-radius:12px;border:1px solid #1e2a6e;background:#0b1030;color:#67e8f9;font-size:20px;font-weight:800}
+#ov{position:fixed;inset:0;background:#04050cee;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#0b1030,#070a1e);border:1px solid #22d3ee55;border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%;box-shadow:0 0 60px -10px #22d3ee55}
+.panel h2{font-size:26px;margin-bottom:8px;color:#67e8f9}
+.panel p{font-size:14px;line-height:1.7;color:#a9bce8;margin-bottom:14px}
+.panel .big{font-size:15px;font-weight:800;color:#ffd54a;margin-bottom:16px}
+button.go{padding:13px 26px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#22d3ee,#0ea5e9);color:#03202a}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>אופנועי אור</h1><div id="score">את 0 : 0 AI</div></header>
+<div id="msg">סוויפ לשינוי כיוון</div>
+<canvas id="c"></canvas>
+<div id="pad">
+<button data-d="up">▲</button><button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
+</div>
+<div id="ov"><div class="panel">
+<h2>אופנועי אור</h2>
+<p>את האופנוע הכחול. שרשרת האור מאחוריך היא מלכודת — אל תיגעי בקירות, בעקבות או ביריב. הישרדי אחרונה!</p>
+<div class="big">הראשונה ל-5 ניצחונות מנצחת</div>
+<button class="go" id="startBtn">זינוק</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const scoreEl=document.getElementById('score'),msgEl=document.getElementById('msg'),ov=document.getElementById('ov');
+const COLS=44,ROWS=60;
+let S=0,cw=0,chh=0;
+let grid,py,ai,trailP,trailA,dirP,dirA,nextP;
+let wP=+(localStorage.getItem('tronW')||0),wA=+(localStorage.getItem('tronL')||0);
+let running=false,over=false,tick=0,speed=85,last=0,acc=0;
+const DIRS={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]};
+function reset(){
+  grid=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  py={r:ROWS>>1,c:8};ai={r:ROWS>>1,c:COLS-9};
+  dirP='right';dirA='left';nextP='right';
+  trailP=[[py.r,py.c]];trailA=[[ai.r,ai.c]];
+  grid[py.r][py.c]=1;grid[ai.r][ai.c]=2;
+  tick=0;speed=85;over=false;
+  msgEl.textContent='סוויפ לשינוי כיוון';
+}
+function aiThink(){
+  const opts=[];
+  for(const d of['up','down','left','right']){
+    if((dirA==='up'&&d==='down')||(dirA==='down'&&d==='up')||(dirA==='left'&&d==='right')||(dirA==='right'&&d==='left'))continue;
+    const[dr,dc]=DIRS[d];const r=ai.r+dr,c=ai.c+dc;
+    if(r<0||r>=ROWS||c<0||c>=COLS||grid[r][c])continue;
+    // look ahead: count free space
+    let free=flood(r,c,40);
+    opts.push({d,free});
+  }
+  if(!opts.length)return;
+  opts.sort((a,b)=>b.free-a.free);
+  // avoid immediate wall hugging
+  dirA=opts[0].d;
+}
+function flood(r,c,limit){
+  const seen=new Set([r+','+c]);const q=[[r,c]];let n=0;
+  while(q.length&&n<limit){
+    const[cr,cc]=q.shift();n++;
+    for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const nr=cr+dr,nc=cc+dc,k=nr+','+nc;
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||grid[nr][nc]||seen.has(k))continue;
+      seen.add(k);q.push([nr,nc]);
+    }
+  }
+  return n;
+}
+function step(){
+  tick++;
+  if(tick%3===0)aiThink();
+  if(tick%40===0&&speed>45)speed-=3;
+  dirP=nextP;
+  for(const who of[1,2]){
+    const o=who===1?py:ai,d=who===1?dirP:dirA;
+    const[dr,dc]=DIRS[d];
+    o.r+=dr;o.c+=dc;
+  }
+  const deadP=py.r<0||py.r>=ROWS||py.c<0||py.c>=COLS||grid[py.r][py.c];
+  const deadA=ai.r<0||ai.r>=ROWS||ai.c<0||ai.c>=COLS||grid[ai.r][ai.c];
+  const headOn=py.r===ai.r&&py.c===ai.c;
+  if(deadP||deadA||headOn){
+    running=false;over=true;
+    if((deadP||headOn)&&(deadA||headOn)){msgEl.textContent='תיקו! שניכם התרסקתם';}
+    else if(deadA){wP++;localStorage.setItem('tronW',wP);msgEl.textContent='נקודה לך! 🎉';}
+    else{wA++;localStorage.setItem('tronL',wA);msgEl.textContent='נקודה ל-AI';}
+    scoreEl.textContent=`את ${wP} : ${wA} AI`;
+    draw();
+    if(wP>=5||wA>=5){
+      ov.querySelector('h2').textContent=wP>=5?'אלופת האור! 🏆':'ה-AI ניצח בסדרה';
+      ov.querySelector('p').textContent=`תוצאה סופית: ${wP} : ${wA}`;
+      ov.querySelector('.big').textContent='';
+      ov.querySelector('button').textContent='סדרה חדשה';
+      ov.classList.remove('hidden');
+      wP=0;wA=0;localStorage.setItem('tronW',0);localStorage.setItem('tronL',0);
+      scoreEl.textContent='את 0 : 0 AI';
+    }else{
+      setTimeout(()=>{reset();running=true;},1400);
+    }
+    return;
+  }
+  grid[py.r][py.c]=1;trailP.push([py.r,py.c]);
+  grid[ai.r][ai.c]=2;trailA.push([ai.r,ai.c]);
+}
+function draw(){
+  const H=ROWS*chh;
+  x.fillStyle='#05060f';x.fillRect(0,0,S,H);
+  x.fillStyle='#070a1c';roundRect(0,0,S,H,10);x.fill();
+  x.strokeStyle='#101838';x.lineWidth=1;
+  for(let c=1;c<COLS;c++){x.beginPath();x.moveTo(c*cw,0);x.lineTo(c*cw,H);x.stroke();}
+  for(let r=1;r<ROWS;r++){x.beginPath();x.moveTo(0,r*chh);x.lineTo(S,r*chh);x.stroke();}
+  drawTrail(trailP,'#22d3ee','#0e7490');
+  drawTrail(trailA,'#fb7185','#9f1239');
+  // heads
+  head(py,'#a5f3fc');head(ai,'#fecdd3');
+}
+function drawTrail(t,glow,core){
+  if(t.length<2)return;
+  x.lineCap='round';x.lineJoin='round';
+  x.strokeStyle=glow;x.lineWidth=Math.min(cw,chh)*0.9;x.globalAlpha=0.35;
+  path(t);x.stroke();
+  x.globalAlpha=1;x.strokeStyle=core;x.lineWidth=Math.min(cw,chh)*0.42;
+  path(t);x.stroke();
+}
+function path(t){x.beginPath();x.moveTo(t[0][1]*cw+cw/2,t[0][0]*chh+chh/2);
+  for(let i=1;i<t.length;i++)x.lineTo(t[i][1]*cw+cw/2,t[i][0]*chh+chh/2);}
+function head(o,col){
+  x.fillStyle=col;x.shadowColor=col;x.shadowBlur=12;
+  x.beginPath();x.arc(o.c*cw+cw/2,o.r*chh+chh/2,Math.min(cw,chh)*0.5,0,7);x.fill();
+  x.shadowBlur=0;
+}
+function roundRect(a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+function loop(t){
+  requestAnimationFrame(loop);
+  if(!running){return;}
+  acc+=t-last;last=t;
+  while(acc>speed){acc-=speed;step();if(!running)break;}
+  draw();
+}
+function setDir(d){
+  if((dirP==='up'&&d==='down')||(dirP==='down'&&d==='up')||(dirP==='left'&&d==='right')||(dirP==='right'&&d==='left'))return;
+  nextP=d;
+}
+let ts=null;
+cv.addEventListener('touchstart',e=>{ts=e.touches[0];},{passive:true});
+cv.addEventListener('touchend',e=>{
+  if(!ts)return;const t=e.changedTouches[0];
+  const dx=t.clientX-ts.clientX,dy=t.clientY-ts.clientY;ts=null;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20)return;
+  if(Math.abs(dx)>Math.abs(dy))setDir(dx>0?'right':'left');else setDir(dy>0?'down':'up');
+});
+document.querySelectorAll('#pad button').forEach(b=>b.addEventListener('touchstart',e=>{e.preventDefault();setDir(b.dataset.d);},{passive:false}));
+document.querySelectorAll('#pad button').forEach(b=>b.addEventListener('click',()=>setDir(b.dataset.d)));
+document.addEventListener('keydown',e=>{const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(m[e.key])setDir(m[e.key]);});
+document.getElementById('startBtn').onclick=()=>{ov.classList.add('hidden');reset();running=true;};
+function resize(){
+  const w=Math.min(window.innerWidth-16,520);
+  const availH=window.innerHeight-190;
+  cw=Math.floor(w/COLS);chh=Math.floor(Math.min(availH/ROWS,cw*1.35));
+  S=cw*COLS;const H=chh*ROWS;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=S*dpr;cv.height=H*dpr;cv.style.width=S+'px';cv.style.height=H+'px';
+  x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  draw();
+}
+scoreEl.textContent=`את ${wP} : ${wA} AI`;
+window.addEventListener('resize',resize);
+reset();resize();last=performance.now();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>בלאק ג'ק 21</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;color:#eafff0;background:radial-gradient(120% 100% at 50% 0%,#166d43 0%,#0d4a2c 55%,#07331d 100%)}
+body{display:flex;flex-direction:column;align-items:center;max-width:560px;margin:0 auto}
+header{width:100%;padding:12px 16px 4px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:20px;font-weight:800}
+#chips{font-size:14px;background:#00000033;padding:6px 14px;border-radius:18px;border:1px solid #ffffff2b}
+#felt{position:relative;flex:1;width:100%}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#msg{position:absolute;top:44%;left:0;right:0;text-align:center;font-size:17px;font-weight:700;color:#ffe9a8;text-shadow:0 2px 8px #0009;pointer-events:none;min-height:24px}
+#ctrl{width:100%;padding:10px 14px 16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{padding:13px 18px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px -4px #0008}
+.hit{background:linear-gradient(135deg,#34d399,#0ea86f);color:#04220f}
+.stand{background:linear-gradient(135deg,#fbbf24,#d97706);color:#331a00}
+.dbl{background:linear-gradient(135deg,#60a5fa,#2563eb);color:#fff}
+.chip{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;border:3px dashed #ffffffaa;padding:0;box-shadow:0 5px 12px -3px #0009}
+.c10{background:#c0392b}.c25{background:#27ae60}.c50{background:#2980b9}.c100{background:#2c3e50}
+#betRow{display:flex;gap:10px;justify-content:center;align-items:center}
+#betInfo{font-size:13px;color:#cfe9d8;width:100%;text-align:center;margin-bottom:4px}
+#ov{position:fixed;inset:0;background:#04160bcc;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#0f3d24,#082716);border:1px solid #2e7d52;border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%}
+.panel h2{font-size:26px;margin-bottom:8px}
+.panel p{font-size:14px;line-height:1.7;color:#bfe3cd;margin-bottom:18px}
+.panel button{background:linear-gradient(135deg,#fbbf24,#d97706);color:#331a00;width:100%}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>בלאק ג'ק 21</h1><div id="chips">צ'יפים: 1000</div></header>
+<div id="felt"><canvas id="c"></canvas><div id="msg"></div></div>
+<div id="ctrl">
+  <div id="betInfo">בחרי סכום והימור</div>
+  <div id="betRow">
+    <button class="chip c10" data-v="10">10</button>
+    <button class="chip c25" data-v="25">25</button>
+    <button class="chip c50" data-v="50">50</button>
+    <button class="chip c100" data-v="100">100</button>
+  </div>
+  <button class="hit hidden" id="hitBtn">עוד קלף</button>
+  <button class="stand hidden" id="standBtn">עצור</button>
+  <button class="dbl hidden" id="dblBtn">הכפל</button>
+</div>
+<div id="ov"><div class="panel">
+<h2>בלאק ג'ק 21</h2>
+<p>התקרבי ל-21 בלי לעבור. הדילר עוצר ב-17. בלאק ג'ק משלם 3:2. אס = 1 או 11.</p>
+<button id="startBtn">לשולחן</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const msgEl=document.getElementById('msg'),chipsEl=document.getElementById('chips');
+const betRow=document.getElementById('betRow'),betInfo=document.getElementById('betInfo');
+const hitBtn=document.getElementById('hitBtn'),standBtn=document.getElementById('standBtn'),dblBtn=document.getElementById('dblBtn');
+const ov=document.getElementById('ov');
+let W=0,H=0;
+let chips=+(localStorage.getItem('bjChips')??1000);
+let deck=[],player=[],dealer=[],bet=0,phase='bet',hideHole=true,msgT=0;
+const SUITS=['♠','♥','♦','♣'];
+function newDeck(){deck=[];for(let d=0;d<4;d++)for(const s of SUITS)for(let v=1;v<=13;v++)deck.push({s,v});
+  for(let i=deck.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[deck[i],deck[j]]=[deck[j],deck[i]];}}
+function val(hand){let t=0,a=0;for(const c of hand){if(c.v===1){a++;t+=11;}else t+=Math.min(c.v,10);}while(t>21&&a){t-=10;a--;}return t;}
+function setMsg(t){msgEl.textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>{if(phase==='bet')msgEl.textContent='';},2600);}
+function updChips(){chipsEl.textContent='צ\'יפים: '+chips;localStorage.setItem('bjChips',chips);}
+function deal(){
+  if(deck.length<15)newDeck();
+  player=[deck.pop(),deck.pop()];dealer=[deck.pop(),deck.pop()];
+  hideHole=true;phase='play';
+  betRow.classList.add('hidden');betInfo.classList.add('hidden');
+  hitBtn.classList.remove('hidden');standBtn.classList.remove('hidden');
+  if(chips>=bet)dblBtn.classList.remove('hidden');
+  msgEl.textContent='';
+  if(val(player)===21){ // blackjack
+    hideHole=false;settle(true);
+  }
+  draw();
+}
+function settle(bj){
+  phase='done';hideHole=false;
+  hitBtn.classList.add('hidden');standBtn.classList.add('hidden');dblBtn.classList.add('hidden');
+  while(val(dealer)<17)dealer.push(deck.pop());
+  const pv=val(player),dv=val(dealer);
+  let t,delta=0;
+  const dBJ=dv===21&&dealer.length===2;
+  if(bj&&dBJ){t='דחו! שניכם בלאק ג\'ק';}
+  else if(bj){t='בלאק ג\'ק! +'+Math.floor(bet*1.5);delta=Math.floor(bet*1.5);}
+  else if(dBJ){t='לדילר בלאק ג\'ק… -'+bet;delta=-bet;}
+  else if(pv>21){t='חרגת מ-21! -'+bet;delta=-bet;}
+  else if(dv>21){t='הדילר חרג! +'+bet;delta=bet;}
+  else if(pv>dv){t='ניצחת! +'+bet;delta=bet;}
+  else if(pv<dv){t='הדילר ניצח… -'+bet;delta=-bet;}
+  else t='דחו — ההימור חוזר';
+  chips+=delta;if(chips<=0){chips=1000;setMsg('נגמרו הצ\'יפים — קבלת 1000 חדשים!');}
+  updChips();
+  const st=JSON.parse(localStorage.getItem('bjStats')||'{"w":0,"l":0,"p":0}');
+  if(delta>0)st.w++;else if(delta<0)st.l++;else st.p++;
+  localStorage.setItem('bjStats',JSON.stringify(st));
+  msgEl.textContent=t;
+  setTimeout(()=>{
+    betRow.classList.remove('hidden');betInfo.classList.remove('hidden');
+    betInfo.textContent=`נ:${st.w} · ה:${st.l} · ד:${st.p} — בחרי הימור לסיבוב הבא`;
+    phase='bet';player=[];dealer=[];draw();
+  },2400);
+  draw();
+}
+function cardPos(hand,i,top){
+  const cw=Math.min(64,W/6.2),ch=cw*1.42;
+  const total=hand.length*cw*0.62+cw*0.38;
+  const startX=(W-total)/2;
+  return{x:startX+i*cw*0.62,y:top,w:cw,h:ch};
+}
+function drawCard(c,px,py,cw,ch,faceUp){
+  x.save();
+  x.fillStyle='#0007';roundRect(px+3,py+4,cw,ch,9);x.fill();
+  x.fillStyle=faceUp?'#fdfdf8':'#1a3a8f';roundRect(px,py,cw,ch,9);x.fill();
+  x.strokeStyle='#0a2c18';x.lineWidth=1.5;x.stroke();
+  if(faceUp){
+    const red=c.s==='♥'||c.s==='♦';
+    x.fillStyle=red?'#c62828':'#1a1a2e';
+    const lbl=c.v===1?'A':c.v===11?'J':c.v===12?'Q':c.v===13?'K':''+c.v;
+    x.font=`800 ${cw*0.3}px system-ui`;x.textAlign='left';x.textBaseline='top';
+    x.fillText(lbl,px+6,py+4);
+    x.font=`${cw*0.3}px system-ui`;x.fillText(c.s,px+6,py+cw*0.3+5);
+    x.font=`${cw*0.52}px system-ui`;x.textAlign='center';x.textBaseline='middle';
+    x.fillText(c.s,px+cw/2,py+ch*0.6);
+  }else{
+    x.strokeStyle='#ffffff2e';x.lineWidth=2;
+    for(let i=1;i<4;i++){roundRect(px+i*4,py+i*4,cw-i*8,ch-i*8,5);x.stroke();}
+  }
+  x.restore();
+}
+function roundRect(a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+function draw(){
+  x.clearRect(0,0,W,H);
+  // table arcs
+  x.strokeStyle='#ffffff14';x.lineWidth=2;
+  x.beginPath();x.arc(W/2,H*0.62,W*0.42,W*0.42*0+Math.PI*1.15,Math.PI*1.85);x.stroke();
+  // labels
+  x.fillStyle='#ffffff88';x.font='700 13px system-ui';x.textAlign='center';x.textBaseline='alphabetic';
+  x.fillText('דילר'+(dealer.length?(hideHole?'':' · '+val(dealer)):''),W/2,H*0.10);
+  x.fillText('את'+(player.length?' · '+val(player):''),W/2,H*0.56);
+  dealer.forEach((c,i)=>{const p=cardPos(dealer,i,H*0.14);drawCard(c,p.x,p.y,p.w,p.h,!(hideHole&&i===1));});
+  player.forEach((c,i)=>{const p=cardPos(player,i,H*0.60);drawCard(c,p.x,p.y,p.w,p.h,true);});
+  if(bet>0&&phase!=='bet'){
+    x.fillStyle='#ffd54a';x.beginPath();x.arc(W/2,H*0.47,20,0,7);x.fill();
+    x.strokeStyle='#a87d00';x.lineWidth=3;x.setLineDash([4,3]);x.stroke();x.setLineDash([]);
+    x.fillStyle='#4a3000';x.font='800 12px system-ui';x.textBaseline='middle';
+    x.fillText(bet,W/2,H*0.47);
+  }
+}
+function resize(){
+  const r=cv.parentElement.getBoundingClientRect();W=r.width;H=r.height;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  draw();
+}
+betRow.addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  const v=+b.dataset.v;
+  if(chips<v){setMsg('אין מספיק צ\'יפים');return;}
+  chips-=v;bet=v;updChips();deal();
+});
+hitBtn.onclick=()=>{if(phase!=='play')return;dblBtn.classList.add('hidden');
+  player.push(deck.pop());draw();
+  if(val(player)>21){settle(false);}};
+standBtn.onclick=()=>{if(phase!=='play')return;settle(false);};
+dblBtn.onclick=()=>{if(phase!=='play'||chips<bet)return;
+  chips-=bet;bet*=2;updChips();player.push(deck.pop());draw();
+  if(val(player)>21)settle(false);else settle(false);};
+document.getElementById('startBtn').onclick=()=>{ov.classList.add('hidden');};
+window.addEventListener('resize',resize);
+updChips();resize();
+</script>
+</body>
+</html>
