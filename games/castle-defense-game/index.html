@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>מגן הטירה</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:#101a0e;font-family:system-ui,-apple-system,sans-serif;color:#eaf5e0}
+body{display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:560px;padding:10px 16px 2px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:20px;font-weight:800}
+#hud{font-size:12.5px;background:#1b2b17;border:1px solid #3a5531;padding:6px 10px;border-radius:14px;display:flex;gap:9px;font-weight:700}
+#msg{min-height:20px;font-size:13.5px;color:#c5e8a8;margin:2px 0;text-align:center}
+canvas{display:block;touch-action:none;border-radius:10px}
+#shop{display:flex;gap:8px;padding:10px 8px 14px;width:100%;max-width:560px;justify-content:center}
+.tbtn{flex:1;max-width:170px;padding:9px 6px;border-radius:12px;border:2px solid #3a5531;background:#1b2b17;color:#dcefd0;font-size:12.5px;font-weight:800;cursor:pointer;text-align:center}
+.tbtn.on{border-color:#a3e635;background:#2a4020}
+.tbtn small{display:block;font-weight:400;color:#9fbf8f;font-size:10.5px;margin-top:2px}
+#waveBtn{padding:9px 18px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#a3e635,#65a30d);color:#14210a;align-self:center}
+#ov{position:fixed;inset:0;background:#0a1208ee;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#1b2b17,#111c0e);border:1px solid #3a5531;border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%}
+.panel h2{font-size:26px;margin-bottom:8px}
+.panel p{font-size:14px;line-height:1.7;color:#c5dab5;margin-bottom:14px}
+.panel .big{font-size:15px;color:#ffd54a;font-weight:800;margin-bottom:16px}
+button.go{padding:13px 26px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#a3e635,#65a30d);color:#14210a}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>מגן הטירה</h1><div id="hud"><span id="gold">זהב 100</span><span id="lives">♥ 20</span><span id="wave">גל 0/8</span></div></header>
+<div id="msg">בחרו מגדל וגעו בדשא לבנייה</div>
+<canvas id="c"></canvas>
+<div id="shop">
+<button class="tbtn on" data-t="arrow">חץ · 30<small>מהיר, טווח בינוני</small></button>
+<button class="tbtn" data-t="cannon">תותח · 60<small>איטי, פגיעת שטח</small></button>
+<button class="tbtn" data-t="frost">קרח · 45<small>מאט אויבים</small></button>
+<button id="waveBtn">שגרו גל</button>
+</div>
+<div id="ov"><div class="panel">
+<h2>מגן הטירה</h2>
+<p>גודודים פולשים לטירה! בנו מגדלים על הדשא כדי לעצור אותם לפני שיגיעו לשער. 8 גלים — שרדו את כולם.</p>
+<div class="big" id="best"></div>
+<button class="go" id="startBtn">להגנה</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const goldEl=document.getElementById('gold'),livesEl=document.getElementById('lives'),waveEl=document.getElementById('wave');
+const msg=document.getElementById('msg'),ov=document.getElementById('ov'),waveBtn=document.getElementById('waveBtn');
+const COLS=12,ROWS=8;
+let W=0,H=0,tw=0,th=0;
+// path waypoints in tile coords
+const WAY=[[0,1],[3,1],[3,5],[7,5],[7,2],[10,2],[10,6],[11,6]];
+let pathSet=new Set();
+(function(){for(let i=0;i<WAY.length-1;i++){let[c,r]=WAY[i];const[c2,r2]=WAY[i+1];pathSet.add(c+','+r);while(c!==c2||r!==r2){c+=Math.sign(c2-c);r+=Math.sign(r2-r);pathSet.add(c+','+r);}}})();
+const TOWERS={arrow:{cost:30,range:2.2,rate:0.5,dmg:12,color:'#fbbf24',splash:0},
+  cannon:{cost:60,range:1.9,rate:1.6,dmg:30,color:'#94a3b8',splash:1.1},
+  frost:{cost:45,range:2.0,rate:0.9,dmg:4,color:'#7dd3fc',slow:0.45}};
+let gold=100,lives=20,wave=0,enemies=[],towers=[],shots=[],parts=[],sel='arrow',spawning=0,spawnT=0,waveActive=false,gameOver=false;
+function pathPoints(){return WAY.map(([c,r])=>({x:(c+0.5)*tw,y:(r+0.5)*th}));}
+function startWave(){
+  if(waveActive||gameOver)return;
+  wave++;waveEl.textContent=`גל ${wave}/8`;
+  waveActive=true;spawning=6+wave*2;spawnT=0;
+  msg.textContent='גל '+wave+' בדרך!';
+  waveBtn.disabled=true;
+}
+function spawn(){
+  const hp=Math.round(28*(1+wave*0.35));
+  const p0=pathPoints()[0];
+  enemies.push({seg:0,t:0,hp,maxHp:hp,speed:40+wave*4,slowT:0,x:p0.x,y:p0.y,dead:false});
+  spawning--;
+}
+function step(dt){
+  if(waveActive&&spawning>0){spawnT-=dt;if(spawnT<=0){spawn();spawnT=Math.max(0.35,0.9-wave*0.05);}}
+  const pts=pathPoints();
+  for(const e of enemies){
+    if(e.dead)continue;
+    let sp=e.speed*(e.slowT>0?0.5:1);
+    e.slowT-=dt;
+    let dist=sp*dt;
+    while(dist>0&&e.seg<pts.length-1){
+      const a=pts[e.seg],b=pts[e.seg+1];
+      const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+      const remain=len*(1-e.t);
+      if(dist<remain){e.t+=dist/len;dist=0;}
+      else{dist-=remain;e.seg++;e.t=0;
+        if(e.seg>=pts.length-1){e.dead=true;lives--;livesEl.textContent='♥ '+lives;if(lives<=0)lose();break;}
+      }
+    }
+    if(e.seg<pts.length-1){
+      const a=pts[e.seg],b=pts[e.seg+1];
+      e.x=a.x+(b.x-a.x)*e.t;e.y=a.y+(b.y-a.y)*e.t;
+    }
+  }
+  // towers fire
+  for(const t of towers){
+    t.cd-=dt;
+    if(t.cd>0)continue;
+    const cfg=TOWERS[t.type];
+    let best=null,bd=1e9;
+    for(const e of enemies){
+      if(e.dead)continue;
+      const d=Math.hypot(e.x-t.x,e.y-t.y);
+      if(d<cfg.range*tw&&d<bd){bd=d;best=e;}
+    }
+    if(best){
+      t.cd=cfg.rate;t.angle=Math.atan2(best.y-t.y,best.x-t.x);
+      shots.push({x:t.x,y:t.y,e:best,type:t.type,t:0});
+    }
+  }
+  // shots move
+  for(let i=shots.length-1;i>=0;i--){
+    const s=shots[i];
+    if(s.e.dead){shots.splice(i,1);continue;}
+    const dx=s.e.x-s.x,dy=s.e.y-s.y,d=Math.hypot(dx,dy);
+    const sp=380*dt;
+    if(d<sp+6){
+      const cfg=TOWERS[s.type];
+      if(cfg.splash){
+        for(const e of enemies){if(!e.dead&&Math.hypot(e.x-s.e.x,e.y-s.e.y)<cfg.splash*tw){hurt(e,cfg.dmg);}}
+        burst(s.e.x,s.e.y,'#f97316');
+      }else{
+        hurt(s.e,cfg.dmg);
+        if(cfg.slow)s.e.slowT=1.6;
+        burst(s.e.x,s.e.y,cfg.color);
+      }
+      shots.splice(i,1);
+    }else{s.x+=dx/d*sp;s.y+=dy/d*sp;}
+  }
+  enemies=enemies.filter(e=>!e.dead);
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)parts.splice(i,1);}
+  if(waveActive&&spawning===0&&enemies.length===0){
+    waveActive=false;waveBtn.disabled=false;
+    gold+=25+wave*5;updHud();
+    if(wave>=8){winGame();return;}
+    msg.textContent='גל '+wave+' הובס! בונוס זהב. בנו עוד מגדלים';
+  }
+}
+function hurt(e,d){e.hp-=d;if(e.hp<=0&&!e.dead){e.dead=true;gold+=8;updHud();burst(e.x,e.y,'#a3e635');}}
+function burst(bx,by,c){for(let i=0;i<8;i++){const a=Math.random()*7;parts.push({x:bx,y:by,vx:Math.cos(a)*50,vy:Math.sin(a)*50,life:0.4,c});}}
+function updHud(){goldEl.textContent='זהב '+gold;livesEl.textContent='♥ '+lives;}
+function winGame(){
+  gameOver=true;
+  const best=+(localStorage.getItem('castleBest')||0);
+  const sc=lives*10+gold;
+  const nb=sc>best;if(nb)localStorage.setItem('castleBest',sc);
+  ov.querySelector('h2').textContent='הטירה ניצלה!';
+  ov.querySelector('p').textContent='שרדתם את כל 8 הגלים.';
+  ov.querySelector('.big').textContent='ניקוד: '+sc+' · שיא: '+Math.max(sc,best);
+  ov.querySelector('button').textContent='משחק חדש';
+  ov.classList.remove('hidden');
+}
+function lose(){
+  gameOver=true;
+  ov.querySelector('h2').textContent='הטירה נפלה…';
+  ov.querySelector('p').textContent='הפולשים פרצו את השער בגל '+wave+'.';
+  ov.querySelector('.big').textContent='נסו שוב עם יותר מגדלים מוקדם';
+  ov.querySelector('button').textContent='נסיון נוסף';
+  ov.classList.remove('hidden');
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  // grass
+  for(let c=0;c<COLS;c++)for(let r=0;r<ROWS;r++){
+    x.fillStyle=(c+r)%2?'#2e4a24':'#2a441f';
+    x.fillRect(c*tw,r*th,tw,th);
+  }
+  // path
+  const pts=pathPoints();
+  x.strokeStyle='#8a6b45';x.lineWidth=th*0.86;x.lineCap='round';x.lineJoin='round';
+  x.beginPath();x.moveTo(-10,pts[0].y);
+  for(const p of pts)x.lineTo(p.x,p.y);
+  x.stroke();
+  x.strokeStyle='#a3805a';x.lineWidth=th*0.6;
+  x.beginPath();x.moveTo(-10,pts[0].y);
+  for(const p of pts)x.lineTo(p.x,p.y);
+  x.stroke();
+  // castle
+  const last=pts[pts.length-1];
+  x.fillStyle='#6b7280';x.fillRect(last.x-6,last.y-th*0.55,tw*0.9,th*1.1);
+  x.fillStyle='#9ca3af';
+  for(let i=0;i<3;i++)x.fillRect(last.x-6+i*tw*0.34,last.y-th*0.72,tw*0.2,th*0.2);
+  x.fillStyle='#7f1d1d';x.beginPath();x.moveTo(last.x+tw*0.1,last.y-th*0.72);x.lineTo(last.x+tw*0.1,last.y-th*1.05);x.lineTo(last.x+tw*0.42,last.y-th*0.9);x.closePath();x.fill();
+  // towers
+  for(const t of towers){
+    const cfg=TOWERS[t.type];
+    x.fillStyle='#0006';x.beginPath();x.ellipse(t.x+2,t.y+4,tw*0.34,tw*0.2,0,0,7);x.fill();
+    x.fillStyle='#4b5563';x.beginPath();x.arc(t.x,t.y,tw*0.34,0,7);x.fill();
+    x.fillStyle=cfg.color;x.beginPath();x.arc(t.x,t.y,tw*0.24,0,7);x.fill();
+    x.save();x.translate(t.x,t.y);x.rotate(t.angle||0);
+    x.fillStyle='#1f2937';x.fillRect(0,-3,tw*0.4,6);
+    x.restore();
+  }
+  // range preview for selected tower placement
+  // enemies
+  for(const e of enemies){
+    const r=tw*0.26;
+    x.fillStyle=e.slowT>0?'#7dd3fc':'#b91c1c';
+    x.beginPath();x.arc(e.x,e.y,r,0,7);x.fill();
+    x.fillStyle='#7f1d1d';
+    x.beginPath();x.arc(e.x-r*0.35,e.y-r*0.2,r*0.22,0,7);x.arc(e.x+r*0.35,e.y-r*0.2,r*0.22,0,7);x.fill();
+    // hp bar
+    x.fillStyle='#0008';x.fillRect(e.x-r,e.y-r-7,r*2,4);
+    x.fillStyle='#4ade80';x.fillRect(e.x-r,e.y-r-7,r*2*Math.max(0,e.hp/e.maxHp),4);
+  }
+  // shots
+  for(const s of shots){
+    x.fillStyle=TOWERS[s.type].color;
+    x.beginPath();x.arc(s.x,s.y,s.type==='cannon'?5:3.4,0,7);x.fill();
+  }
+  for(const p of parts){x.fillStyle=p.c;x.globalAlpha=p.life*2;x.fillRect(p.x-2,p.y-2,4,4);}
+  x.globalAlpha=1;
+}
+let lastT=0;
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(0.033,(t-lastT)/1000||0.016);lastT=t;if(!gameOver)step(dt);draw();}
+function tapH(e){
+  if(gameOver)return;
+  const r=cv.getBoundingClientRect();const t=e.changedTouches?e.changedTouches[0]:e;
+  const c=Math.floor((t.clientX-r.left)/tw),rr=Math.floor((t.clientY-r.top)/th);
+  if(c<0||c>=COLS||rr<0||rr>=ROWS)return;
+  if(pathSet.has(c+','+rr)){msg.textContent='אי אפשר לבנות על השביל';return;}
+  if(towers.some(t=>t.c===c&&t.r===rr)){msg.textContent='כבר יש כאן מגדל';return;}
+  const cfg=TOWERS[sel];
+  if(gold<cfg.cost){msg.textContent='אין מספיק זהב ('+cfg.cost+')';return;}
+  gold-=cfg.cost;updHud();
+  towers.push({c,r:rr,x:(c+0.5)*tw,y:(rr+0.5)*th,type:sel,cd:0,angle:-Math.PI/2});
+  msg.textContent='מגדל נבנה!';
+}
+cv.addEventListener('click',tapH);
+cv.addEventListener('touchend',e=>{e.preventDefault();tapH(e);},{passive:false});
+document.querySelectorAll('.tbtn').forEach(b=>b.onclick=()=>{
+  sel=b.dataset.t;
+  document.querySelectorAll('.tbtn').forEach(q=>q.classList.toggle('on',q===b));
+});
+waveBtn.onclick=startWave;
+document.getElementById('startBtn').onclick=()=>{ov.classList.add('hidden');};
+function resize(){
+  W=Math.min(window.innerWidth-16,560);H=Math.round(W*ROWS/COLS);
+  if(H>window.innerHeight-200){H=window.innerHeight-200;W=Math.round(H*COLS/ROWS);}
+  tw=W/COLS;th=H/ROWS;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  draw();
+}
+const bb=+(localStorage.getItem('castleBest')||0);
+if(bb)document.getElementById('best').textContent='שיא: '+bb;
+window.addEventListener('resize',resize);
+updHud();resize();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -638,5 +638,55 @@
   "added": 66,
   "slug": "bowling-strike-game",
   "source": "https://github.com/chunchila/bowling-strike-game"
+ },
+ {
+  "name": "רברסי מאסטר",
+  "shot": "shots/reversi.webp",
+  "cat": "אסטרטגיה",
+  "desc": "הפכו את הלוח מול ה-AI החכם",
+  "url": "games/reversi-othello-game/",
+  "added": 67,
+  "slug": "reversi-othello-game",
+  "source": "https://github.com/chunchila/reversi-othello-game"
+ },
+ {
+  "name": "נונוגרם",
+  "shot": "shots/nonogram.webp",
+  "cat": "פאזל",
+  "desc": "פיצוח תמונות לפי מספרים - פיקרוס ממכר",
+  "url": "games/nonogram-picross-game/",
+  "added": 68,
+  "slug": "nonogram-picross-game",
+  "source": "https://github.com/chunchila/nonogram-picross-game"
+ },
+ {
+  "name": "נחיתה על הירח",
+  "shot": "shots/lunar.webp",
+  "cat": "ארקייד",
+  "desc": "נחיתה עדינה על המשטח לפני שנגמר הדלק",
+  "url": "games/lunar-descent-game/",
+  "added": 69,
+  "slug": "lunar-descent-game",
+  "source": "https://github.com/chunchila/lunar-descent-game"
+ },
+ {
+  "name": "קשת אלופים",
+  "shot": "shots/archery.webp",
+  "cat": "ספורט",
+  "desc": "חץ וקשת עם רוח משתנה - פגעו במרכז המטרה",
+  "url": "games/archery-wind-game/",
+  "added": 70,
+  "slug": "archery-wind-game",
+  "source": "https://github.com/chunchila/archery-wind-game"
+ },
+ {
+  "name": "מגן הטירה",
+  "shot": "shots/castle.webp",
+  "cat": "אסטרטגיה",
+  "desc": "הציבו מגדלים ועצרו את גלי האויבים",
+  "url": "games/castle-defense-game/",
+  "added": 71,
+  "slug": "castle-defense-game",
+  "source": "https://github.com/chunchila/castle-defense-game"
  }
 ]

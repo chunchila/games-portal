@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>קשת אלופים</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:linear-gradient(180deg,#7ec8f2 0%,#a8dcf7 55%,#7fbf6a 55.2%,#5da24c 100%);font-family:system-ui,-apple-system,sans-serif;color:#123}
+body{display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;font-weight:800;color:#0c2d4d}
+#hud{font-size:12px;background:#ffffffb0;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;color:#0c2d4d;flex-wrap:wrap}
+#msg{min-height:20px;font-size:14px;font-weight:700;color:#0c2d4d;margin:2px 0;text-align:center}
+canvas{display:block;touch-action:none;border-radius:12px;box-shadow:0 14px 40px -12px #0006}
+#ov{position:fixed;inset:0;background:#0c2d4dcc;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#fff,#dff0fb);border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%}
+.panel h2{font-size:26px;margin-bottom:8px;color:#0c2d4d}
+.panel p{font-size:14px;line-height:1.7;color:#33526b;margin-bottom:14px}
+.panel .big{font-size:15px;color:#d97706;font-weight:800;margin-bottom:16px}
+button.go{padding:13px 26px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#fbbf24,#d97706);color:#331a00}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>קשת אלופים</h1><div id="hud"><span id="arrows">חצים: 10</span><span id="wind">רוח: 0</span><span id="score">0</span></div></header>
+<div id="msg">גררו אחורה ושחררו לירות</div>
+<canvas id="c"></canvas>
+<div id="ov"><div class="panel">
+<h2>קשת אלופים</h2>
+<p>גררו את האצבע אחורה כדי לכוון, שחררו לירות. שימו לב לרוח! פגיעה במרכז = 10 נקודות. 10 חצים, המטרה זזה משלב 3.</p>
+<div class="big" id="best"></div>
+<button class="go" id="startBtn">לירי</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const arrowsEl=document.getElementById('arrows'),windEl=document.getElementById('wind'),scoreEl=document.getElementById('score');
+const msg=document.getElementById('msg'),ov=document.getElementById('ov');
+let W=0,H=0;
+const G=240;
+let bowX=60,bowY=0;
+let arrows=10,score=0,round=1,wind=0;
+let arrow=null,parts=[],target=null,dragging=false,dragStart=null,dragNow=null,lastHit=null;
+function newTarget(){
+  const d=Math.min(round,6);
+  const r=Math.max(26,46-round*2);
+  target={x:W-70-Math.random()*40,y:H*0.28+Math.random()*H*0.3,r,vy:round>=3?(Math.random()>0.5?1:-1)*(18+round*8):0};
+  wind=Math.round((Math.random()*2-1)*(round>=2?22:10));
+  windEl.textContent='רוח: '+(wind>0?'← ':'→ ')+Math.abs(wind);
+}
+function reset(){
+  arrows=10;score=0;round=1;arrow=null;parts=[];lastHit=null;
+  scoreEl.textContent='0';arrowsEl.textContent='חצים: 10';
+  msg.textContent='גררו אחורה ושחררו לירות';
+  newTarget();
+}
+function shoot(vx,vy){
+  if(arrows<=0||arrow)return;
+  arrows--;arrowsEl.textContent='חצים: '+arrows;
+  arrow={x:bowX+14,y:bowY,vx,vy,a:Math.atan2(vy,vx)};
+}
+function step(dt){
+  if(target&&target.vy){
+    target.y+=target.vy*dt;
+    if(target.y<H*0.18||target.y>H*0.62)target.vy*=-1;
+  }
+  if(arrow){
+    arrow.vy+=G*dt;
+    arrow.vx+=wind*dt*2.2;
+    arrow.x+=arrow.vx*dt;arrow.y+=arrow.vy*dt;
+    arrow.a=Math.atan2(arrow.vy,arrow.vx);
+    // target hit
+    const d=Math.hypot(arrow.x-target.x,arrow.y-target.y);
+    if(d<target.r){
+      const ring=Math.ceil((d/target.r)*5);
+      const pts=Math.max(0,6-ring)*2;
+      score+=pts;scoreEl.textContent=score;
+      lastHit={t:Date.now(),pts,x:target.x,y:target.y};
+      msg.textContent=pts===10?'בול! +10':pts>0?`+${pts}`:'החטאה…';
+      burst(target.x,target.y);
+      round++;
+      arrow=null;
+      if(arrows<=0){finish();return;}
+      setTimeout(newTarget,700);
+      return;
+    }
+    if(arrow.y>H*0.985||arrow.x>W+40||arrow.x<-40){
+      msg.textContent='החטאה…';
+      arrow=null;
+      if(arrows<=0){finish();return;}
+      setTimeout(newTarget,500);
+    }
+  }
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt;
+    if(p.life<=0)parts.splice(i,1);
+  }
+}
+function burst(bx,by){
+  for(let i=0;i<16;i++){
+    const a=Math.random()*Math.PI*2,s=60+Math.random()*120;
+    parts.push({x:bx,y:by,vx:Math.cos(a)*s,vy:Math.sin(a)*s-60,life:0.7,c:['#fbbf24','#f87171','#fff'][i%3]});
+  }
+}
+function finish(){
+  const best=+(localStorage.getItem('archeryBest')||0);
+  const nb=score>best;if(nb)localStorage.setItem('archeryBest',score);
+  ov.querySelector('h2').textContent=score>=60?'אלוף הקשת!':'נגמרו החצים';
+  ov.querySelector('p').textContent=`צברתם ${score} נקודות ב-10 חצים.`;
+  ov.querySelector('.big').textContent='שיא: '+Math.max(score,best);
+  ov.querySelector('button').textContent='עוד סיבוב';
+  ov.classList.remove('hidden');
+}
+function drawTarget(){
+  const cols=['#111','#fff','#111','#facc15','#f87171'];
+  for(let i=0;i<5;i++){
+    x.fillStyle=cols[i];
+    x.beginPath();x.arc(target.x,target.y,target.r*(1-i*0.2),0,7);x.fill();
+  }
+  x.fillStyle='#f87171';x.beginPath();x.arc(target.x,target.y,target.r*0.12,0,7);x.fill();
+  // stand
+  x.strokeStyle='#7c5230';x.lineWidth=5;
+  x.beginPath();x.moveTo(target.x,target.y+target.r);x.lineTo(target.x,H*0.985);x.stroke();
+}
+function drawBow(){
+  x.save();x.translate(bowX,bowY);
+  x.strokeStyle='#7c5230';x.lineWidth=5;
+  x.beginPath();x.arc(0,0,26,-Math.PI/2.4,Math.PI/2.4);x.stroke();
+  let sx=0,sy=0;
+  if(dragging&&dragNow){
+    const dx=Math.max(-90,Math.min(0,dragNow.x-dragStart.x));
+    const dy=Math.max(-70,Math.min(70,dragNow.y-dragStart.y));
+    sx=dx;sy=dy;
+  }
+  x.strokeStyle='#e2e8f0';x.lineWidth=1.5;
+  x.beginPath();x.moveTo(26*Math.cos(-Math.PI/2.4),26*Math.sin(-Math.PI/2.4));x.lineTo(sx,sy);x.lineTo(26*Math.cos(Math.PI/2.4),26*Math.sin(Math.PI/2.4));x.stroke();
+  if(dragging){
+    // nocked arrow
+    x.save();x.translate(sx,sy);
+    const ang=Math.atan2(-sy,-sx+20);
+    x.rotate(ang);
+    x.strokeStyle='#b45309';x.lineWidth=3;
+    x.beginPath();x.moveTo(-22,0);x.lineTo(26,0);x.stroke();
+    x.fillStyle='#475569';
+    x.beginPath();x.moveTo(26,0);x.lineTo(18,-4);x.lineTo(18,4);x.closePath();x.fill();
+    x.restore();
+  }
+  x.restore();
+}
+function drawArrow(){
+  x.save();x.translate(arrow.x,arrow.y);x.rotate(arrow.a);
+  x.strokeStyle='#b45309';x.lineWidth=3;
+  x.beginPath();x.moveTo(-20,0);x.lineTo(14,0);x.stroke();
+  x.fillStyle='#475569';
+  x.beginPath();x.moveTo(14,0);x.lineTo(7,-3.5);x.lineTo(7,3.5);x.closePath();x.fill();
+  x.strokeStyle='#f87171';x.lineWidth=2;
+  x.beginPath();x.moveTo(-20,0);x.lineTo(-26,-4);x.moveTo(-20,0);x.lineTo(-26,4);x.stroke();
+  x.restore();
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  // clouds
+  x.fillStyle='#ffffffcc';
+  for(const[cx2,cy2,s]of[[0.25,0.12,1],[0.6,0.2,0.7],[0.85,0.08,0.85]]){
+    x.beginPath();x.arc(W*cx2,H*cy2,16*s,0,7);x.arc(W*cx2+18*s,H*cy2+4*s,12*s,0,7);x.arc(W*cx2-18*s,H*cy2+5*s,12*s,0,7);x.fill();
+  }
+  // wind flag
+  x.strokeStyle='#334155';x.lineWidth=3;
+  x.beginPath();x.moveTo(W/2,H*0.06);x.lineTo(W/2,H*0.16);x.stroke();
+  x.fillStyle='#ef4444';
+  const wl=Math.min(34,10+Math.abs(wind))*Math.sign(wind||1);
+  x.beginPath();x.moveTo(W/2,H*0.06);x.lineTo(W/2+wl,H*0.075);x.lineTo(W/2,H*0.09);x.closePath();x.fill();
+  drawTarget();
+  drawBow();
+  if(arrow)drawArrow();
+  for(const p of parts){x.fillStyle=p.c;x.globalAlpha=Math.min(1,p.life*2);x.fillRect(p.x-2,p.y-2,4,4);}
+  x.globalAlpha=1;
+  if(lastHit&&Date.now()-lastHit.t<700&&lastHit.pts>0){
+    x.fillStyle='#0c2d4d';x.font='800 22px system-ui';x.textAlign='center';
+    x.fillText('+'+lastHit.pts,lastHit.x,lastHit.y-target.r-14);
+  }
+  // power bar
+  if(dragging&&dragNow){
+    const dx=dragNow.x-dragStart.x,dy=dragNow.y-dragStart.y;
+    const pow=Math.min(1,Math.hypot(dx,dy)/110);
+    x.fillStyle='#00000033';x.fillRect(14,H-26,120,12);
+    x.fillStyle=pow>0.8?'#ef4444':'#22c55e';x.fillRect(14,H-26,120*pow,12);
+  }
+}
+let lastT=0;
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(0.033,(t-lastT)/1000||0.016);lastT=t;step(dt);draw();}
+function pt(e){const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+cv.addEventListener('mousedown',e=>{dragging=true;dragStart=pt(e);dragNow=dragStart;});
+cv.addEventListener('mousemove',e=>{if(dragging)dragNow=pt(e);});
+window.addEventListener('mouseup',()=>{
+  if(!dragging)return;dragging=false;
+  const dx=dragNow.x-dragStart.x,dy=dragNow.y-dragStart.y;
+  if(dx>-8&&Math.abs(dy)<8)return;
+  const pow=Math.min(1,Math.hypot(dx,dy)/110);
+  const ang=Math.atan2(dy,dx)+Math.PI;
+  const sp=300+pow*320;
+  shoot(Math.cos(ang)*sp,Math.sin(ang)*sp);
+});
+cv.addEventListener('touchstart',e=>{e.preventDefault();dragging=true;dragStart=pt(e);dragNow=dragStart;},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(dragging)dragNow=pt(e);},{passive:false});
+cv.addEventListener('touchend',e=>{
+  if(!dragging)return;dragging=false;
+  const dx=dragNow.x-dragStart.x,dy=dragNow.y-dragStart.y;
+  if(dx>-8&&Math.abs(dy)<8)return;
+  const pow=Math.min(1,Math.hypot(dx,dy)/110);
+  const ang=Math.atan2(dy,dx)+Math.PI;
+  const sp=300+pow*320;
+  shoot(Math.cos(ang)*sp,Math.sin(ang)*sp);
+});
+document.getElementById('startBtn').onclick=()=>{ov.classList.add('hidden');reset();};
+function resize(){
+  W=Math.min(window.innerWidth-16,520);H=Math.min(window.innerHeight-165,W*1.18);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  bowY=H*0.55;
+  draw();
+}
+const bb=+(localStorage.getItem('archeryBest')||0);
+if(bb)document.getElementById('best').textContent='השיא שלכם: '+bb;
+window.addEventListener('resize',resize);
+reset();resize();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

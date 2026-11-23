@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>רברסי מאסטר</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:#0b1f14;font-family:system-ui,-apple-system,sans-serif;color:#e6f5ec}
+body{display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:520px;padding:13px 18px 4px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:21px;font-weight:800}
+#counts{font-size:13px;background:#0f3a24;border:1px solid #1e5c3a;padding:6px 12px;border-radius:18px;display:flex;gap:8px;align-items:center}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%}
+#msg{min-height:22px;font-size:14px;color:#9fe8bf;margin:2px 0 4px;text-align:center}
+canvas{display:block;border-radius:12px;box-shadow:0 18px 50px -12px #000d;touch-action:none}
+#bar{width:100%;max-width:520px;display:flex;gap:10px;padding:12px 18px 16px}
+button{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#34d399,#059669);color:#02180d}
+#ov{position:fixed;inset:0;background:#04120acc;display:flex;align-items:center;justify-content:center;z-index:9}
+.panel{background:linear-gradient(180deg,#0f3a24,#082416);border:1px solid #1e5c3a;border-radius:20px;padding:30px 26px;text-align:center;max-width:330px;width:88%}
+.panel h2{font-size:26px;margin-bottom:8px}
+.panel p{font-size:14px;line-height:1.7;color:#b7e4c9;margin-bottom:14px}
+.panel .big{font-size:15px;color:#ffd54a;font-weight:800;margin-bottom:16px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>רברסי מאסטר</h1><div id="counts"><span class="dot" style="background:#111"></span><span id="cb">2</span><span class="dot" style="background:#f5f5f5"></span><span id="cw">2</span></div></header>
+<div id="msg">את השחור — געי במשבצת מסומנת</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="bar"><button id="newBtn">משחק חדש</button></div>
+<div id="ov"><div class="panel">
+<h2>רברסי מאסטר</h2>
+<p>שימי דיסקית כך שדיסקיות של היריב ילכדו בין שתי דיסקיות שלך — והן מתהפכות! מי שיש לו יותר בסוף מנצח. פינות שוות זהב.</p>
+<button id="startBtn">התחל</button>
+</div></div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+const msg=document.getElementById('msg'),cb=document.getElementById('cb'),cw=document.getElementById('cw');
+const ov=document.getElementById('ov');
+const W8=[[120,-20,20,5,5,20,-20,120],[-20,-40,-5,-5,-5,-5,-40,-20],[20,-5,15,3,3,15,-5,20],[5,-5,3,3,3,3,-5,5],[5,-5,3,3,3,3,-5,5],[20,-5,15,3,3,15,-5,20],[-20,-40,-5,-5,-5,-5,-40,-20],[120,-20,20,5,5,20,-20,120]];
+let S=0,cell=0,B=[],turn=1,over=false,aiBusy=false,flips=[];
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+function init(){B=Array.from({length:8},()=>Array(8).fill(0));B[3][3]=2;B[4][4]=2;B[3][4]=1;B[4][3]=1;turn=1;over=false;aiBusy=false;flips=[];upd();draw();}
+function inb(r,c){return r>=0&&r<8&&c>=0&&c<8;}
+function opp(t){return t===1?2:1;}
+function flipsFor(b,r,c,t){
+  if(b[r][c])return null;
+  const all=[];
+  for(const[dr,dc]of DIRS){
+    const line=[];let rr=r+dr,cc=c+dc;
+    while(inb(rr,cc)&&b[rr][cc]===opp(t)){line.push([rr,cc]);rr+=dr;cc+=dc;}
+    if(line.length&&inb(rr,cc)&&b[rr][cc]===t)all.push(...line);
+  }
+  return all.length?all:null;
+}
+function moves(b,t){const m=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){const f=flipsFor(b,r,c,t);if(f)m.push({r,c,f});}return m;}
+function applyM(b,m,t){b[m.r][m.c]=t;for(const[r,c]of m.f)b[r][c]=t;}
+function counts(){let a=0,w=0;for(let r=0;r<8;r++)for(let c=0;c<8;c++){if(B[r][c]===1)a++;else if(B[r][c]===2)w++;}cb.textContent=a;cw.textContent=w;return[a,w];}
+function evalB(b){
+  let s=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];
+    if(p===2)s+=W8[r][c];else if(p===1)s-=W8[r][c];}
+  // mobility
+  const mm=moves(b,2).length,ym=moves(b,1).length;
+  s+=(mm-ym)*8;
+  return s;
+}
+function minimax(b,depth,alpha,beta,maxim){
+  const t=maxim?2:1;
+  const mv=moves(b,t);
+  const anyOther=moves(b,opp(t)).length>0;
+  if(depth===0||(!mv.length&&!anyOther))return mv.length||anyOther?evalB(b):(evalB(b)+(maxim?-500:500));
+  if(!mv.length)return minimax(b,depth-1,alpha,beta,!maxim);
+  let best=maxim?-1e9:1e9;
+  // order: corners first
+  mv.sort((a,b2)=>(W8[b2.r][b2.c]-W8[a.r][a.c]));
+  for(const m of mv){
+    const nb=b.map(r=>r.slice());applyM(nb,m,t);
+    const v=minimax(nb,depth-1,alpha,beta,!maxim);
+    if(maxim){best=Math.max(best,v);alpha=Math.max(alpha,v);}else{best=Math.min(best,v);beta=Math.min(beta,v);}
+    if(beta<=alpha)break;
+  }
+  return best;
+}
+function aiMove(){
+  aiBusy=true;msg.textContent='המחשב חושב…';
+  setTimeout(()=>{
+    const mv=moves(B,2);
+    if(!mv.length){passTurn();return;}
+    let best=-1e9,cands=[];
+    const t0=performance.now();
+    for(const m of mv){
+      const nb=B.map(r=>r.slice());applyM(nb,m,2);
+      const v=minimax(nb,4,-1e9,1e9,false);
+      if(performance.now()-t0>800)break;
+      if(v>best){best=v;cands=[m];}else if(v===best)cands.push(m);
+    }
+    const m=cands[(Math.random()*cands.length)|0];
+    applyM(B,m,2);flips=m.f;
+    turn=1;aiBusy=false;
+    afterMove();
+  },300);
+}
+function passTurn(){
+  msg.textContent=turn===1?'אין לך מהלך — עובר תור':'למחשב אין מהלך — תורך שוב';
+  turn=opp(turn);aiBusy=false;
+  const mv=moves(B,turn);
+  if(!mv.length&&!moves(B,-turn).length){finish();return;}
+  upd();draw();
+  if(turn===2)setTimeout(aiMove,900);
+}
+function afterMove(){
+  const[b,w]=counts();
+  if(b+w===64||(!moves(B,1).length&&!moves(B,2).length)){finish();return;}
+  if(!moves(B,turn).length){passTurn();return;}
+  upd();draw();
+  if(turn===2)aiMove();
+}
+function finish(){
+  over=true;
+  const[b,w]=counts();
+  const st=JSON.parse(localStorage.getItem('reversiStats')||'{"w":0,"l":0,"t":0}');
+  let t;
+  if(b>w){st.w++;t='ניצחת!';}else if(w>b){st.l++;t='המחשב ניצח';}else{st.t++;t='תיקו!';}
+  localStorage.setItem('reversiStats',JSON.stringify(st));
+  ov.querySelector('h2').textContent=t;
+  ov.querySelector('p').textContent=`תוצאה: שחור ${b} — לבן ${w}`;
+  ov.querySelector('.big').textContent=`ניצחונות ${st.w} · הפסדים ${st.l} · תיקו ${st.t}`;
+  ov.querySelector('button').textContent='עוד משחק';
+  ov.classList.remove('hidden');
+  upd();draw();
+}
+function upd(){
+  if(!over)msg.textContent=turn===1?'את השחור — געי במשבצת מסומנת':'תור המחשב…';
+  counts();
+}
+function draw(){
+  x.clearRect(0,0,S,S);
+  const g=x.createLinearGradient(0,0,0,S);
+  g.addColorStop(0,'#127a48');g.addColorStop(1,'#0a5230');
+  x.fillStyle=g;roundRect(0,0,S,S,12);x.fill();
+  x.strokeStyle='#06301c';x.lineWidth=2;
+  for(let i=1;i<8;i++){
+    x.beginPath();x.moveTo(i*cell,0);x.lineTo(i*cell,S);x.stroke();
+    x.beginPath();x.moveTo(0,i*cell);x.lineTo(S,i*cell);x.stroke();
+  }
+  // legal hints
+  if(turn===1&&!over&&!aiBusy){
+    for(const m of moves(B,1)){
+      x.fillStyle='#ffffff2a';x.beginPath();x.arc(m.c*cell+cell/2,m.r*cell+cell/2,cell*0.14,0,7);x.fill();
+      x.strokeStyle='#ffffff55';x.lineWidth=1.5;x.stroke();
+    }
+  }
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=B[r][c];if(!p)continue;
+    const cx=c*cell+cell/2,cy=r*cell+cell/2,R=cell*0.4;
+    const isF=flips.some(([fr,fc])=>fr===r&&fc===c);
+    x.fillStyle='#0007';x.beginPath();x.ellipse(cx+1.5,cy+2.5,R,R*0.9,0,0,7);x.fill();
+    const g2=x.createRadialGradient(cx-R*0.35,cy-R*0.4,R*0.1,cx,cy,R);
+    if(p===1){g2.addColorStop(0,'#4a4a55');g2.addColorStop(0.75,'#141418');g2.addColorStop(1,'#000');}
+    else{g2.addColorStop(0,'#fff');g2.addColorStop(0.75,'#d8d8d8');g2.addColorStop(1,'#9a9aa5');}
+    x.fillStyle=g2;x.beginPath();x.arc(cx,cy,R,0,7);x.fill();
+    if(isF){x.strokeStyle='#ffd54a';x.lineWidth=2.5;x.stroke();}
+  }
+}
+function roundRect(a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+function tapH(e){
+  if(over||turn!==1||aiBusy)return;
+  const r=cv.getBoundingClientRect();const t=e.changedTouches?e.changedTouches[0]:e;
+  const c=Math.floor((t.clientX-r.left)/cell),rr=Math.floor((t.clientY-r.top)/cell);
+  if(!inb(rr,c))return;
+  const mv=moves(B,1);
+  const m=mv.find(q=>q.r===rr&&q.c===c);
+  if(!m)return;
+  applyM(B,m,1);flips=m.f;turn=2;
+  upd();draw();
+  setTimeout(aiMove,450);
+}
+cv.addEventListener('click',tapH);
+cv.addEventListener('touchend',e=>{e.preventDefault();tapH(e);},{passive:false});
+document.getElementById('newBtn').onclick=init;
+document.getElementById('startBtn').onclick=()=>{ov.classList.add('hidden');init();};
+function resize(){
+  const w=Math.min(window.innerWidth-16,520);
+  S=Math.min(w,window.innerHeight-180);cell=S/8;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=S*dpr;cv.height=S*dpr;cv.style.width=S+'px';cv.style.height=S+'px';
+  x.setTransform(dpr,0,0,dpr,0,0);x.direction='ltr';
+  draw();
+}
+window.addEventListener('resize',resize);
+init();resize();
+</script>
+</body>
+</html>
