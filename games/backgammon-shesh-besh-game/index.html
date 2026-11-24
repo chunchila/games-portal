@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>שש-בש</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1208;color:#f5ead6;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;user-select:none}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;color:#fbbf24}
+#hud{font-size:12px;background:#ffffff14;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;flex-wrap:wrap;align-items:center}
+#msg{font-size:13.5px;color:#cdbb9d;min-height:19px;padding:2px 8px}
+.die{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:#fff;color:#1a1208;border-radius:5px;font-weight:900;margin:0 2px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;touch-action:none}
+#ctl{width:100%;max-width:520px;display:flex;gap:8px;padding:8px}
+#ctl button{flex:1;padding:14px 0;font-size:16px;font-weight:800;border:none;border-radius:14px;cursor:pointer}
+#rollB{background:linear-gradient(135deg,#fbbf24,#d97706);color:#3a2404}
+#rollB:disabled{opacity:0.4}
+#newB{background:#3f3f46;color:#e4e4e7}
+.ov{position:fixed;inset:0;background:#1a1208e8;display:flex;align-items:center;justify-content:center;z-index:9;padding:20px}
+.card{background:#2b1f0e;border:2px solid #fbbf2455;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card h2{color:#fbbf24;font-size:26px;margin-bottom:10px}
+.card p{color:#e8dcc0;font-size:14px;line-height:1.6;margin-bottom:18px}
+.card button{padding:14px 40px;font-size:17px;font-weight:800;border:none;border-radius:14px;background:linear-gradient(135deg,#fbbf24,#d97706);color:#3a2404;cursor:pointer}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>שש-בש</h1><div id="hud"><span id="dice"></span><span id="off">אתם 0 · מחשב 0</span></div></header>
+<div id="msg">הטילו קוביות כדי להתחיל</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctl"><button id="rollB">הטילו קוביות</button><button id="newB">משחק חדש</button></div>
+<div class="ov" id="ovS"><div class="card"><h2>שש-בש</h2><p>הובילו את כל 15 האבנים הלבנות הביתה והוציאו אותן לפני המחשב. געו באבן ואז ביעד המודגש. אבן בודדת נאכלת וחוזרת לבר.</p><button id="startBtn">התחל</button></div></div>
+<div class="ov hide" id="ovE"><div class="card"><h2 id="ovT"></h2><p id="ovP"></p><button id="againB">שחקו שוב</button></div></div>
+<script>
+'use strict';
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';
+const W=390,H=540;c.width=W;c.height=H;
+const M=12,BAR=26,colW=(W-2*M-BAR)/12,TLEN=210,R=Math.floor(colW/2)-1;
+const msg=document.getElementById('msg'),diceEl=document.getElementById('dice'),offEl=document.getElementById('off'),rollB=document.getElementById('rollB');
+let pts,barP,barA,offP,offA,dice,movesLeft,turn,phase,sel,dests,run;
+function reset(){
+  pts=Array(24).fill(0);
+  pts[23]=2;pts[12]=5;pts[7]=3;pts[5]=5;
+  pts[0]=-2;pts[11]=-5;pts[16]=-3;pts[18]=-5;
+  barP=0;barA=0;offP=0;offA=0;dice=[];movesLeft=[];turn='P';phase='roll';sel=null;dests=[];
+  updHud();msg.textContent='הטילו קוביות';
+}
+function colOf(p){
+  if(p>=12&&p<=17)return p-12;
+  if(p>=18&&p<=23)return p-12;
+  return 11-p;
+}
+function xOf(col){return M+col*colW+(col>=6?BAR:0)}
+function ptXY(p,n){ // center of nth checker (0-based) on point p
+  const col=colOf(p),cx=xOf(col)+colW/2;
+  const top=p>=12;
+  const y=top?16+R+n*(2*R+1):H-16-R-n*(2*R+1);
+  return [cx,y];
+}
+function inHome(who){ // all checkers home => can bear off
+  if(who==='P'){if(barP>0)return false;for(let i=6;i<24;i++)if(pts[i]>0)return false;return true}
+  if(barA>0)return false;for(let i=0;i<18;i++)if(pts[i]<0)return false;return true;
+}
+function legalFor(who,d,src){
+  if(who==='P'){
+    let dst=src-d;
+    if(dst>=0){if(pts[dst]<=-2)return null;return dst}
+    if(!inHome('P'))return null;
+    if(dst===-1)return -1;
+    for(let i=src+1;i<=5;i++)if(pts[i]>0)return null;
+    return -1;
+  }
+  let dst=src+d;
+  if(dst<=23){if(pts[dst]>=2)return null;return dst}
+  if(!inHome('A'))return null;
+  if(dst===24)return 24;
+  for(let i=src-1;i>=18;i--)if(pts[i]<0)return null;
+  return 24;
+}
+function legalMoves(who){
+  const out=[];
+  const srcs=[];
+  if(who==='P'){if(barP>0)srcs.push(-2);else for(let i=0;i<24;i++)if(pts[i]>0)srcs.push(i)}
+  else{if(barA>0)srcs.push(-2);else for(let i=0;i<24;i++)if(pts[i]<0)srcs.push(i)}
+  const diceSet=[...new Set(movesLeft)];
+  for(const s of srcs){
+    for(const d of diceSet){
+      const src=s===-2?(who==='P'?24:-1):s; // entry point virtual
+      const dst=legalFor(who,d,src);
+      if(dst!==null)out.push({src:s,dst,die:d});
+    }
+  }
+  return out;
+}
+function applyMove(mv,who){
+  const d=mv.die;
+  const idx=movesLeft.indexOf(d);if(idx>=0)movesLeft.splice(idx,1);
+  if(who==='P'){
+    let src=mv.src;
+    if(src===-2){barP--;src=24}
+    else pts[src]--;
+    if(mv.dst===-1){offP++}
+    else{if(pts[mv.dst]===-1){pts[mv.dst]=0;barA++}pts[mv.dst]++}
+  }else{
+    let src=mv.src;
+    if(src===-2){barA--;src=-1}
+    else pts[src]++;
+    if(mv.dst===24){offA++}
+    else{if(pts[mv.dst]===1){pts[mv.dst]=0;barP++}pts[mv.dst]--}
+  }
+  updHud();
+}
+function updHud(){
+  diceEl.innerHTML=dice.map(v=>'<span class="die">'+v+'</span>').join('');
+  offEl.textContent='אתם '+offP+' · מחשב '+offA;
+  rollB.disabled=!(run&&turn==='P'&&phase==='roll');
+}
+function drawBoard(){
+  x.fillStyle='#3a2a12';x.fillRect(0,0,W,H);
+  // triangles
+  for(let col=0;col<12;col++){
+    const cx=xOf(col);
+    const dark=col%2===0;
+    x.fillStyle=dark?'#a16207':'#fbbf24';
+    x.beginPath();x.moveTo(cx,8);x.lineTo(cx+colW,8);x.lineTo(cx+colW/2,8+TLEN);x.closePath();x.fill();
+    x.beginPath();x.moveTo(cx,H-8);x.lineTo(cx+colW,H-8);x.lineTo(cx+colW/2,H-8-TLEN);x.closePath();x.fill();
+  }
+  // bar
+  x.fillStyle='#241a0a';x.fillRect(M+6*colW,0,BAR,H);
+  x.strokeStyle='#0f0a04';x.lineWidth=2;x.strokeRect(M+6*colW+1,1,BAR-2,H-2);
+  // checkers
+  for(let p=0;p<24;p++){
+    const n=Math.abs(pts[p]);if(!n)continue;
+    const pl=pts[p]>0;
+    for(let i=0;i<Math.min(n,5);i++){
+      const[cx,cy]=ptXY(p,i);
+      drawChecker(cx,cy,pl);
+      if(n>5&&i===4){x.fillStyle=pl?'#111':'#fff';x.font='bold 11px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(n,cx,cy)}
+    }
+  }
+  // bar checkers
+  const bx=M+6*colW+BAR/2;
+  for(let i=0;i<Math.min(barP,4);i++)drawChecker(bx,H-40-i*(2*R+1),true);
+  for(let i=0;i<Math.min(barA,4);i++)drawChecker(bx,40+i*(2*R+1),false);
+  // selection + dests
+  if(sel!==null&&sel>=0){
+    const col=colOf(sel),cx=xOf(col)+colW/2,top=sel>=12;
+    x.strokeStyle='#4ade80';x.lineWidth=3;
+    x.strokeRect(xOf(col)+1,top?8:H-8-TLEN,colW-2,TLEN);
+  }
+  for(const m of dests){
+    if(m.dst===-1){x.fillStyle='#4ade80';x.beginPath();x.arc(W-8,H/2,9,0,7);x.fill()}
+    else{
+      const col=colOf(m.dst),cx=xOf(col)+colW/2,top=m.dst>=12;
+      const cy=top?8+TLEN-14:H-8-TLEN+14;
+      x.fillStyle='#4ade80aa';x.beginPath();x.arc(cx,cy,10,0,7);x.fill();
+    }
+  }
+  if(barP>0&&turn==='P'&&phase==='move'){
+    x.fillStyle='#fde68a';x.font='bold 11px Arial';x.textAlign='center';x.fillText('בר',bx,H-14);
+  }
+}
+function drawChecker(cx,cy,white){
+  const g=x.createRadialGradient(cx-4,cy-4,2,cx,cy,R);
+  if(white){g.addColorStop(0,'#ffffff');g.addColorStop(1,'#b8b0a0')}
+  else{g.addColorStop(0,'#57534e');g.addColorStop(1,'#1c1917')}
+  x.fillStyle=g;x.beginPath();x.arc(cx,cy,R,0,7);x.fill();
+  x.strokeStyle=white?'#78716c':'#000';x.lineWidth=1.5;x.stroke();
+}
+function endTurnCheck(){
+  if(offP>=15){finish('P');return true}
+  if(offA>=15){finish('A');return true}
+  if(turn==='P'&&phase==='move'){
+    const lm=legalMoves('P');
+    if(movesLeft.length===0||lm.length===0){
+      if(movesLeft.length>0)msg.textContent='אין מהלך חוקי - עובר למחשב';
+      setTimeout(aiTurn,900);return true;
+    }
+  }
+  return false;
+}
+function finish(w){
+  run=false;
+  document.getElementById('ovT').textContent=w==='P'?'ניצחתם!':'המחשב ניצח';
+  document.getElementById('ovP').textContent=w==='P'?'הוצאתם את כל האבנים ראשונים. כל הכבוד!':'המחשב הוציא את כל האבנים ראשון.';
+  document.getElementById('ovE').classList.remove('hide');
+  rollB.disabled=true;
+}
+function rollDice(){
+  const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
+  dice=[a,b];movesLeft=a===b?[a,a,a,a]:[a,b];
+}
+rollB.onclick=()=>{
+  if(!run||turn!=='P'||phase!=='roll')return;
+  rollDice();phase='move';updHud();drawBoard();
+  if(legalMoves('P').length===0){msg.textContent='אין מהלך חוקי - עובר למחשב';setTimeout(aiTurn,1100)}
+  else msg.textContent=barP>0?'הכניסו את האבן מהבר':'געו באבן לבנה כדי לזוז';
+};
+function aiTurn(){
+  if(!run)return;
+  turn='A';phase='move';sel=null;dests=[];
+  rollDice();updHud();msg.textContent='המחשב משחק...';drawBoard();
+  aiStep();
+}
+function aiStep(){
+  if(!run)return;
+  if(movesLeft.length===0||legalMoves('A').length===0){
+    turn='P';phase='roll';dice=[];updHud();msg.textContent='תורכם - הטילו קוביות';drawBoard();return;
+  }
+  // choose die order: try higher first
+  const ds=[...new Set(movesLeft)].sort((a,b)=>b-a);
+  let chosen=null;
+  for(const d of ds){
+    const cands=legalMoves('A').filter(m=>m.die===d);
+    if(!cands.length)continue;
+    let bs=-1e9;
+    for(const m of cands){
+      let s=m.die*0.1+Math.random();
+      const srcIdx=m.src===-2?-1:m.src;
+      if(m.src===-2)s+=6;
+      if(m.dst===24)s+=8;
+      else{
+        if(pts[m.dst]===1)s+=10; // hit
+        if(pts[m.dst]===-1)s+=3; // cover blot into point
+        if(pts[m.dst]<=-1)s+=1;  // stacking safe
+      }
+      if(srcIdx>=0&&pts[srcIdx]===-1)s+=4; // moving off a blot
+      if(srcIdx>=0&&Math.abs(pts[srcIdx])===2)s-=1; // break a point
+      if(s>bs){bs=s;chosen=m}
+    }
+    if(chosen)break;
+  }
+  if(!chosen){turn='P';phase='roll';dice=[];updHud();msg.textContent='תורכם - הטילו קוביות';drawBoard();return}
+  applyMove(chosen,'A');drawBoard();
+  if(offA>=15){finish('A');return}
+  setTimeout(aiStep,600);
+}
+function toPoint(px,py){
+  const r=c.getBoundingClientRect();
+  const mx=(px-r.left)*W/r.width,my=(py-r.top)*H/r.height;
+  // bar?
+  const barX=M+6*colW;
+  if(mx>=barX&&mx<=barX+BAR){
+    return {bar:true};
+  }
+  let col=-1;
+  for(let i=0;i<12;i++){const cx=xOf(i);if(mx>=cx&&mx<cx+colW){col=i;break}}
+  if(col<0)return null;
+  const top=my<H/2;
+  let p;
+  if(top){p=col<6?12+col:12+col}
+  else{p=11-col<6?11-col:11-col}
+  return {p};
+}
+function onTap(px,py){
+  if(!run||turn!=='P'||phase!=='move')return;
+  const hit=toPoint(px,py);if(!hit)return;
+  // destination tap?
+  if(sel!==null){
+    const mv=dests.find(m=>hit.bar?false:(m.dst===hit.p)||(m.dst===-1&&hit.p>=0&&hit.p<=5&&hit.p<6&&false));
+    const mv2=dests.find(m=>!hit.bar&&m.dst===hit.p);
+    if(mv2){applyMove(mv2,'P');sel=null;dests=[];drawBoard();
+      if(!endTurnCheck()){msg.textContent=barP>0?'הכניסו את האבן מהבר':'בחרו אבן נוספת'}
+      return}
+    if(hit.bar&&sel===-2){sel=null;dests=[];drawBoard();return}
+    // off zone tap: right edge when bearing off
+    if(dests.some(m=>m.dst===-1)){
+      const r=c.getBoundingClientRect();
+      const mx=(px-r.left)*W/r.width;
+      if(mx>W-24){const m=dests.find(m=>m.dst===-1);applyMove(m,'P');sel=null;dests=[];drawBoard();endTurnCheck();return}
+    }
+  }
+  // source selection
+  if(hit.bar){
+    if(barP>0){sel=-2;dests=legalMoves('P').filter(m=>m.src===-2);drawBoard();msg.textContent=dests.length?'געו בנקודת הכניסה':'אין כניסה חוקית'}
+    return;
+  }
+  const p=hit.p;
+  if(pts[p]>0){
+    if(barP>0){msg.textContent='קודם הכניסו את האבן מהבר';return}
+    sel=p;dests=legalMoves('P').filter(m=>m.src===p);
+    drawBoard();
+    msg.textContent=dests.length?'געו ביעד המודגש':'אין מהלך חוקי מהאבן הזו';
+  }
+}
+c.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];onTap(t.clientX,t.clientY)},{passive:false});
+c.addEventListener('mousedown',e=>onTap(e.clientX,e.clientY));
+function start(){document.getElementById('ovS').classList.add('hide');document.getElementById('ovE').classList.add('hide');reset();run=true;updHud();drawBoard()}
+document.getElementById('startBtn').onclick=start;
+document.getElementById('againB').onclick=start;
+document.getElementById('newB').onclick=start;
+reset();drawBoard();
+</script>
+</body>
+</html>

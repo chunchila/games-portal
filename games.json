@@ -688,5 +688,55 @@
   "added": 71,
   "slug": "castle-defense-game",
   "source": "https://github.com/chunchila/castle-defense-game"
+ },
+ {
+  "name": "שש-בש",
+  "shot": "shots/backgammon.webp",
+  "cat": "אסטרטגיה",
+  "desc": "הקלאסיקה האהובה מול המחשב - קוביות, אכילות והוצאות",
+  "url": "games/backgammon-shesh-besh-game/",
+  "added": 72,
+  "slug": "backgammon-shesh-besh-game",
+  "source": "https://github.com/chunchila/backgammon-shesh-besh-game"
+ },
+ {
+  "name": "איקס עיגול אולטימטיבי",
+  "shot": "shots/megattt.webp",
+  "cat": "אסטרטגיה",
+  "desc": "תשעה לוחות איקס עיגול באחד - זכו בשלושה ברצף",
+  "url": "games/mega-tic-tac-toe-game/",
+  "added": 73,
+  "slug": "mega-tic-tac-toe-game",
+  "source": "https://github.com/chunchila/mega-tic-tac-toe-game"
+ },
+ {
+  "name": "מסוק במערה",
+  "shot": "shots/copter.webp",
+  "cat": "ארקייד",
+  "desc": "החזיקו לעלות, שחררו לרדת - אל תגעו בקירות",
+  "url": "games/copter-cave-game/",
+  "added": 74,
+  "slug": "copter-cave-game",
+  "source": "https://github.com/chunchila/copter-cave-game"
+ },
+ {
+  "name": "קפיצת צבעים",
+  "shot": "shots/colorswitch.webp",
+  "cat": "ארקייד",
+  "desc": "קפצו דרך הטבעות רק בצבע של הכדור",
+  "url": "games/color-switch-jump-game/",
+  "added": 75,
+  "slug": "color-switch-jump-game",
+  "source": "https://github.com/chunchila/color-switch-jump-game"
+ },
+ {
+  "name": "אסטרואידים",
+  "shot": "shots/asteroids.webp",
+  "cat": "ארקייד",
+  "desc": "פוצצו אסטרואידים לפני שהם פוגעים בספינה",
+  "url": "games/asteroids-shooter-game/",
+  "added": 76,
+  "slug": "asteroids-shooter-game",
+  "source": "https://github.com/chunchila/asteroids-shooter-game"
  }
 ]

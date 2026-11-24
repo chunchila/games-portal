@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>מסוק במערה</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0b0f1a;color:#eaf0ff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;user-select:none}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;color:#7dd3fc}
+#hud{font-size:12px;background:#ffffff14;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;flex-wrap:wrap}
+#msg{font-size:13.5px;color:#94a3b8;min-height:19px;padding:2px 8px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#101a2e;touch-action:none}
+#ctl{width:100%;max-width:520px;padding:8px}
+#flyB{width:100%;padding:16px;font-size:17px;font-weight:800;border:none;border-radius:16px;background:linear-gradient(135deg,#38bdf8,#0284c7);color:#04263b;cursor:pointer}
+#flyB:active{filter:brightness(1.15)}
+.ov{position:fixed;inset:0;background:#0b0f1ae8;display:flex;align-items:center;justify-content:center;z-index:9;padding:20px}
+.card{background:#16203a;border:2px solid #38bdf855;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card h2{color:#7dd3fc;font-size:26px;margin-bottom:10px}
+.card p{color:#cbd5e1;font-size:14px;line-height:1.6;margin-bottom:18px}
+.card button{padding:14px 40px;font-size:17px;font-weight:800;border:none;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#0284c7);color:#04263b;cursor:pointer}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>מסוק במערה</h1><div id="hud"><span id="dist">0 מ'</span><span id="best">שיא: 0</span></div></header>
+<div id="msg">החזיקו לחוץ כדי לעלות, שחררו כדי לרדת</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctl"><button id="flyB">החזיקו לטוס</button></div>
+<div class="ov" id="ovS"><div class="card"><h2>מסוק במערה</h2><p>טוסו במסוק דרך המערה ההולכת וצרה. החזיקו את הכפתור או את המסך לחוץ כדי לעלות, שחררו כדי לרדת. אל תגעו בקירות!</p><button id="startBtn">התחל</button></div></div>
+<div class="ov hide" id="ovE"><div class="card"><h2 id="ovT">התרסקה!</h2><p id="ovP"></p><button id="againB">שחקו שוב</button></div></div>
+<script>
+'use strict';
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';
+const W=390,H=560;c.width=W;c.height=H;
+const distEl=document.getElementById('dist'),bestEl=document.getElementById('best'),msg=document.getElementById('msg');
+let best=+(localStorage.getItem('copter_best')||0);bestEl.textContent='שיא: '+best;
+let y,vy,dist,speed,cave,stars,dead,run,hold,t;
+const HX=90; // heli x
+function reset(){
+  y=H/2;vy=0;dist=0;speed=2.2;dead=false;t=0;cave=[];stars=[];
+  let top=120,bot=H-120;
+  for(let i=0;i<W+8;i++){
+    const n=i*0.02;
+    cave.push({top:top+Math.sin(n)*40+Math.sin(n*2.7)*18,bot:bot+Math.sin(n+2)*40+Math.sin(n*2.3)*18});
+    if(i%40===0)stars.push({x:i,y:0});
+  }
+}
+function drawStarsBg(){x.fillStyle='#1e293b';for(let i=0;i<30;i++){const sx=(i*137)%W,sy=(i*89)%H;x.fillRect(sx,sy,2,2)}}
+function draw(){
+  x.fillStyle='#101a2e';x.fillRect(0,0,W,H);drawStarsBg();
+  // cave
+  x.beginPath();x.moveTo(0,0);
+  for(let i=0;i<cave.length;i++)x.lineTo(i,cave[i].top);
+  x.lineTo(cave.length-1,0);x.closePath();
+  const gt=x.createLinearGradient(0,0,0,120);gt.addColorStop(0,'#3f3f5e');gt.addColorStop(1,'#2a2a45');x.fillStyle=gt;x.fill();
+  x.beginPath();x.moveTo(0,H);
+  for(let i=0;i<cave.length;i++)x.lineTo(i,cave[i].bot);
+  x.lineTo(cave.length-1,H);x.closePath();
+  const gb=x.createLinearGradient(0,H-120,0,H);gb.addColorStop(0,'#2a2a45');gb.addColorStop(1,'#3f3f5e');x.fillStyle=gb;x.fill();
+  x.strokeStyle='#f59e0b';x.lineWidth=2;
+  x.beginPath();for(let i=0;i<cave.length;i++)i?x.lineTo(i,cave[i].top):x.moveTo(i,cave[i].top);x.stroke();
+  x.beginPath();for(let i=0;i<cave.length;i++)i?x.lineTo(i,cave[i].bot):x.moveTo(i,cave[i].bot);x.stroke();
+  // heli
+  x.save();x.translate(HX,y);
+  x.fillStyle='#38bdf8';x.beginPath();x.ellipse(0,0,16,10,0,0,7);x.fill();
+  x.fillStyle='#0ea5e9';x.beginPath();x.ellipse(4,-2,8,5,0,0,7);x.fill();
+  x.fillStyle='#e0f2fe';x.beginPath();x.ellipse(8,-2,5,3.5,0,0,7);x.fill();
+  x.fillStyle='#38bdf8';x.fillRect(-24,-3,14,4);x.beginPath();x.moveTo(-24,0);x.lineTo(-30,-7);x.lineTo(-27,0);x.fill();
+  x.strokeStyle='#e2e8f0';x.lineWidth=2.5;
+  const ra=(t*0.6)%Math.PI;
+  x.beginPath();x.moveTo(-Math.cos(ra)*22,-10-Math.sin(ra)*3);x.lineTo(Math.cos(ra)*22,-10+Math.sin(ra)*3);x.stroke();
+  x.beginPath();x.moveTo(0,-10);x.lineTo(0,-14);x.stroke();
+  x.restore();
+  if(hold&&!dead){x.fillStyle='#fb923c';x.beginPath();x.moveTo(HX-16,y+4);x.lineTo(HX-26,y+8+Math.random()*6);x.lineTo(HX-16,y+10);x.fill()}
+}
+function die(){dead=true;run=false;const m=Math.floor(dist/10);if(m>best){best=m;localStorage.setItem('copter_best',best);bestEl.textContent='שיא: '+best}
+  document.getElementById('ovT').textContent='התרסקה!';
+  document.getElementById('ovP').textContent='טסתם '+m+' מטר. שיא: '+best+' מטר.';
+  document.getElementById('ovE').classList.remove('hide');msg.textContent='שחקו שוב כדי לשבור את השיא'}
+function loop(){
+  if(!run)return;
+  t++;
+  if(!dead){
+    vy+=hold?-0.42:0.3;vy=Math.max(-5,Math.min(5.5,vy));y+=vy;
+    speed=Math.min(5,2.2+dist*0.00012);dist+=speed;
+    // scroll cave
+    const sh=Math.round(speed);
+    for(let s=0;s<sh;s++){
+      cave.shift();const i=cave.length;const n=(i+dist)*0.02;
+      const narrow=Math.min(120,dist*0.008);
+      const mid=H/2+Math.sin(n)*90+Math.sin(n*2.7)*30;
+      const gap=170-narrow*0.55;
+      cave.push({top:mid-gap/2,bot:mid+gap/2});
+    }
+    const seg=cave[HX];
+    if(seg&&(y-10<seg.top||y+10>seg.bot))die();
+    if(y<10||y>H-10)die();
+    distEl.textContent=Math.floor(dist/10)+' מ\'';
+  }
+  draw();requestAnimationFrame(loop);
+}
+function start(){document.getElementById('ovS').classList.add('hide');document.getElementById('ovE').classList.add('hide');reset();msg.textContent='החזיקו לחוץ כדי לעלות, שחררו כדי לרדת';run=true;loop()}
+const on=()=>{hold=true},off=()=>{hold=false};
+document.getElementById('flyB').addEventListener('touchstart',e=>{e.preventDefault();on()},{passive:false});
+document.getElementById('flyB').addEventListener('touchend',e=>{e.preventDefault();off()},{passive:false});
+c.addEventListener('touchstart',e=>{e.preventDefault();on()},{passive:false});
+c.addEventListener('touchend',e=>{e.preventDefault();off()},{passive:false});
+document.addEventListener('mousedown',on);document.addEventListener('mouseup',off);
+document.getElementById('startBtn').onclick=start;
+document.getElementById('againB').onclick=start;
+reset();draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>קפיצת צבעים</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#14091f;color:#f5ecff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;user-select:none}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;color:#e879f9}
+#hud{font-size:12px;background:#ffffff14;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;flex-wrap:wrap}
+#msg{font-size:13.5px;color:#c4b5d4;min-height:19px;padding:2px 8px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#1d0f2e;touch-action:none}
+#jumpB{width:calc(100% - 16px);max-width:504px;margin:8px;padding:16px;font-size:17px;font-weight:800;border:none;border-radius:16px;background:linear-gradient(135deg,#e879f9,#a21caf);color:#fff;cursor:pointer}
+#jumpB:active{filter:brightness(1.2)}
+.ov{position:fixed;inset:0;background:#14091fe8;display:flex;align-items:center;justify-content:center;z-index:9;padding:20px}
+.card{background:#2a1540;border:2px solid #e879f955;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card h2{color:#e879f9;font-size:26px;margin-bottom:10px}
+.card p{color:#e2d4f0;font-size:14px;line-height:1.6;margin-bottom:18px}
+.card button{padding:14px 40px;font-size:17px;font-weight:800;border:none;border-radius:14px;background:linear-gradient(135deg,#e879f9,#a21caf);color:#fff;cursor:pointer}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>קפיצת צבעים</h1><div id="hud"><span id="score">0</span><span id="best">שיא: 0</span></div></header>
+<div id="msg">געו כדי לקפוץ - עברו רק דרך הצבע של הכדור</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<button id="jumpB">קפיצה</button>
+<div class="ov" id="ovS"><div class="card"><h2>קפיצת צבעים</h2><p>געו במסך כדי לקפוץ. עברו דרך הטבעות המסתובבות רק בחלק שצבעו זהה לצבע הכדור. אספו נקודות צבע כדי להחליף צבע.</p><button id="startBtn">התחל</button></div></div>
+<div class="ov hide" id="ovE"><div class="card"><h2>נגמר!</h2><p id="ovP"></p><button id="againB">שחקו שוב</button></div></div>
+<script>
+'use strict';
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';
+const W=390,H=560;c.width=W;c.height=H;
+const COLS=['#f43f5e','#facc15','#38bdf8','#a3e635'];
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),msg=document.getElementById('msg');
+let best=+(localStorage.getItem('colorswitch_best')||0);bestEl.textContent='שיא: '+best;
+let by,vy,ci,score,rings,dots,camY,run,dead,waiting;
+function reset(){
+  by=H-60;vy=0;ci=Math.floor(Math.random()*4);score=0;camY=0;dead=false;waiting=true;
+  rings=[];dots=[];
+  let y=H-320;
+  for(let i=0;i<60;i++){
+    rings.push({y:y,r:70+Math.min(40,i*1.5),rot:Math.random()*6.28,sp:(0.02+Math.min(0.03,i*0.0008))*(i%2?1:-1),thick:14,passed:false});
+    dots.push({y:y-160,taken:false});
+    y-=320;
+  }
+}
+function drawRing(r){
+  for(let k=0;k<4;k++){
+    x.beginPath();
+    x.arc(W/2,r.y-camY,r.r,r.rot+k*Math.PI/2+0.06,r.rot+(k+1)*Math.PI/2-0.06);
+    x.strokeStyle=COLS[k];x.lineWidth=r.thick;x.lineCap='round';x.stroke();
+  }
+}
+function draw(){
+  x.fillStyle='#1d0f2e';x.fillRect(0,0,W,H);
+  x.fillStyle='#ffffff10';for(let i=0;i<40;i++){const sy=((i*173)%(H*2)+camY*0.3)%(H*2)-H;x.fillRect((i*97)%W,sy,2,2)}
+  for(const r of rings){if(r.y-camY>-120&&r.y-camY<H+120)drawRing(r)}
+  for(const d of dots){if(d.taken)continue;const dy=d.y-camY;if(dy<-20||dy>H+20)continue;
+    x.save();x.translate(W/2,dy);x.rotate((Date.now()/400)%6.28);
+    for(let k=0;k<4;k++){x.fillStyle=COLS[k];x.beginPath();x.moveTo(0,0);x.arc(0,0,10,k*Math.PI/2,(k+1)*Math.PI/2);x.fill()}
+    x.restore()}
+  const sy=by-camY;
+  x.fillStyle=COLS[ci];x.beginPath();x.arc(W/2,sy,13,0,7);x.fill();
+  x.strokeStyle='#ffffff88';x.lineWidth=2;x.stroke();
+  x.fillStyle='#ffffff55';x.beginPath();x.arc(W/2-4,sy-4,4,0,7);x.fill();
+}
+function die(){dead=true;run=false;if(score>best){best=score;localStorage.setItem('colorswitch_best',best);bestEl.textContent='שיא: '+best}
+  document.getElementById('ovP').textContent='צברתם '+score+' נקודות. שיא: '+best+'.';
+  document.getElementById('ovE').classList.remove('hide');msg.textContent='שחקו שוב כדי לשבור את השיא'}
+function jump(){if(!run||dead)return;waiting=false;vy=-6.4}
+function loop(){
+  if(!run)return;
+  if(!dead&&!waiting){
+    vy+=0.28;by+=vy;
+    if(by-camY<H*0.45)camY=by-H*0.45;
+    for(const r of rings){
+      r.rot+=r.sp;
+      const dy=r.y-camY;
+      if(dy<-140||dy>H+140)continue;
+      // crossing the band
+      const band=r.thick/2+11;
+      const dist=Math.abs(by-r.y);
+      if(dist>r.r-band&&dist<r.r+band){
+        // ball is in the ring band: determine arc color at top/bottom crossing point
+        const ang=(by<r.y)?-Math.PI/2:Math.PI/2; // approaching from below/above
+        let a=((ang-r.rot)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+        const seg=Math.floor(a/(Math.PI/2));
+        if(seg!==ci){die();return}
+      }
+      if(!r.passed&&by<r.y-r.r-r.thick){r.passed=true;score++;scoreEl.textContent=score;msg.textContent='יפה! '+score}
+    }
+    for(const d of dots){if(!d.taken&&Math.abs(by-d.y)<16){d.taken=true;let n;do{n=Math.floor(Math.random()*4)}while(n===ci);ci=n;msg.textContent='צבע חדש!'}}
+    if(by-camY>H+30)die();
+  }
+  draw();
+  if(waiting&&run){x.fillStyle='#f5ecff';x.font='bold 17px Arial';x.textAlign='center';x.fillText('געו כדי להתחיל',W/2,H*0.42)}
+  requestAnimationFrame(loop);
+}
+function start(){document.getElementById('ovS').classList.add('hide');document.getElementById('ovE').classList.add('hide');reset();scoreEl.textContent='0';msg.textContent='געו כדי לקפוץ - עברו רק דרך הצבע של הכדור';run=true;loop()}
+document.getElementById('jumpB').addEventListener('touchstart',e=>{e.preventDefault();jump()},{passive:false});
+c.addEventListener('touchstart',e=>{e.preventDefault();jump()},{passive:false});
+document.addEventListener('mousedown',jump);
+document.getElementById('startBtn').onclick=start;
+document.getElementById('againB').onclick=start;
+reset();draw();
+</script>
+</body>
+</html>
