@@ -738,5 +738,45 @@
   "added": 76,
   "slug": "asteroids-shooter-game",
   "source": "https://github.com/chunchila/asteroids-shooter-game"
+ },
+ {
+  "name": "פולשי החלל 3D",
+  "shot": "shots/inv3d.webp",
+  "cat": "ארקייד",
+  "desc": "הפלישה הקלאסית בתלת-מימד - הזיזו את הספינה וירו לפני שהפולשים מגיעים",
+  "url": "games/space-invaders-3d-game/",
+  "added": 77,
+  "slug": "space-invaders-3d-game",
+  "source": "https://github.com/chunchila/space-invaders-3d-game"
+ },
+ {
+  "name": "נחש הקוביות 3D",
+  "shot": "shots/snake3d.webp",
+  "cat": "ארקייד",
+  "desc": "נחש תלת-מימדי על לוח קוביות - אספו אוכל ואל תתנגשו",
+  "url": "games/snake-3d-cubes-game/",
+  "added": 78,
+  "slug": "snake-3d-cubes-game",
+  "source": "https://github.com/chunchila/snake-3d-cubes-game"
+ },
+ {
+  "name": "שובר הלבנים 3D",
+  "shot": "shots/break3d.webp",
+  "cat": "ארקייד",
+  "desc": "קיר לבנים תלת-מימדי, כדור זוהר ומחבט - שברו הכול",
+  "url": "games/breakout-3d-bricks-game/",
+  "added": 79,
+  "slug": "breakout-3d-bricks-game",
+  "source": "https://github.com/chunchila/breakout-3d-bricks-game"
+ },
+ {
+  "name": "צפרדע 3D",
+  "shot": "shots/frog3d.webp",
+  "cat": "ארקייד",
+  "desc": "קפצו בין מכוניות תלת-מימדיות עד חוף הליליות",
+  "url": "games/frogger-3d-crossing-game/",
+  "added": 80,
+  "slug": "frogger-3d-crossing-game",
+  "source": "https://github.com/chunchila/frogger-3d-crossing-game"
  }
 ]

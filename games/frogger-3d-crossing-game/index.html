@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>צפרדע 3D</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#061210;color:#d8f5ee;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;user-select:none}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;color:#2dd4bf}
+#hud{font-size:12px;background:#ffffff14;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;flex-wrap:wrap}
+#msg{font-size:13.5px;color:#8fb8b0;min-height:19px;padding:2px 8px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#0a1c1e;touch-action:none}
+#ctl{width:100%;max-width:520px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px}
+#ctl button{padding:12px 0;font-size:18px;font-weight:800;border:none;border-radius:12px;background:#0f766e;color:#ccfbf1;cursor:pointer}
+#ctl button:active{filter:brightness(1.3)}
+.ov{position:fixed;inset:0;background:#061210e8;display:flex;align-items:center;justify-content:center;z-index:9;padding:20px}
+.card{background:#0d2426;border:2px solid #2dd4bf55;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card h2{color:#2dd4bf;font-size:26px;margin-bottom:10px}
+.card p{color:#c4e8e0;font-size:14px;line-height:1.6;margin-bottom:18px}
+.card button{padding:14px 40px;font-size:17px;font-weight:800;border:none;border-radius:14px;background:linear-gradient(135deg,#2dd4bf,#0f766e);color:#04211d;cursor:pointer}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>צפרדע 3D</h1><div id="hud"><span id="score">0</span><span id="lives">♥♥♥</span><span id="level">שלב 1</span><span id="best">שיא: 0</span></div></header>
+<div id="msg">קפצו בין המכוניות עד חוף הליליות</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctl"><span></span><button id="upB">▲</button><span></span><button id="leftB">◀</button><button id="downB">▼</button><button id="rightB">▶</button></div>
+<div class="ov" id="ovS"><div class="card"><h2>צפרדע 3D</h2><p>פרוגר מ-1981, הפעם בתלת ממד. גללו או לחצו על החצים כדי לקפוץ. חצו את כל הכבישים בלי להדרס והגיעו לחוף העליון. שלושה חיים.</p><button id="startBtn">התחל</button></div></div>
+<div class="ov hide" id="ovE"><div class="card"><h2 id="ovT">נגמר!</h2><p id="ovP"></p><button id="againB">שחקו שוב</button></div></div>
+<script>
+'use strict';
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';
+const W=390,H=520;c.width=W;c.height=H;
+const F=400;
+const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),levelEl=document.getElementById('level'),bestEl=document.getElementById('best'),msg=document.getElementById('msg');
+let best=+(localStorage.getItem('frog3d_best')||0);bestEl.textContent='שיא: '+best;
+const LANES=[8,12,16,20,24,28,32],CARCOLS=['#f87171','#fb923c','#60a5fa','#facc15','#e879f9'];
+let frog,cars,score,lives,level,run,t,camZ,hop,faces;
+function proj(px,py,pz){const dz=pz-camZ;if(dz<0.5)return null;const s=F/dz;return [W/2+px*s,H*0.5-(py-11)*s,s]}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);const r=Math.min(255,((n>>16)&255)*f),g=Math.min(255,((n>>8)&255)*f),b=Math.min(255,(n&255)*f);return `rgb(${r|0},${g|0},${b|0})`}
+function box3(wx,wy,wz,sx_,sy,sz,col){
+  const hx=sx_/2,hy=sy/2,hz=sz/2;
+  faces.push({z:wz,pts:[[wx-hx,wy+hy,wz-hz],[wx+hx,wy+hy,wz-hz],[wx+hx,wy+hy,wz+hz],[wx-hx,wy+hy,wz+hz]],col:shade(col,1.2)});
+  faces.push({z:wz,pts:[[wx-hx,wy-hy,wz-hz],[wx+hx,wy-hy,wz-hz],[wx+hx,wy+hy,wz-hz],[wx-hx,wy+hy,wz-hz]],col:col});
+  faces.push({z:wz,pts:[[wx+hx,wy-hy,wz-hz],[wx+hx,wy-hy,wz+hz],[wx+hx,wy+hy,wz+hz],[wx+hx,wy+hy,wz-hz]],col:shade(col,0.7)});
+}
+function floorStrip(z1,z2,col){
+  const ps=[proj(-14,0,z1),proj(14,0,z1),proj(14,0,z2),proj(-14,0,z2)];
+  if(ps.some(p=>!p))return;
+  x.fillStyle=col;x.beginPath();x.moveTo(ps[0][0],ps[0][1]);
+  for(let i=1;i<4;i++)x.lineTo(ps[i][0],ps[i][1]);
+  x.closePath();x.fill();
+}
+function buildCars(){
+  cars=[];
+  LANES.forEach((lz,i)=>{
+    const dir=i%2?1:-1,n=2+(i%2),sp=(0.05+i*0.012+level*0.015)*dir;
+    for(let k=0;k<n;k++)cars.push({x:-16+k*(34/n)+(dir>0?0:0),z:lz,v:sp,col:CARCOLS[(i+k)%CARCOLS.length]});
+  });
+}
+function reset(){
+  frog={x:0,z:4,lane:-1};score=0;lives=3;level=1;t=0;camZ=-14;hop=0;faces=[];
+  buildCars();
+  scoreEl.textContent='0';livesEl.textContent='♥♥♥';levelEl.textContent='שלב 1';
+}
+function die(){
+  lives--;livesEl.textContent='♥'.repeat(Math.max(0,lives))||'-';hop=12;
+  if(lives<=0){run=false;
+    if(score>best){best=score;localStorage.setItem('frog3d_best',best);bestEl.textContent='שיא: '+best}
+    document.getElementById('ovP').textContent='צברתם '+score+' נקודות והגעתם לשלב '+level+'. שיא: '+best+'.';
+    document.getElementById('ovE').classList.remove('hide');msg.textContent='שחקו שוב!';return}
+  frog={x:0,z:4,lane:-1};
+}
+function move(dx,dz){
+  if(!run)return;
+  frog.x=Math.max(-10,Math.min(10,frog.x+dx));
+  frog.z=Math.max(4,Math.min(40,frog.z+dz));
+  hop=10;
+  const newLane=LANES.indexOf(frog.z);
+  if(newLane>frog.lane){frog.lane=newLane;score+=10;scoreEl.textContent=score;
+    if(score>best){best=score;localStorage.setItem('frog3d_best',best);bestEl.textContent='שיא: '+best}}
+  if(frog.z>=40){
+    score+=100;scoreEl.textContent=score;level++;levelEl.textContent='שלב '+level;
+    msg.textContent='חוף! שלב '+level;frog={x:0,z:4,lane:-1};buildCars();
+  }
+}
+function draw(){
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1c1e');g.addColorStop(1,'#0f2e2a');x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='#99f6e4';for(let i=0;i<26;i++){x.globalAlpha=0.2+((i*31)%40)/110;x.fillRect((i*83)%W,(i*47)%Math.floor(H*0.3),1.5,1.5)}x.globalAlpha=1;
+  // strips: start grass, roads, far grass, goal
+  floorStrip(camZ+0.5,6,'#14532d');
+  for(let i=0;i<LANES.length;i++)floorStrip(LANES[i]-2,LANES[i]+2,i%2?'#1f2937':'#111827');
+  floorStrip(34,38,'#14532d');
+  floorStrip(38,60,'#0c4a6e');
+  // lane dashes
+  x.fillStyle='#f8fafc55';
+  for(const lz of LANES)for(let dx=-14;dx<14;dx+=4){
+    const a=proj(dx,0.01,lz),b=proj(dx+2,0.01,lz);
+    if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.lineWidth=2;x.strokeStyle='#f8fafc44';x.stroke()}
+  }
+  faces=[];
+  // lilies on goal
+  for(const lx of [-8,-3,2,7]){box3(lx,0.3,40,2.4,0.5,2.4,'#4ade80')}
+  // cars
+  for(const car of cars){
+    box3(car.x,0.9,car.z,3.4,1.3,2.2,car.col);
+    box3(car.x- (car.v>0?-0.3:0.3),1.9,car.z,1.8,0.8,1.7,shade(car.col,0.55));
+  }
+  // frog with hop
+  const fy=0.9+Math.sin(Math.min(1,hop/10)*Math.PI)*1.2;
+  box3(frog.x,fy,frog.z,1.5,1.1,1.5,'#22c55e');
+  box3(frog.x,fy+0.9,frog.z+0.2,1.0,0.7,1.0,'#4ade80');
+  box3(frog.x-0.45,fy+1.45,frog.z+0.45,0.34,0.34,0.34,'#ffffff');
+  box3(frog.x+0.45,fy+1.45,frog.z+0.45,0.34,0.34,0.34,'#ffffff');
+  box3(frog.x-0.45,fy+1.5,frog.z+0.55,0.18,0.18,0.18,'#111111');
+  box3(frog.x+0.45,fy+1.5,frog.z+0.55,0.18,0.18,0.18,'#111111');
+  faces.sort((a,b)=>b.z-a.z);
+  for(const f of faces){
+    const ps=f.pts.map(p=>proj(p[0],p[1],p[2]));
+    if(ps.some(p=>!p))continue;
+    x.fillStyle=f.col;x.beginPath();x.moveTo(ps[0][0],ps[0][1]);
+    for(let i=1;i<4;i++)x.lineTo(ps[i][0],ps[i][1]);
+    x.closePath();x.fill();
+  }
+}
+function loop(){
+  if(!run)return;t++;
+  if(hop>0)hop--;
+  // camera follows frog
+  const targetZ=frog.z-18;
+  camZ+=(targetZ-camZ)*0.12;
+  for(const car of cars){
+    car.x+=car.v;
+    if(car.v>0&&car.x>17)car.x=-17;
+    if(car.v<0&&car.x<-17)car.x=17;
+    if(Math.abs(car.z-frog.z)<0.5&&Math.abs(car.x-frog.x)<2.4){die();if(!run)return}
+  }
+  draw();requestAnimationFrame(loop);
+}
+function start(){document.getElementById('ovS').classList.add('hide');document.getElementById('ovE').classList.add('hide');reset();msg.textContent='קפצו בין המכוניות עד חוף הליליות';run=true;loop()}
+document.getElementById('upB').onclick=()=>move(0,4);
+document.getElementById('downB').onclick=()=>move(0,-4);
+document.getElementById('leftB').onclick=()=>move(-2,0);
+document.getElementById('rightB').onclick=()=>move(2,0);
+let tsx=0,tsy=0;
+c.addEventListener('touchstart',e=>{tsx=e.changedTouches[0].clientX;tsy=e.changedTouches[0].clientY},{passive:true});
+c.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20)return;
+  if(Math.abs(dx)>Math.abs(dy))move(dx>0?2:-2,0);else move(0,dy<0?4:-4);
+},{passive:true});
+document.addEventListener('keydown',e=>{const k=e.key;
+  if(k==='ArrowUp')move(0,4);if(k==='ArrowDown')move(0,-4);if(k==='ArrowLeft')move(-2,0);if(k==='ArrowRight')move(2,0)});
+document.getElementById('startBtn').onclick=start;
+document.getElementById('againB').onclick=start;
+camZ=-14;faces=[];reset();draw();
+</script>
+</body>
+</html>

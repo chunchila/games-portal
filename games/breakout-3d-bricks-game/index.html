@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>שובר הלבנים 3D</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0b0714;color:#efe6ff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;user-select:none}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:20px;color:#c084fc}
+#hud{font-size:12px;background:#ffffff14;padding:6px 10px;border-radius:14px;display:flex;gap:8px;font-weight:700;flex-wrap:wrap}
+#msg{font-size:13.5px;color:#a793c2;min-height:19px;padding:2px 8px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#100a1e;touch-action:none}
+#msg2{font-size:12.5px;color:#7e6b99;padding:6px 8px}
+.ov{position:fixed;inset:0;background:#0b0714e8;display:flex;align-items:center;justify-content:center;z-index:9;padding:20px}
+.card{background:#1c1130;border:2px solid #c084fc55;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card h2{color:#c084fc;font-size:26px;margin-bottom:10px}
+.card p{color:#ddcfee;font-size:14px;line-height:1.6;margin-bottom:18px}
+.card button{padding:14px 40px;font-size:17px;font-weight:800;border:none;border-radius:14px;background:linear-gradient(135deg,#c084fc,#7e22ce);color:#fff;cursor:pointer}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>שובר הלבנים 3D</h1><div id="hud"><span id="score">0</span><span id="lives">♥♥♥</span><span id="level">שלב 1</span><span id="best">שיא: 0</span></div></header>
+<div id="msg">גררו את המשטח ושברו את כל הלבנים</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="msg2">המשטח עוקב אחרי האצבע על המסך</div>
+<div class="ov" id="ovS"><div class="card"><h2>שובר הלבנים 3D</h2><p>בריקאאוט הקלאסי מ-1976 עם לבנים בתלת ממד. גררו את האצבע על המסך כדי להזיז את המשטח, תפסו את הכדור ושברו את כל הלבנים. שלושה חיים.</p><button id="startBtn">התחל</button></div></div>
+<div class="ov hide" id="ovE"><div class="card"><h2 id="ovT">נגמר המשחק</h2><p id="ovP"></p><button id="againB">שחקו שוב</button></div></div>
+<script>
+'use strict';
+const c=document.getElementById('c'),x=c.getContext('2d');x.direction='ltr';
+const W=390,H=520;c.width=W;c.height=H;
+const F=430,CAM={x:0,y:9,z:-24};
+const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),levelEl=document.getElementById('level'),bestEl=document.getElementById('best'),msg=document.getElementById('msg');
+let best=+(localStorage.getItem('break3d_best')||0);bestEl.textContent='שיא: '+best;
+const ROWS=5,COLS=8,ROWCOLS=['#f87171','#fb923c','#facc15','#4ade80','#38bdf8'];
+let bricks,paddleX,ball,score,lives,level,run,t,faces;
+function proj(px,py,pz){const dz=pz-CAM.z;if(dz<0.5)return null;const s=F/dz;return [W/2+(px-CAM.x)*s,H*0.56-(py-CAM.y)*s,s]}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);const r=Math.min(255,((n>>16)&255)*f),g=Math.min(255,((n>>8)&255)*f),b=Math.min(255,(n&255)*f);return `rgb(${r|0},${g|0},${b|0})`}
+function box3(wx,wy,wz,sx_,sy,sz,col){
+  const hx=sx_/2,hy=sy/2,hz=sz/2;
+  faces.push({z:wz,pts:[[wx-hx,wy+hy,wz-hz],[wx+hx,wy+hy,wz-hz],[wx+hx,wy+hy,wz+hz],[wx-hx,wy+hy,wz+hz]],col:shade(col,1.2)});
+  faces.push({z:wz,pts:[[wx-hx,wy-hy,wz-hz],[wx+hx,wy-hy,wz-hz],[wx+hx,wy+hy,wz-hz],[wx-hx,wy+hy,wz-hz]],col:col});
+  faces.push({z:wz,pts:[[wx+hx,wy-hy,wz-hz],[wx+hx,wy-hy,wz+hz],[wx+hx,wy+hy,wz+hz],[wx+hx,wy+hy,wz-hz]],col:shade(col,0.7)});
+}
+function buildLevel(){
+  bricks=[];
+  for(let r=0;r<ROWS;r++)for(let cix=0;cix<COLS;cix++)
+    bricks.push({x:-8.75+cix*2.5,y:12.5+r*1.5,alive:true,col:ROWCOLS[r],row:r});
+  ball={x:0,y:3,vx:0.14+level*0.015,vy:0.17+level*0.015};
+  paddleX=0;
+}
+function reset(){score=0;lives=3;level=1;t=0;faces=[];buildLevel();
+  scoreEl.textContent='0';livesEl.textContent='♥♥♥';levelEl.textContent='שלב 1'}
+function drawFloor(){
+  x.strokeStyle='#7c3aed2e';
+  for(let gx=-10;gx<=10;gx+=2){const a=proj(gx,0,0),b=proj(gx,0,14);if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+  for(let gz=0;gz<=14;gz+=2){const a=proj(-10,0,gz),b=proj(10,0,gz);if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+  // side walls
+  x.strokeStyle='#7c3aed55';x.lineWidth=2;
+  const w1=proj(-10.5,0,0),w2=proj(-10.5,21,0),w3=proj(10.5,0,0),w4=proj(10.5,21,0);
+  if(w1&&w2){x.beginPath();x.moveTo(w1[0],w1[1]);x.lineTo(w2[0],w2[1]);x.stroke()}
+  if(w3&&w4){x.beginPath();x.moveTo(w3[0],w3[1]);x.lineTo(w4[0],w4[1]);x.stroke()}
+}
+function draw(){
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#100a1e');g.addColorStop(1,'#1a0f2e');x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='#e9d5ff';for(let i=0;i<26;i++){x.globalAlpha=0.25+((i*41)%40)/100;x.fillRect((i*89)%W,(i*53)%Math.floor(H*0.35),1.5,1.5)}x.globalAlpha=1;
+  drawFloor();
+  faces=[];
+  for(const b of bricks)if(b.alive)box3(b.x,b.y,6,2.3,1.15,1.6,b.col);
+  box3(paddleX,1,4,3.4,0.8,1.4,'#e9d5ff');
+  faces.sort((a,b)=>b.z-a.z);
+  for(const f of faces){
+    const ps=f.pts.map(p=>proj(p[0],p[1],p[2]));
+    if(ps.some(p=>!p))continue;
+    x.fillStyle=f.col;x.beginPath();x.moveTo(ps[0][0],ps[0][1]);
+    for(let i=1;i<4;i++)x.lineTo(ps[i][0],ps[i][1]);
+    x.closePath();x.fill();
+  }
+  // ball: glowing sphere
+  const bp=proj(ball.x,ball.y,4);
+  if(bp){const r=0.62*bp[2];
+    const bg=x.createRadialGradient(bp[0]-r*0.3,bp[1]-r*0.3,r*0.1,bp[0],bp[1],r);
+    bg.addColorStop(0,'#ffffff');bg.addColorStop(0.5,'#fbbf24');bg.addColorStop(1,'#b45309');
+    x.fillStyle=bg;x.beginPath();x.arc(bp[0],bp[1],r,0,7);x.fill();
+    // shadow
+    const sp=proj(ball.x,0,4);if(sp){x.fillStyle='#00000044';x.beginPath();x.ellipse(sp[0],sp[1],r*0.9,r*0.3,0,0,7);x.fill()}
+  }
+}
+function loseLife(){
+  lives--;livesEl.textContent='♥'.repeat(Math.max(0,lives))||'-';
+  if(lives<=0){run=false;
+    if(score>best){best=score;localStorage.setItem('break3d_best',best);bestEl.textContent='שיא: '+best}
+    document.getElementById('ovP').textContent='צברתם '+score+' נקודות והגעתם לשלב '+level+'. שיא: '+best+'.';
+    document.getElementById('ovE').classList.remove('hide');msg.textContent='שחקו שוב!';return}
+  ball={x:0,y:3,vx:0.14+level*0.015,vy:0.17+level*0.015};
+}
+function loop(){
+  if(!run)return;t++;
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  if(ball.x>9.8){ball.x=9.8;ball.vx=-Math.abs(ball.vx)}
+  if(ball.x<-9.8){ball.x=-9.8;ball.vx=Math.abs(ball.vx)}
+  if(ball.y>21.5){ball.y=21.5;ball.vy=-Math.abs(ball.vy)}
+  // paddle
+  if(ball.y<1.9&&ball.y>0.9&&Math.abs(ball.x-paddleX)<1.9&&ball.vy<0){
+    const off=(ball.x-paddleX)/1.9;
+    ball.vy=Math.abs(ball.vy);ball.vx=off*0.24;
+    const sp=Math.hypot(ball.vx,ball.vy),target=0.22+level*0.015;
+    ball.vx*=target/sp;ball.vy*=target/sp;
+  }
+  if(ball.y<0.3)loseLife();
+  if(!run)return;
+  // bricks
+  for(const b of bricks){if(!b.alive)continue;
+    if(Math.abs(ball.x-b.x)<1.35&&Math.abs(ball.y-b.y)<0.85){
+      b.alive=false;ball.vy*=-1;
+      score+=(6-b.row)*10;scoreEl.textContent=score;
+      if(score>best){best=score;localStorage.setItem('break3d_best',best);bestEl.textContent='שיא: '+best}
+      break}
+  }
+  if(bricks.every(b=>!b.alive)){level++;levelEl.textContent='שלב '+level;msg.textContent='שלב '+level+'!';buildLevel()}
+  draw();requestAnimationFrame(loop);
+}
+function setPaddle(clientX){const r=c.getBoundingClientRect();const mx=(clientX-r.left)/r.width;paddleX=Math.max(-8.2,Math.min(8.2,(mx-0.5)*22))}
+c.addEventListener('touchstart',e=>{e.preventDefault();setPaddle(e.changedTouches[0].clientX)},{passive:false});
+c.addEventListener('touchmove',e=>{e.preventDefault();setPaddle(e.changedTouches[0].clientX)},{passive:false});
+c.addEventListener('mousemove',e=>setPaddle(e.clientX));
+function start(){document.getElementById('ovS').classList.add('hide');document.getElementById('ovE').classList.add('hide');reset();msg.textContent='גררו את המשטח ושברו את כל הלבנים';run=true;loop()}
+document.getElementById('startBtn').onclick=start;
+document.getElementById('againB').onclick=start;
+reset();draw();
+</script>
+</body>
+</html>
