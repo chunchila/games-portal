@@ -778,5 +778,55 @@
   "added": 80,
   "slug": "frogger-3d-crossing-game",
   "source": "https://github.com/chunchila/frogger-3d-crossing-game"
+ },
+ {
+  "name": "פקמן 3D",
+  "shot": "shots/pac3d.webp",
+  "cat": "ארקייד",
+  "desc": "המבוך הקלאסי בתלת-מימד - אכלו נקודות וברחו מהרוחות",
+  "url": "games/pacman-3d-maze-game/",
+  "added": 81,
+  "slug": "pacman-3d-maze-game",
+  "source": "https://github.com/chunchila/pacman-3d-maze-game"
+ },
+ {
+  "name": "גלקסי 3D",
+  "shot": "shots/gal3d.webp",
+  "cat": "ארקייד",
+  "desc": "מבנה אויב בעומק, צוללים לתקוף - פוצצו אותם",
+  "url": "games/galaga-3d-dive-game/",
+  "added": 82,
+  "slug": "galaga-3d-dive-game",
+  "source": "https://github.com/chunchila/galaga-3d-dive-game"
+ },
+ {
+  "name": "פונג 3D",
+  "shot": "shots/pong3d.webp",
+  "cat": "ארקייד",
+  "desc": "המשחק הראשון בהיסטוריה, עכשיו עם עומק - ראשון ל-7",
+  "url": "games/pong-3d-table-game/",
+  "added": 83,
+  "slug": "pong-3d-table-game",
+  "source": "https://github.com/chunchila/pong-3d-table-game"
+ },
+ {
+  "name": "נדל 3D",
+  "shot": "shots/cent3d.webp",
+  "cat": "ארקייד",
+  "desc": "נדל פותל בשדה פטריות תלת-מימדי - כל פגיעה מפצלת",
+  "url": "games/centipede-3d-game/",
+  "added": 84,
+  "slug": "centipede-3d-game",
+  "source": "https://github.com/chunchila/centipede-3d-game"
+ },
+ {
+  "name": "מגן טילים 3D",
+  "shot": "shots/mis3d.webp",
+  "cat": "ארקייד",
+  "desc": "געו בשמיים לשגר יירוטים - הגנו על הערים",
+  "url": "games/missile-command-3d-game/",
+  "added": 85,
+  "slug": "missile-command-3d-game",
+  "source": "https://github.com/chunchila/missile-command-3d-game"
  }
 ]

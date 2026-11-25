@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>נדל 3D</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#0d0505;color:#e2e8f0;font-family:'Heebo',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:22px;color:#fb923c}
+.pill{background:#26120a;border-radius:999px;padding:5px 13px;font-size:14px;font-weight:600;white-space:nowrap}
+.sub{font-size:13px;color:#94a3b8;padding:2px 16px 6px;max-width:520px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#0d0505;touch-action:none}
+#ctl{width:100%;max-width:520px;display:flex;gap:8px;padding:8px}
+#ctl button{flex:1;background:#7c2d12;border:none;border-radius:14px;color:#fdba74;font-size:22px;padding:14px;user-select:none;touch-action:none}
+#ctl button:active{background:#9a3412}
+.overlay{position:fixed;inset:0;background:#0d0505d9;display:flex;align-items:center;justify-content:center;z-index:10}
+.card{background:#26120a;border:2px solid #fb923c55;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:88%}
+.card h2{font-size:26px;margin-bottom:10px;color:#fb923c}
+.card p{font-size:15px;color:#cbd5e1;line-height:1.6;margin-bottom:16px}
+.card button{background:#fb923c;color:#26120a;border:none;border-radius:999px;padding:12px 34px;font-size:17px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>נדל 3D</h1><div class="pill">גל <span id="wave">1</span> &nbsp;<span id="lives">♥♥♥</span> &nbsp;<span id="score">0</span> &nbsp;שיא: <span id="best">0</span></div></header>
+<div class="sub">ירו בנדל לפני שהוא מגיע למטה - פטריות מסיטות אותו</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctl"><button id="leftB">▶</button><button id="fireB">ירי</button><button id="rightB">◀</button></div>
+<div class="overlay" id="start"><div class="card"><h2>נדל 3D</h2><p>הנדל פותל דרך שדה הפטריות התלת-מימדי ויורד לקראתכם. כל פגיעה מפצלת אותו! גררו או השתמשו בכפתורים.</p><button id="startBtn">שחקו</button></div></div>
+<div class="overlay" id="over" style="display:none"><div class="card"><h2>נגמר!</h2><p id="finalText"></p><button id="againBtn">שחקו שוב</button></div></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+const W=390,H=540;c.width=W;c.height=H;
+const F=420,CAM={x:0,y:18,z:-26};
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),livesEl=document.getElementById('lives'),waveEl=document.getElementById('wave');
+let best=+localStorage.getItem('cent3d_best')||0;bestEl.textContent=best;
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=Math.max(0,Math.min(255,(n>>16)+amt)),g=Math.max(0,Math.min(255,((n>>8)&255)+amt)),b=Math.max(0,Math.min(255,(n&255)+amt));return `rgb(${r},${g},${b})`}
+function proj(px,py,pz){const dz=pz-CAM.z;if(dz<0.5)return null;const s=F/dz;return [W/2+(px-CAM.x)*s,H*0.38-(py-CAM.y)*s,s]}
+function box3(faces,px,py,pz,s,col){const h=s/2,x0=px-h,x1=px+h,y0=py-h,y1=py+h,z0=pz-h,z1=pz+h;
+  faces.push({z:pz,pts:[[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0]],col});
+  faces.push({z:pz,pts:[[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]],col:shade(col,40)});
+  if(px>0.2)faces.push({z:pz,pts:[[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0]],col:shade(col,-40)});
+  else if(px<-0.2)faces.push({z:pz,pts:[[x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0]],col:shade(col,-40)});}
+const COLS=12,ROWS=14,CELL=2.1;
+const wx=c2=>(c2-5.5)*CELL, wz=r=>(13.5-r)*CELL-3;
+let px,bolts,segs,mush,score,lives,wave,run,t,faces,fireCd;
+const keys={};
+function spawn(){
+  segs=[];
+  const n=Math.min(8+wave,14);
+  for(let i=0;i<n;i++)segs.push({c:-1-i,r:0,dir:1,drop:0,head:i===0,alive:true});
+  mush=new Set();
+  const cnt=22+wave*3;
+  let guard=0;
+  while(mush.size<cnt&&guard++<500){const r=1+Math.floor(Math.random()*11),c2=Math.floor(Math.random()*COLS);
+    if(r>10&&c2>3&&c2<8)continue;mush.add(r*COLS+c2)}
+  waveEl.textContent=wave;}
+function reset(){score=0;lives=3;wave=1;px=5.5;bolts=[];run=true;t=0;fireCd=0;spawn();hud()}
+function hud(){scoreEl.textContent=score;livesEl.textContent='♥'.repeat(Math.max(0,lives))||'-';if(score>best){best=score;localStorage.setItem('cent3d_best',best);bestEl.textContent=best}}
+function fire(){if(!run||fireCd>0)return;fireCd=14;bolts.push({c:px,r:12.6})}
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')keys.l=true;if(e.key==='ArrowRight')keys.r=true;if(e.key===' ')fire()});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft')keys.l=false;if(e.key==='ArrowRight')keys.r=false});
+function bindHold(id,on,off){const b=document.getElementById(id);
+  const s=e=>{e.preventDefault();on()},e2=e=>{e.preventDefault();off&&off()};
+  b.addEventListener('touchstart',s,{passive:false});b.addEventListener('touchend',e2);
+  b.addEventListener('mousedown',s);b.addEventListener('mouseup',e2);b.addEventListener('mouseleave',e2)}
+bindHold('leftB',()=>keys.l=true,()=>keys.l=false);
+bindHold('rightB',()=>keys.r=true,()=>keys.r=false);
+bindHold('fireB',()=>fire());
+c.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+c.addEventListener('touchmove',e=>{e.preventDefault();const r=c.getBoundingClientRect();const mx=(e.changedTouches[0].clientX-r.left)/r.width;px=Math.max(0.5,Math.min(11.5,mx*12))},{passive:false});
+function loseLife(){lives--;hud();if(lives<=0){run=false;document.getElementById('finalText').textContent=`צברתם ${score} נקודות והגעתם לגל ${wave}. שיא: ${best}.`;document.getElementById('over').style.display='flex'}}
+const spd=()=>0.045+wave*0.008;
+function update(){
+  if(!run)return;
+  t++;if(fireCd>0)fireCd--;
+  if(keys.l)px-=0.22;if(keys.r)px+=0.22;px=Math.max(0.5,Math.min(11.5,px));
+  for(let i=bolts.length-1;i>=0;i--){bolts[i].r-=0.5;if(bolts[i].r<0)bolts.splice(i,1)}
+  // bolts vs mushrooms
+  for(let i=bolts.length-1;i>=0;i--){const b=bolts[i];const br=Math.round(b.r),bc=Math.round(b.c);
+    if(mush.has(br*COLS+bc)&&Math.abs(b.r-br)<0.5){mush.delete(br*COLS+bc);bolts.splice(i,1);score+=5;hud()}}
+  // segments
+  let any=false;
+  for(const s2 of segs){if(!s2.alive)continue;any=true;
+    const step=spd();
+    if(s2.drop>0){s2.r+=Math.min(step*2,s2.drop);s2.drop-=Math.min(step*2,s2.drop);if(s2.drop<=0)s2.dir*=-1}
+    else{
+      s2.c+=s2.dir*step;
+      const nc=s2.c+s2.dir*0.5,ncr=Math.round(nc);
+      if(nc<-0.4||nc>COLS-0.6||mush.has(Math.round(s2.r)*COLS+Math.max(0,Math.min(COLS-1,ncr)))){
+        s2.c=Math.max(-0.4,Math.min(COLS-0.6,s2.c));
+        if(s2.r<ROWS-1){s2.drop=1;s2.dir*=-1;s2.c+=s2.dir*step}else{s2.dir*=-1}
+      }
+    }
+    // reach player zone
+    if(s2.r>=12.4){s2.r=12.4;
+      if(Math.abs(s2.c-px)<1.1){loseLife();segs.forEach(s3=>{if(s3.alive){s3.c=-1-Math.random()*4;s3.r=Math.floor(Math.random()*3);s3.dir=1}});if(!run)return}}
+    // bolt hits
+    for(let i=bolts.length-1;i>=0;i--){const b=bolts[i];
+      if(Math.abs(b.c-s2.c)<0.9&&Math.abs(b.r-s2.r)<0.9){
+        bolts.splice(i,1);s2.alive=false;score+=s2.head?100:50;hud();
+        mush.add(Math.max(1,Math.min(11,Math.round(s2.r)))*COLS+Math.max(0,Math.min(COLS-1,Math.round(s2.c))));
+        // split: promote next alive segment behind to head
+        let prev=null;for(const s3 of segs){if(s3.alive)prev=s3;if(s3===s2&&prev&&prev!==s2)prev.head=true}
+        break}}
+  }
+  if(!any){wave++;spawn()}
+}
+function draw(){
+  faces=[];
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0d0505');g.addColorStop(1,'#26120a');x.fillStyle=g;x.fillRect(0,0,W,H);
+  // ground grid
+  x.strokeStyle='#7c2d1244';x.lineWidth=1;
+  for(let gx=0;gx<=COLS;gx++){const a=proj(wx(gx-0.5),0,wz(-0.5)),b=proj(wx(gx-0.5),0,wz(ROWS-0.5));if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+  for(let gr=0;gr<=ROWS;gr++){const a=proj(wx(-0.5),0,wz(gr-0.5)),b=proj(wx(COLS-0.5),0,wz(gr-0.5));if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+  for(const k of mush){const r=Math.floor(k/COLS),c2=k%COLS;
+    box3(faces,wx(c2),0.5,wz(r),1.1,'#dc2626');
+    box3(faces,wx(c2),1.05,wz(r),0.7,'#fca5a5');}
+  for(const b of bolts)box3(faces,wx(b.c),0.8,wz(b.r),0.45,'#fef08a');
+  for(const s2 of segs){if(!s2.alive)continue;const bob=s2.head?1:0.75;
+    box3(faces,wx(s2.c),bob,wz(s2.r),s2.head?1.5:1.3,s2.head?'#fb923c':'#4ade80')}
+  // player ship
+  box3(faces,wx(px),0.8,wz(13.2),1.6,'#38bdf8');
+  box3(faces,wx(px),1.7,wz(13.2),0.7,'#bae6fd');
+  faces.sort((a,b)=>b.z-a.z);
+  for(const f of faces){const ps=f.pts.map(p=>proj(p[0],p[1],p[2]));if(ps.some(p=>!p))continue;
+    x.fillStyle=f.col;x.beginPath();x.moveTo(ps[0][0],ps[0][1]);for(let i=1;i<4;i++)x.lineTo(ps[i][0],ps[i][1]);x.closePath();x.fill()}
+  // eyes on heads
+  for(const s2 of segs){if(!s2.alive||!s2.head)continue;const p=proj(wx(s2.c),1.15,wz(s2.r)-0.8);if(!p)continue;const s=p[2];
+    x.fillStyle='#fff';x.fillRect(p[0]-s*0.3,p[1]-s*0.1,s*0.2,s*0.2);x.fillRect(p[0]+s*0.1,p[1]-s*0.1,s*0.2,s*0.2);
+    x.fillStyle='#111';x.fillRect(p[0]-s*0.24,p[1]-s*0.05,s*0.09,s*0.09);x.fillRect(p[0]+s*0.16,p[1]-s*0.05,s*0.09,s*0.09)}
+}
+function loop(){update();draw();requestAnimationFrame(loop)}
+reset();run=false;draw();
+document.getElementById('startBtn').onclick=()=>{document.getElementById('start').style.display='none';reset();loop()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('over').style.display='none';reset();loop()};
+</script>
+</body>
+</html>

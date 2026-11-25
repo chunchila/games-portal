@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>מגן טילים 3D</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#05060f;color:#e2e8f0;font-family:'Heebo',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+header{width:100%;max-width:520px;padding:11px 16px 2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+h1{font-size:22px;color:#f472b6}
+.pill{background:#1a0f1e;border-radius:999px;padding:5px 13px;font-size:14px;font-weight:600;white-space:nowrap}
+.sub{font-size:13px;color:#94a3b8;padding:2px 16px 6px;max-width:520px}
+#wrap{width:100%;max-width:520px;padding:0 8px}
+canvas{width:100%;display:block;border-radius:14px;background:#05060f;touch-action:none}
+.overlay{position:fixed;inset:0;background:#05060fd9;display:flex;align-items:center;justify-content:center;z-index:10}
+.card{background:#1a0f1e;border:2px solid #f472b655;border-radius:22px;padding:26px 22px;text-align:center;max-width:340px;width:88%}
+.card h2{font-size:26px;margin-bottom:10px;color:#f472b6}
+.card p{font-size:15px;color:#cbd5e1;line-height:1.6;margin-bottom:16px}
+.card button{background:#f472b6;color:#1a0f1e;border:none;border-radius:999px;padding:12px 34px;font-size:17px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>מגן טילים 3D</h1><div class="pill">גל <span id="wave">1</span> &nbsp;ערים: <span id="cities">4</span> &nbsp;<span id="score">0</span> &nbsp;שיא: <span id="best">0</span></div></header>
+<div class="sub">געו בשמיים כדי לשגר מטיל יירוט - הגנו על הערים!</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div class="overlay" id="start"><div class="card"><h2>מגן טילים 3D</h2><p>טילי האויב יורדים על הערים שלכם. געו במסך במקום שבו אתם רוצים שהיירוט יתפוצץ. פיצוץ אחד יכול להשמיד כמה טילים!</p><button id="startBtn">שחקו</button></div></div>
+<div class="overlay" id="over" style="display:none"><div class="card"><h2>הערים נפלו</h2><p id="finalText"></p><button id="againBtn">שחקו שוב</button></div></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+const W=390,H=560;c.width=W;c.height=H;
+const F=400,CAM={x:0,y:10,z:-20};
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),waveEl=document.getElementById('wave'),citiesEl=document.getElementById('cities');
+let best=+localStorage.getItem('mis3d_best')||0;bestEl.textContent=best;
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=Math.max(0,Math.min(255,(n>>16)+amt)),g=Math.max(0,Math.min(255,((n>>8)&255)+amt)),b=Math.max(0,Math.min(255,(n&255)+amt));return `rgb(${r},${g},${b})`}
+function proj(px,py,pz){const dz=pz-CAM.z;if(dz<0.5)return null;const s=F/dz;return [W/2+(px-CAM.x)*s,H*0.45-(py-CAM.y)*s,s]}
+function box3(faces,px,py,pz,s,col){const h=s/2,x0=px-h,x1=px+h,y0=py-h,y1=py+h,z0=pz-h,z1=pz+h;
+  faces.push({z:pz,pts:[[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0]],col});
+  faces.push({z:pz,pts:[[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]],col:shade(col,40)});
+  if(px>0.2)faces.push({z:pz,pts:[[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0]],col:shade(col,-40)});
+  else if(px<-0.2)faces.push({z:pz,pts:[[x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0]],col:shade(col,-40)});}
+let missiles,inters,expls,cities,score,wave,run,t,faces,toSpawn,spawnT;
+const CITY_X=[-12,-4,4,12],CITY_COLS=['#4ade80','#38bdf8','#facc15','#c084fc'];
+function reset(){score=0;wave=1;run=true;t=0;missiles=[];inters=[];expls=[];cities=CITY_X.map(()=>true);startWave();hud()}
+function startWave(){toSpawn=8+wave*3;spawnT=0;waveEl.textContent=wave}
+function hud(){scoreEl.textContent=score;citiesEl.textContent=cities.filter(Boolean).length;if(score>best){best=score;localStorage.setItem('mis3d_best',best);bestEl.textContent=best}}
+c.addEventListener('touchstart',e=>{e.preventDefault();
+  if(!run)return;
+  const r=c.getBoundingClientRect();
+  const sx=(e.changedTouches[0].clientX-r.left)/r.width*W;
+  const sy=(e.changedTouches[0].clientY-r.top)/r.height*H;
+  // invert projection onto plane z=12
+  const s=F/(12-CAM.z);
+  const tx=Math.max(-14,Math.min(14,(sx-W/2)/s+CAM.x));
+  const ty=Math.max(1,Math.min(12,(H*0.45-sy)/s+CAM.y));
+  inters.push({x:0,y:0.5,z:2,tx,ty,tz:12,sp:0.5});
+},{passive:false});
+function update(){
+  if(!run)return;
+  t++;
+  // spawn enemy missiles
+  if(toSpawn>0){spawnT--;
+    if(spawnT<=0){spawnT=Math.max(25,70-wave*4);toSpawn--;
+      const fromX=(Math.random()-0.5)*26;
+      const target=Math.random()<0.75?(CITY_X[Math.floor(Math.random()*4)]):(Math.random()-0.5)*28;
+      missiles.push({x:fromX,y:13,z:12,targetX:target,sp:0.045+wave*0.006+Math.random()*0.02});}}
+  // move missiles
+  for(let i=missiles.length-1;i>=0;i--){const m=missiles[i];
+    m.x+=(m.targetX-m.x)*m.sp*0.14;m.y-=m.sp*1.9;
+    if(m.y<=0.6){ // impact
+      let hit=false;
+      for(let ci=0;ci<4;ci++)if(cities[ci]&&Math.abs(m.x-CITY_X[ci])<2.2){cities[ci]=false;hit=true;hud()}
+      expls.push({x:m.x,y:0.8,z:12,r:0.4,vr:0.16,max:2,col:'#f87171',dmg:true});
+      missiles.splice(i,1);
+      if(!cities.some(Boolean)&&missiles.length===0&&toSpawn===0){run=false;document.getElementById('finalText').textContent=`צברתם ${score} נקודות והגעתם לגל ${wave}. שיא: ${best}.`;document.getElementById('over').style.display='flex';return}
+    }}
+  // interceptors
+  for(let i=inters.length-1;i>=0;i--){const n=inters[i];
+    const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.hypot(dx,dy);
+    if(d<0.5){expls.push({x:n.tx,y:n.ty,z:12,r:0.3,vr:0.14,max:3.2,col:'#67e8f9',dmg:true});inters.splice(i,1)}
+    else{n.x+=dx/d*n.sp;n.y+=dy/d*n.sp}}
+  // explosions
+  for(let i=expls.length-1;i>=0;i--){const e=expls[i];
+    e.r+=e.vr;
+    if(e.r>e.max)e.vr=-Math.abs(e.vr)*0.8;
+    if(e.r<0.2){expls.splice(i,1);continue}
+    if(e.dmg&&e.r<e.max){for(let j=missiles.length-1;j>=0;j--){const m=missiles[j];
+      if(Math.hypot(m.x-e.x,m.y-e.y)<e.r){missiles.splice(j,1);score+=25;hud();
+        expls.push({x:m.x,y:m.y,z:12,r:0.3,vr:0.12,max:2.4,col:'#fbbf24',dmg:true})}}}
+  }
+  if(toSpawn===0&&missiles.length===0&&inters.length===0&&run){
+    if(cities.some(Boolean)){wave++;score+=100*cities.filter(Boolean).length;hud();startWave()}
+    else{run=false;document.getElementById('finalText').textContent=`צברתם ${score} נקודות והגעתם לגל ${wave}. שיא: ${best}.`;document.getElementById('over').style.display='flex'}}
+}
+function draw(){
+  faces=[];
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#05060f');g.addColorStop(1,'#1a0f1e');x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='#e2e8f0';for(let i=0;i<40;i++){x.globalAlpha=0.3+((i*41)%50)/110;x.fillRect((i*89)%W,(i*53)%Math.floor(H*0.4),1.6,1.6)}x.globalAlpha=1;
+  // ground
+  const f1=proj(-20,0,4),f2=proj(20,0,4),f3=proj(20,0,20),f4=proj(-20,0,20);
+  x.fillStyle='#0b1220';x.beginPath();x.moveTo(f1[0],f1[1]);x.lineTo(f2[0],f2[1]);x.lineTo(f3[0],f3[1]);x.lineTo(f4[0],f4[1]);x.closePath();x.fill();
+  x.strokeStyle='#f472b633';x.lineWidth=1;
+  for(let gx=-20;gx<=20;gx+=4){const a=proj(gx,0,4),b=proj(gx,0,20);if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+  // cities + ruins
+  for(let ci=0;ci<4;ci++){const cx2=CITY_X[ci];
+    if(cities[ci]){box3(faces,cx2,1,12,2.2,CITY_COLS[ci]);box3(faces,cx2,2.4,12,1.1,shade(CITY_COLS[ci],30))}
+    else box3(faces,cx2,0.3,12,1.6,'#334155')}
+  // base
+  box3(faces,0,0.8,4.5,2,'#f472b6');
+  box3(faces,0,1.9,4.5,0.8,'#fbcfe8');
+  // missiles
+  for(const m of missiles)box3(faces,m.x,m.y,m.z,0.7,'#ef4444');
+  for(const n of inters)box3(faces,n.x,n.y,n.z,0.5,'#a5f3fc');
+  // explosions as growing cube clusters
+  for(const e of expls){const n=6;
+    for(let k=0;k<n;k++){const a=k/n*Math.PI*2+t*0.05;
+      box3(faces,e.x+Math.cos(a)*e.r*0.6,e.y+Math.sin(a)*e.r*0.4,e.z,Math.max(0.3,e.r*0.35),e.col)}}
+  faces.sort((a,b)=>b.z-a.z);
+  for(const f of faces){const ps=f.pts.map(p=>proj(p[0],p[1],p[2]));if(ps.some(p=>!p))continue;
+    x.fillStyle=f.col;x.beginPath();x.moveTo(ps[0][0],ps[0][1]);for(let i=1;i<4;i++)x.lineTo(ps[i][0],ps[i][1]);x.closePath();x.fill()}
+  // missile trails
+  x.strokeStyle='#ef444488';x.lineWidth=1.5;
+  for(const m of missiles){const a=proj(m.x,m.y,m.z),b=proj(m.x+(m.x-m.targetX)*-0.4,m.y+3.5,m.z);if(a&&b){x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()}}
+}
+function loop(){update();draw();requestAnimationFrame(loop)}
+reset();run=false;draw();
+document.getElementById('startBtn').onclick=()=>{document.getElementById('start').style.display='none';reset();loop()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('over').style.display='none';reset();loop()};
+</script>
+</body>
+</html>
