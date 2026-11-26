@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>בר הכוכבים</title>
+<style>
+html,body{margin:0;padding:0;background:#0d0518;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#1f0b38,#0d0518)}
+#hud b{font-size:17px;color:#ff9de2}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(13,5,24,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:30px;margin:0 0 10px;color:#ff9de2;text-shadow:0 2px 16px #ff2da066}
+.ovl p{font-size:15px;line-height:1.7;color:#e2d2f0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#ff9de2,#e83a9a);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#3d0524;box-shadow:0 4px 18px #e83a9a55;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#6a4a7a;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div>סבב <b id="wv">1</b></div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">געו בדלפק כדי לשלוח כוס זוהרת לאורחים המתקרבים</div>
+<div class="ovl" id="startOvl">
+<h1>בר הכוכבים</h1>
+<p>ברקי הרובוט מנהל את הבר הסוער ביותר בגלקסיה! אורחים חוצמנים מתקרבים על ארבעת הדלפקים. געו בדלפק כדי להחליק להם כוס זוהרת לפני שיגיעו לקצה - ואל תשלחו כוס לדלפק ריק!</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),wvEl=document.getElementById('wv'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+const LANES=4;
+let patrons,drinks,score,wave,lives,run,spawnT,toServe,serveFlash,robY,robT;
+const HUES=[330,190,50,270];
+function laneY(l){return H*(.18+l*.2)}
+function start(){score=0;wave=1;lives=3;run=true;patrons=[];drinks=[];sparks=[];serveFlash=0;robY=0;robT=0;newWave();upd()}
+function newWave(){toServe=5+wave*3;spawnT=.8}
+function upd(){scEl.textContent=score;wvEl.textContent=wave;livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function lose(msg){lives--;upd();serveFlash=.6;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='הבר נסגר';document.getElementById('overP').textContent=msg+' ניקוד סופי: '+score;document.getElementById('overOvl').classList.remove('hide')},600)}}
+function serve(l){if(!run)return;robT=l;
+drinks.push({lane:l,p:0,sp:1.5});
+for(const d2 of drinks.filter(d3=>d3.lane===l&&d3!==drinks[drinks.length-1])){}}
+let sparks=[];
+function step(dt){
+if(serveFlash>0)serveFlash-=dt;
+robY+=(robT-robY)*dt*10;
+spawnT-=dt;
+if(toServe>0&&spawnT<=0){
+spawnT=Math.max(.9,2.4-wave*.18);
+const l=Math.floor(Math.random()*LANES);
+patrons.push({lane:l,p:1.02,sp:.055+wave*.012+Math.random()*.01,hue:HUES[Math.floor(Math.random()*HUES.length)],drink:0,leave:0});
+toServe--}
+for(const p of patrons){
+if(p.leave>0){p.p+=dt*.9;p.leave-=dt;continue}
+if(p.drink>0){p.p+=dt*.55;p.drink-=dt;if(p.p>=1.02)p.gone=true;continue}
+p.p-=p.sp*dt*(1+ (1-p.p)*.5);
+if(p.p<=.02){p.gone=true;lose('אורח רעב הגיע לקצה הדלפק!')}}
+patrons=patrons.filter(p=>!p.gone);
+for(const d of drinks){d.p+=d.sp*dt;
+const cand=patrons.filter(p=>p.lane===d.lane&&p.drink<=0&&p.leave<=0);
+let hit=null;
+for(const p of cand){if(Math.abs(p.p-(0.06+d.p*.9))<.07){hit=p;break}}
+if(hit){hit.drink=.9;d.dead=true;score+=100;upd();
+for(let i=0;i<8;i++)sparks.push({x:0,y:0,lane:d.lane,p:0.06+d.p*.9,vx:(Math.random()-.5)*160,vy:-Math.random()*160,t:.5})}
+else if(d.p>=1){d.dead=true;lose('הכוס התנפצה בקצה הדלפק!')}}
+drinks=drinks.filter(d=>!d.dead);
+for(const s of sparks){s.vy+=400*dt;s.t-=dt}
+sparks=sparks.filter(s=>s.t>0);
+if(toServe<=0&&patrons.length===0&&run){wave++;score+=200;upd();newWave()}
+}
+function px2(l,p){const y=laneY(l);const x0=W*.14,x1=W*.94;return{x:x0+(x1-x0)*p,y}}
+function drawAlien(cx,cy,hue,t,phase){
+x.save();x.translate(cx,cy);
+x.fillStyle='hsl('+hue+',65%,55%)';
+x.beginPath();x.ellipse(0,0,13,12,0,0,7);x.fill();
+x.fillStyle='hsl('+hue+',65%,42%)';x.beginPath();x.ellipse(0,7,10,5,0,0,7);x.fill();
+x.strokeStyle='hsl('+hue+',70%,60%)';x.lineWidth=2;
+x.beginPath();x.moveTo(-4,-11);x.quadraticCurveTo(-8,-20,-11,-22);x.stroke();
+x.beginPath();x.moveTo(4,-11);x.quadraticCurveTo(8,-20,11,-22);x.stroke();
+x.fillStyle='#ffe89b';x.beginPath();x.arc(-11,-22,2.4,0,7);x.arc(11,-22,2.4,0,7);x.fill();
+x.fillStyle='#fff';
+const blink=(Math.floor(t*2+phase)%7===0)?.3:1;
+x.beginPath();x.ellipse(-4,-3,3,3.6*blink,0,0,7);x.ellipse(4,-3,3,3.6*blink,0,0,7);x.fill();
+x.fillStyle='#123';x.beginPath();x.arc(-4,-3,1.5,0,7);x.arc(4,-3,1.5,0,7);x.fill();
+x.strokeStyle='hsl('+hue+',80%,30%)';x.lineWidth=1.6;
+x.beginPath();x.arc(0,3,4,.2,Math.PI-.2);x.stroke();
+x.restore()}
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#1c0a34');bg.addColorStop(1,'#0d0518');
+x.fillStyle=bg;x.fillRect(0,0,W,H);
+x.fillStyle='#ffffff18';for(let i=0;i<20;i++){x.fillRect((i*131)%W,(i*67)%H,2,2)}
+for(const p of patrons){}
+for(let l=0;l<LANES;l++){
+const y=laneY(l);
+const g=x.createLinearGradient(0,y-16,0,y+16);
+g.addColorStop(0,'#3a1a5e');g.addColorStop(.5,'#552a80');g.addColorStop(1,'#2a1048');
+x.fillStyle=g;x.fillRect(W*.06,y-14,W*.88,28);
+x.strokeStyle='hsl('+HUES[l]+',80%,60%)';x.lineWidth=2.5;
+x.beginPath();x.moveTo(W*.06,y-14);x.lineTo(W*.94,y-14);x.stroke();
+x.fillStyle='hsla('+HUES[l]+',80%,60%,.25)';x.fillRect(W*.06,y+14,W*.88,4);
+}
+const ry=laneY(robY);
+x.save();x.translate(W*.1,ry-26);
+x.fillStyle='#c8d2e0';x.beginPath();x.ellipse(0,0,11,13,0,0,7);x.fill();
+x.fillStyle='#8a98ac';x.fillRect(-9,8,18,8);
+x.fillStyle='#20304a';x.fillRect(-7,-7,14,7);
+x.fillStyle='#5ef0ff';x.beginPath();x.arc(-3,-3.5,2,0,7);x.arc(3,-3.5,2,0,7);x.fill();
+x.strokeStyle='#8a98ac';x.lineWidth=2.4;
+x.beginPath();x.moveTo(0,-13);x.lineTo(0,-18);x.stroke();
+x.fillStyle='#ff9de2';x.beginPath();x.arc(0,-20,2.6,0,7);x.fill();
+x.restore();
+for(const p of patrons){
+const pt=px2(p.lane,p.p);
+const wob=p.leave>0?Math.sin(t*20)*2:0;
+drawAlien(pt.x,pt.y-24+wob,p.hue,t,p.p*10)}
+for(const d of drinks){
+const pt=px2(d.lane,0.06+d.p*.9);
+x.save();x.translate(pt.x,pt.y-10);
+const g2=x.createLinearGradient(0,-8,0,8);g2.addColorStop(0,'#bffbff');g2.addColorStop(1,'#1ec8e8');
+x.fillStyle=g2;x.beginPath();x.moveTo(-6,-8);x.lineTo(6,-8);x.lineTo(4,8);x.lineTo(-4,8);x.closePath();x.fill();
+x.fillStyle='#ffffff88';x.fillRect(-6,-10,12,3);
+const gl=x.createRadialGradient(0,0,2,0,0,18);gl.addColorStop(0,'rgba(150,240,255,.5)');gl.addColorStop(1,'rgba(150,240,255,0)');
+x.fillStyle=gl;x.beginPath();x.arc(0,0,18,0,7);x.fill();
+x.restore()}
+for(const s of sparks){
+const pt=px2(s.lane,s.p);
+x.globalAlpha=Math.max(0,s.t*2);x.fillStyle='#9be8ff';
+x.fillRect(pt.x+s.vx*(0.5-s.t)-1.5,pt.y-10+s.vy*(0.5-s.t)+200*(0.5-s.t)*(0.5-s.t)-1.5,3,3)}
+x.globalAlpha=1;
+if(serveFlash>0){x.fillStyle='rgba(255,60,90,'+serveFlash*.4+')';x.fillRect(0,0,W,H)}
+x.fillStyle='#e2d2f0';x.font='600 13px system-ui';x.textAlign='right';x.direction='rtl';
+if(run&&toServe>0)x.fillText('אורחים נוספים בדרך: '+toServe,W-12,20);
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+cv.addEventListener('touchstart',e=>{e.preventDefault();
+const r=cv.getBoundingClientRect(),t2=e.changedTouches[0];
+const yy=t2.clientY-r.top;
+let best=0,bd=1e9;
+for(let l=0;l<LANES;l++){const d=Math.abs(yy-laneY(l));if(d<bd){bd=d;best=l}}
+serve(best)},{passive:false});
+window.addEventListener('keydown',e=>{const k=parseInt(e.key);if(k>=1&&k<=4)serve(k-1)});
+window.serve=serve;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'patrons',{get:()=>patrons});Object.defineProperty(window,'drinks',{get:()=>drinks});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();patrons=[];drinks=[];score=0;wave=1;lives=3;run=false;robY=0;robT=0;toServe=0;spawnT=1;serveFlash=0;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -828,5 +828,55 @@
   "added": 85,
   "slug": "missile-command-3d-game",
   "source": "https://github.com/chunchila/missile-command-3d-game"
+ },
+ {
+  "name": "קמה והפירמידה הבוהקת",
+  "shot": "shots/chroma.webp",
+  "cat": "ארקייד",
+  "desc": "קפצו על קוביות הפירמידה והדליקו אותן בזהב - והיזהרו מנחש הצללים",
+  "url": "games/chroma-hop-quest-game/",
+  "added": 86,
+  "slug": "chroma-hop-quest-game",
+  "source": "https://github.com/chunchila/chroma-hop-quest-game"
+ },
+ {
+  "name": "מולי כורה הקריסטלים",
+  "shot": "shots/mole.webp",
+  "cat": "ארקייד",
+  "desc": "חפרו מנהרות, אספו קריסטלים והיזהרו מסלעים נופלים ומעטלפים",
+  "url": "games/mole-miner-dig-game/",
+  "added": 87,
+  "slug": "mole-miner-dig-game",
+  "source": "https://github.com/chunchila/mole-miner-dig-game"
+ },
+ {
+  "name": "רוכבי היונקים",
+  "shot": "shots/bird.webp",
+  "cat": "ארקייד",
+  "desc": "פרפרו גבוה מעל העמק - מי שגבוה יותר מנצח בהתנגשות",
+  "url": "games/hummingbird-riders-game/",
+  "added": 88,
+  "slug": "hummingbird-riders-game",
+  "source": "https://github.com/chunchila/hummingbird-riders-game"
+ },
+ {
+  "name": "משמר הזוהר",
+  "shot": "shots/comet.webp",
+  "cat": "ארקייד",
+  "desc": "פוצצו את עטלפי השביט והצילו את גורי הזוהר של העמק",
+  "url": "games/comet-rescue-game/",
+  "added": 89,
+  "slug": "comet-rescue-game",
+  "source": "https://github.com/chunchila/comet-rescue-game"
+ },
+ {
+  "name": "בר הכוכבים",
+  "shot": "shots/starbar.webp",
+  "cat": "ארקייד",
+  "desc": "החליקו כוסות זוהרות לאורחים החוצמנים לפני שיגיעו לקצה הדלפק",
+  "url": "games/star-bar-rush-game/",
+  "added": 90,
+  "slug": "star-bar-rush-game",
+  "source": "https://github.com/chunchila/star-bar-rush-game"
  }
 ]
