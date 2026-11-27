@@ -920,13 +920,13 @@
   "source": "https://github.com/chunchila/dune-buggy-patrol-game"
  },
  {
-  "name": "שף קציצה והפיתה הענקית",
-  "shot": "shots/falafel.webp",
+  "name": "שף רולדה והעוגה המתרוממת",
+  "shot": "shots/cake.webp",
   "cat": "ארקייד",
-  "desc": "הפילו מרכיבים מדף לדף לתוך הפיתה - והיזהרו מהחומוסים",
-  "url": "games/falafel-tower-game/",
+  "desc": "הפילו שכבות ביסקוויט, קצפת, תותים ושוקולד אל מגש ההגשה - והיזהרו מהעכברושים הרעבים",
+  "url": "games/cake-stack-bakery-game/",
   "added": 95,
-  "slug": "falafel-tower-game",
-  "source": "https://github.com/chunchila/falafel-tower-game"
+  "slug": "cake-stack-bakery-game",
+  "source": "https://github.com/chunchila/cake-stack-bakery-game"
  }
 ]
