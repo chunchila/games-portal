@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>גדר הזוהר</title>
+<style>
+html,body{margin:0;padding:0;background:#0a0616;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#1c0f38,#0a0616)}
+#hud b{font-size:17px;color:#c89bff}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,6,22,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:30px;margin:0 0 10px;color:#c89bff;text-shadow:0 2px 16px #8a2de866}
+.ovl p{font-size:15px;line-height:1.7;color:#dccdf0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#c89bff,#8a2de8);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#24053d;box-shadow:0 4px 18px #8a2de855;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#5a3d7a;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>תפסתם: <b id="pc">0%</b></div><div>ניקוד: <b id="sc">0</b></div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">גררו מהשפה פנימה וחזרו לשפה כדי לתפוס שטח - היזהרו מהניצוץ</div>
+<div class="ovl" id="startOvl">
+<h1>גדר הזוהר</h1>
+<p>גחלילית-האור טווה גדרות של זוהר בחשכת הלילה. צאו מהשפה, טוו קו, וחזרו לשפה כדי לכלוא שטח. אם ניצוץ החושך נוגע בקו שלכם באמצע - איבדתם חיים! תפסו 75% כדי לנצח.</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const pcEl=document.getElementById('pc'),scEl=document.getElementById('sc'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1,CS=10,GW=0,GH=0,GX=0,GY=0;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr';
+CS=10;GW=Math.floor((W*.92)/CS);GH=Math.floor((H*.9)/CS);GX=(W-GW*CS)/2;GY=(H-GH*CS)/2}
+window.addEventListener('resize',rs);
+const OPEN=0,WALL=1,TRAIL=2;
+let grid,ff,dirq,level,score,lives,run,pct,sparks,inv,claimFlash;
+function idx(c,r){return r*GW+c}
+function start(){score=0;level=1;lives=3;run=true;newLevel();upd()}
+function newLevel(){
+grid=new Uint8Array(GW*GH);
+for(let r=0;r<GH;r++)for(let c=0;c<GW;c++)
+grid[idx(c,r)]=(r===0||c===0||r===GH-1||c===GW-1)?WALL:OPEN;
+ff={c:Math.floor(GW/2),r:GH-1,drawing:false,trail:[]};
+dirq=null;inv=1.5;claimFlash=0;
+sparks=[];
+const n=level;
+for(let i=0;i<n;i++)sparks.push({x:GW*(.3+.4*Math.random()),y:GH*(.3+.4*Math.random()),vx:(Math.random()<.5?-1:1)*(2.2+level*.3),vy:(Math.random()<.5?-1:1)*(1.8+level*.25)});
+upd()}
+function upd(){const tot=GW*GH;let cl=0;
+for(let i=0;i<tot;i++)if(grid[i]===WALL)cl++;
+pct=Math.round(cl/tot*100);
+pcEl.textContent=pct+'%';scEl.textContent=score;livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function lose(){if(inv>0)return;lives--;
+for(const t of ff.trail)grid[idx(t.c,t.r)]=OPEN;
+ff.drawing=false;ff.trail=[];
+upd();inv=1.8;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='הזוהר כבה';document.getElementById('overP').textContent='תפסתם '+pct+'% מהלילה וצברתם '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}}
+function closeTrail(){
+for(const t of ff.trail)grid[idx(t.c,t.r)]=WALL;
+const visited=new Uint8Array(GW*GH);
+const q=[];
+for(const s of sparks){
+const c=Math.max(0,Math.min(GW-1,Math.floor(s.x))),r=Math.max(0,Math.min(GH-1,Math.floor(s.y)));
+if(grid[idx(c,r)]===OPEN&&!visited[idx(c,r)]){visited[idx(c,r)]=1;q.push([c,r])}}
+while(q.length){const[c,r]=q.pop();
+for(const[dc,dr]of[[1,0],[-1,0],[0,1],[0,-1]]){
+const nc=c+dc,nr=r+dr;
+if(nc<0||nr<0||nc>=GW||nr>=GH)continue;
+const i2=idx(nc,nr);
+if(grid[i2]===OPEN&&!visited[i2]){visited[i2]=1;q.push([nc,nr])}}}
+let captured=0;
+for(let i=0;i<GW*GH;i++)if(grid[i]===OPEN&&!visited[i]){grid[i]=WALL;captured++}
+score+=captured*2+ff.trail.length*5;
+claimFlash=.7;
+upd();
+if(pct>=75){score+=500;upd();
+if(level>=3){run=false;document.getElementById('overT').textContent='כל הכבוד!';document.getElementById('overP').textContent='גדר הזוהר כבשה את הלילה! ניקוד סופי: '+score;document.getElementById('overOvl').classList.remove('hide')}
+else setTimeout(()=>{level++;newLevel()},700)}
+ff.drawing=false;ff.trail=[]}
+function moveFF(){
+if(!dirq)return;
+const dc=dirq[0],dr=dirq[1];
+const nc=ff.c+dc,nr=ff.r+dr;
+if(nc<0||nr<0||nc>=GW||nr>=GH)return;
+const cell=idx(nc,nr);
+if(!ff.drawing){
+if(grid[cell]===WALL){ff.c=nc;ff.r=nr}
+else if(grid[cell]===OPEN){ff.drawing=true;ff.c=nc;ff.r=nr;grid[cell]=TRAIL;ff.trail.push({c:nc,r:nr})}
+}else{
+if(grid[cell]===TRAIL){lose();return}
+ff.c=nc;ff.r=nr;
+if(grid[cell]===OPEN){grid[cell]=TRAIL;ff.trail.push({c:nc,r:nr})}
+else if(grid[cell]===WALL)closeTrail()}
+}
+let sparkT=0,moveT=0;
+function step(dt){
+if(inv>0)inv-=dt;if(claimFlash>0)claimFlash-=dt*1.4;
+moveT+=dt;if(moveT>=0.07){moveT=0;moveFF()}
+sparkT+=dt;
+const sdt=dt*8;
+for(const s of sparks){
+s.x+=s.vx*sdt;s.y+=s.vy*sdt;
+const c=Math.floor(s.x),r=Math.floor(s.y);
+const hit=()=>{const cc=Math.max(0,Math.min(GW-1,c)),rr=Math.max(0,Math.min(GH-1,r));return grid[idx(cc,rr)]};
+if(c<=0||c>=GW-1||hit()===WALL){s.vx*=-1;s.x=Math.max(1,Math.min(GW-2,s.x))}
+if(r<=0||r>=GH-1||hit()===WALL){s.vy*=-1;s.y=Math.max(1,Math.min(GH-2,s.y))}
+if(ff.drawing){
+for(const t of ff.trail){if(Math.abs(t.c+0.5-s.x)<1.1&&Math.abs(t.r+0.5-s.y)<1.1){lose();break}}}
+if(Math.abs(ff.c+0.5-s.x)<1.2&&Math.abs(ff.r+0.5-s.y)<1.2&&ff.drawing)lose()}
+}
+function draw(t){
+x.clearRect(0,0,W,H);
+x.fillStyle='#0a0616';x.fillRect(0,0,W,H);
+for(let r=0;r<GH;r++)for(let c=0;c<GW;c++){
+const v=grid[idx(c,r)];
+if(v===WALL){x.fillStyle='#241448';x.fillRect(GX+c*CS,GY+r*CS,CS,CS)}
+else if(v===TRAIL){x.fillStyle='#c89bff';x.fillRect(GX+c*CS+1,GY+r*CS+1,CS-2,CS-2)}}
+x.strokeStyle='#8a2de8';x.lineWidth=2;
+x.strokeRect(GX,GY,GW*CS,GH*CS);
+for(const s of sparks){
+const sx=GX+s.x*CS,sy=GY+s.y*CS;
+const gl=x.createRadialGradient(sx,sy,2,sx,sy,20);gl.addColorStop(0,'rgba(255,90,140,.5)');gl.addColorStop(1,'rgba(255,90,140,0)');
+x.fillStyle=gl;x.beginPath();x.arc(sx,sy,20,0,7);x.fill();
+x.save();x.translate(sx,sy);x.rotate(t*5);
+x.fillStyle='#ff5a8c';
+for(let i=0;i<4;i++){x.rotate(Math.PI/2);x.beginPath();x.moveTo(0,-3);x.lineTo(2,-10);x.lineTo(-2,-10);x.closePath();x.fill()}
+x.fillStyle='#ffd0e0';x.beginPath();x.arc(0,0,3.4,0,7);x.fill();
+x.restore()}
+const fx=GX+(ff.c+.5)*CS,fy=GY+(ff.r+.5)*CS;
+const gl2=x.createRadialGradient(fx,fy,2,fx,fy,24);gl2.addColorStop(0,'rgba(255,240,150,.55)');gl2.addColorStop(1,'rgba(255,240,150,0)');
+x.fillStyle=gl2;x.beginPath();x.arc(fx,fy,24,0,7);x.fill();
+if(!(inv>0&&Math.floor(inv*10)%2===0)){
+x.fillStyle='#ffe89b';x.beginPath();x.arc(fx,fy,5.4,0,7);x.fill();
+x.fillStyle='#fff8d0';x.beginPath();x.arc(fx-1.4,fy-1.4,2,0,7);x.fill()}
+if(claimFlash>0){x.fillStyle='rgba(200,155,255,'+claimFlash*.3+')';x.fillRect(GX,GY,GW*CS,GH*CS)}
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+let anchor=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];anchor={x:t.clientX,y:t.clientY}},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(!anchor)return;
+const t=e.changedTouches[0],dx=t.clientX-anchor.x,dy=t.clientY-anchor.y;
+if(Math.abs(dx)>14||Math.abs(dy)>14){
+dirq=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];
+anchor={x:t.clientX,y:t.clientY}}},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();anchor=null;dirq=null},{passive:false});
+window.addEventListener('keydown',e=>{const k=e.key;
+if(k==='ArrowLeft')dirq=[-1,0];else if(k==='ArrowRight')dirq=[1,0];
+else if(k==='ArrowUp')dirq=[0,-1];else if(k==='ArrowDown')dirq=[0,1]});
+window.setDir=(dx,dy)=>{dirq=[dx,dy]};
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'pct',{get:()=>pct});Object.defineProperty(window,'ff',{get:()=>ff});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();grid=new Uint8Array(1);ff={c:0,r:0,drawing:false,trail:[]};sparks=[];score=0;level=1;lives=3;run=false;inv=0;pct=0;claimFlash=0;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

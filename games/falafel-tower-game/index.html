@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>שף קציצה והפיתה הענקית</title>
+<style>
+html,body{margin:0;padding:0;background:#140a10;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#2e1420,#140a10)}
+#hud b{font-size:17px;color:#ffa8c0}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,10,16,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:28px;margin:0 0 10px;color:#ffa8c0;text-shadow:0 2px 14px #e83a6e66}
+.ovl p{font-size:15px;line-height:1.7;color:#f0d8e0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#ffa8c0,#e83a6e);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#3d0518;box-shadow:0 4px 18px #e83a6e55;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#7a4258;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div>פיתה <b id="pt">1</b>/2</div><div>פלפל: <b id="pp">3</b></div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">לכו על המרכיבים כדי להפיל אותם לפיתה - געו לפלפל את המפלצות</div>
+<div class="ovl" id="startOvl">
+<h1>שף קציצה והפיתה הענקית</h1>
+<p>שף קציצה צריך להרכיב פיתות ענק: לכו על כדורי הפלאפל, הסלט והטחינה כדי להפיל אותם מדף לדף עד לפיתה! חבורת החומוסים הרעבים רודפת אחריכם - הפילו עליהם מרכיב או פלפלו אותם.</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),ptEl=document.getElementById('pt'),ppEl=document.getElementById('pp'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+const LV=5;
+let pl,mons,ings,pita,score,lives,run,inv,pepper,stunT,levelT;
+let keys={l:0,r:0};
+function lvY(i){return H*(0.18+i*0.17)}
+const LADS=[{f:0,x:.5},{f:1,x:.15},{f:1,x:.85},{f:2,x:.35},{f:2,x:.65},{f:3,x:.5}];
+const KINDS=['falafel','salad','tehina','pickle'];
+function build(){
+ings=[];
+const spots=[[0,.2],[0,.75],[1,.5],[2,.15]];
+for(let i=0;i<4;i++)ings.push({kind:KINDS[i],lv:spots[i][0],x:spots[i][1]*W,state:'idle',y:lvY(spots[i][0]),vy:0});
+mons=[];
+for(let i=0;i<3;i++)mons.push({x:W*(.2+.3*i),y:lvY(LV-1)-14,lv:LV-1,vx:(i%2?40:-40),stun:0,wt:1+i*.5});
+pita={have:0}}
+function start(){score=0;lives=3;run=true;inv=1.5;pepper=3;stunT=0;pita={have:0};pitaN=1;
+pl={x:W*.5,y:lvY(0)-16,vx:0,vy:0,lv:0,face:1,onLad:false};
+build();upd()}
+function upd(){scEl.textContent=score;ptEl.textContent=pitaN;ppEl.textContent=pepper;livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function lose(){if(inv>0)return;lives--;upd();inv=2;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='המטבח נסגר';document.getElementById('overP').textContent='שף קציצה צבר '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}
+else{pl.x=W*.5;pl.y=lvY(0)-16;pl.lv=0;pl.onLad=false}}
+function pepperUse(){if(!run||pepper<=0||stunT>0)return;pepper--;stunT=3;upd();
+for(const m of mons)m.stun=3}
+function climb(dy){const f=pl.lv;
+for(const L of LADS){if(L.f===f&&Math.abs(pl.x-L.x*W)<16&&dy<0){pl.onLad=true;pl.ladDir=-1;pl.x=L.x*W;return}
+if(L.f===f-1&&Math.abs(pl.x-L.x*W)<16&&dy>0){pl.onLad=true;pl.ladDir=1;pl.x=L.x*W;return}}}
+function step(dt){
+if(inv>0)inv-=dt;if(stunT>0)stunT-=dt;
+if(pl.onLad){
+pl.y+=pl.ladDir*120*dt;
+if(pl.ladDir<0&&pl.y<=lvY(pl.lv+1)-16+2){pl.lv++;pl.onLad=false;pl.y=lvY(pl.lv)-16}
+if(pl.ladDir>0&&pl.y>=lvY(pl.lv-1)-16-2){pl.lv--;pl.onLad=false;pl.y=lvY(pl.lv)-16}
+}else{
+pl.vx=((keys.r?1:0)-(keys.l?1:0))*160;
+if(pl.vx)pl.face=Math.sign(pl.vx);
+pl.x+=pl.vx*dt;pl.x=Math.max(12,Math.min(W-12,pl.x));
+pl.y=lvY(pl.lv)-16}
+for(const g of ings){
+if(g.state==='idle'&&g.lv===pl.lv&&Math.abs(pl.x-g.x)<26&&!pl.onLad){
+g.state='fall';g.vy=0}
+if(g.state==='fall'){
+g.vy+=900*dt;g.y+=g.vy*dt;
+for(const m of mons){if(!m.dead&&Math.abs(m.x-g.x)<30&&Math.abs(m.y-g.y+8)<22){
+m.dead=true;score+=200;upd();
+for(let i=0;i<8;i++)sparks.push({x:m.x,y:m.y,vx:(Math.random()-.5)*200,vy:(Math.random()-.5)*200,t:.4})}}
+if(g.lv<LV-1&&g.y>=lvY(g.lv+1)-4){g.lv++;g.y=lvY(g.lv+1)-4;g.vy=0;
+let below=ings.find(o=>o!==g&&o.state!=='plate'&&o.lv===g.lv+0&&Math.abs(o.x-g.x)<40&&o.state==='idle');
+const onPlate=g.lv===LV-1;
+if(onPlate){g.state='plate';score+=100;upd();pita.have++;
+if(pita.have>=4){score+=400;upd();pitaN++;
+if(pitaN>2){run=false;document.getElementById('overT').textContent='כל הכבוד!';document.getElementById('overP').textContent='שתי פיתות ענק מושלמות! ניקוד סופי: '+score;document.getElementById('overOvl').classList.remove('hide')}
+else setTimeout(()=>{build();pl.x=W*.5;pl.y=lvY(0)-16;pl.lv=0;upd()},800)}}
+else{g.state='idle';g.y=lvY(g.lv)-4}
+}}}
+mons=mons.filter(m=>!m.dead);
+for(const m of mons){
+if(m.stun>0){m.stun-=dt;continue}
+m.wt-=dt;
+if(m.wt<=0){m.wt=1+Math.random()*1.5;
+m.vx=Math.sign(pl.x-m.x)*(46+Math.random()*20);
+const L=LADS.find(L2=>L2.f===m.lv&&Math.abs(m.x-L2.x*W)<20);
+if(L&&pl.lv>m.lv&&Math.random()<.7){m.x=L.x*W;m.lv++;m.climbT=Math.abs(lvY(m.lv)-lvY(m.lv-1))/90}
+else{const L2=LADS.find(L3=>L3.f===m.lv-1&&Math.abs(m.x-L3.x*W)<20);
+if(L2&&pl.lv<m.lv&&Math.random()<.7){m.x=L2.x*W;m.lv--;m.climbT=Math.abs(lvY(m.lv+1)-lvY(m.lv))/90}}}
+if(m.climbT>0){m.climbT-=dt;const dir=pl.lv>=m.lv?-1:1;
+const targetY=lvY(m.lv)-14;m.y+=(targetY-m.y)*dt*8}
+else{m.x+=m.vx*dt;m.x=Math.max(14,Math.min(W-14,m.x));m.y=lvY(m.lv)-14}
+if(Math.abs(m.x-pl.x)<22&&Math.abs(m.y-pl.y)<24)lose()}
+for(const s of sparks){s.x+=s.vx*dt;s.y+=s.vy*dt;s.t-=dt}
+sparks=sparks.filter(s=>s.t>0);
+}
+let sparks=[],pitaN=1;
+function drawIng(g,t){
+x.save();x.translate(g.x,g.y);
+if(g.kind==='falafel'){
+const gr=x.createRadialGradient(-4,-4,2,0,0,16);gr.addColorStop(0,'#b87a3a');gr.addColorStop(1,'#6b3d16');
+x.fillStyle=gr;x.beginPath();x.arc(0,-8,13,0,7);x.fill();
+x.fillStyle='#5d3410';x.fillRect(-6,-12,3,3);x.fillRect(2,-6,3,3);x.fillRect(-2,-16,2.4,2.4)}
+else if(g.kind==='salad'){
+x.fillStyle='#3fae5f';
+for(let i=0;i<5;i++){x.beginPath();x.arc(-12+i*6,-8-Math.sin(i*2)*4,6,0,7);x.fill()}
+x.fillStyle='#e83a3a';x.beginPath();x.arc(-6,-10,3,0,7);x.arc(6,-7,3,0,7);x.fill()}
+else if(g.kind==='tehina'){
+const gr=x.createLinearGradient(0,-16,0,0);gr.addColorStop(0,'#fff8e8');gr.addColorStop(1,'#e0d0a8');
+x.fillStyle=gr;x.beginPath();x.ellipse(0,-7,16,9,0,0,7);x.fill();
+x.fillStyle='#c8b888';x.beginPath();x.ellipse(0,-10,10,4,0,0,7);x.fill()}
+else{
+x.fillStyle='#2d8a3d';
+x.beginPath();x.ellipse(-8,-7,8,5.4,0,0,7);x.ellipse(8,-7,8,5.4,0,0,7);x.fill();
+x.fillStyle='#7fd48a';x.beginPath();x.ellipse(-8,-8,4,2,0,0,7);x.ellipse(8,-8,4,2,0,0,7);x.fill()}
+x.restore()}
+function drawChef(px,py,t){
+x.save();x.translate(px,py);x.scale(pl.face,1);
+x.fillStyle='#f0f0e8';x.beginPath();x.ellipse(0,2,8,10,0,0,7);x.fill();
+x.fillStyle='#f0d0b0';x.beginPath();x.arc(2,-9,5.4,0,7);x.fill();
+x.fillStyle='#fff';
+x.beginPath();x.ellipse(1,-16,7,5,0,0,7);x.fill();
+x.beginPath();x.arc(-3,-19,3.4,0,7);x.arc(2,-21,3.8,0,7);x.arc(6,-18,3.2,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(3.5,-9.5,1.1,0,7);x.fill();
+x.strokeStyle='#8a5a3a';x.lineWidth=1.6;x.beginPath();x.arc(3,-6,2.4,.3,Math.PI-.3);x.stroke();
+x.fillStyle='#3a3f4a';x.fillRect(-5,11,3.4,4);x.fillRect(2,11,3.4,4);
+x.restore()}
+function drawMon(m,t){
+x.save();x.translate(m.x,m.y);
+const stun=m.stun>0;
+const g=x.createRadialGradient(-3,-4,2,0,0,14);g.addColorStop(0,stun?'#c8c0a8':'#e8d8a0');g.addColorStop(1,stun?'#8a8474':'#b09a58');
+x.fillStyle=g;x.beginPath();x.arc(0,0,12,0,7);x.fill();
+x.fillStyle='#5a4a20';
+if(stun){x.font='700 9px system-ui';x.textAlign='center';x.fillText('×  ×',0,3)}
+else{
+x.fillStyle='#fff';x.beginPath();x.arc(-4,-3,3,0,7);x.arc(4,-3,3,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(-4+Math.sign(pl.x-m.x),-3,1.5,0,7);x.arc(4+Math.sign(pl.x-m.x),-3,1.5,0,7);x.fill();
+x.strokeStyle='#5a4a20';x.lineWidth=1.6;
+x.beginPath();x.moveTo(-4,5);x.quadraticCurveTo(0,2,4,5);x.stroke()}
+const wob=Math.sin(t*10+m.x)*2;
+x.strokeStyle='#5a4a20';x.lineWidth=2.4;
+x.beginPath();x.moveTo(-5,11);x.lineTo(-6,15+wob);x.moveTo(5,11);x.lineTo(6,15-wob);x.stroke();
+x.restore()}
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#241018');bg.addColorStop(1,'#140a10');
+x.fillStyle=bg;x.fillRect(0,0,W,H);
+x.fillStyle='#3a1c26';
+for(let i=0;i<6;i++){x.beginPath();x.arc((i*97+40)%W,50+((i*61)%80),3,0,7);x.fill()}
+for(let i=0;i<LV;i++){const y=lvY(i);
+const g=x.createLinearGradient(0,y,0,y+10);g.addColorStop(0,'#8a4a5e');g.addColorStop(1,'#4a2430');
+x.fillStyle=g;x.fillRect(W*.04,y,W*.92,9);
+x.fillStyle='#2e1420';
+for(let rx=W*.08;rx<W*.94;rx+=30)x.fillRect(rx,y+3,3,3)}
+for(const L of LADS){const lx=L.x*W,y1=lvY(L.f),y2=lvY(L.f+1);
+x.strokeStyle='#e8c84a';x.lineWidth=3;
+x.beginPath();x.moveTo(lx-6,y2);x.lineTo(lx-6,y1+8);x.moveTo(lx+6,y2);x.lineTo(lx+6,y1+8);x.stroke();
+x.lineWidth=2;
+for(let ry=y2-7;ry>y1+8;ry-=12){x.beginPath();x.moveTo(lx-6,ry);x.lineTo(lx+6,ry);x.stroke()}}
+const py2=H*.97;
+x.fillStyle='#e8d8b0';x.beginPath();x.ellipse(W/2,py2,W*.34,14,0,0,7);x.fill();
+x.fillStyle='#d8c090';x.beginPath();x.ellipse(W/2,py2-3,W*.3,10,0,0,7);x.fill();
+let stack=0;
+for(const g of ings){if(g.state==='plate'){drawIng({...g,x:W/2-40+stack*26,y:py2-6-stack*3},t);stack++}
+else drawIng(g,t)}
+for(const m of mons)drawMon(m,t);
+for(const s of sparks){x.globalAlpha=Math.max(0,s.t*2);x.fillStyle='#ffa8c0';x.fillRect(s.x-1.5,s.y-1.5,3,3)}
+x.globalAlpha=1;
+if(!(inv>0&&Math.floor(inv*10)%2===0))drawChef(pl.x,pl.y,t);
+if(stunT>0){x.fillStyle='rgba(255,80,120,'+Math.min(.3,stunT*.15)+')';x.fillRect(0,0,W,H)}
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+let hold=null,ts0=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();
+const r=cv.getBoundingClientRect(),t=e.changedTouches[0];
+ts0={x:t.clientX,y:t.clientY,t:Date.now()};
+const rx=t.clientX-r.left;
+if(rx<r.width*.4){keys.l=1;hold='l'}else if(rx>r.width*.6){keys.r=1;hold='r'}else hold=null},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(!ts0)return;
+const t=e.changedTouches[0],dy=t.clientY-ts0.y;
+if(Math.abs(dy)>30){climb(Math.sign(dy));ts0.y=t.clientY}},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();
+if(hold==='l')keys.l=0;if(hold==='r')keys.r=0;hold=null;
+if(ts0&&Date.now()-ts0.t<250)pepperUse();ts0=null},{passive:false});
+window.addEventListener('keydown',e=>{const k=e.key;
+if(k==='ArrowLeft')keys.l=1;else if(k==='ArrowRight')keys.r=1;
+else if(k==='ArrowUp')climb(-1);else if(k==='ArrowDown')climb(1);else if(k===' ')pepperUse()});
+window.addEventListener('keyup',e=>{const k=e.key;
+if(k==='ArrowLeft')keys.l=0;else if(k==='ArrowRight')keys.r=0});
+window.keys=keys;window.climb=climb;window.pepperUse=pepperUse;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'pl',{get:()=>pl});Object.defineProperty(window,'ings',{get:()=>ings});
+Object.defineProperty(window,'mons',{get:()=>mons});document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();pl={x:100,y:100,vx:0,vy:0,lv:0,face:1,onLad:false};mons=[];ings=[];score=0;lives=3;run=false;inv=0;pepper=3;stunT=0;pitaN=1;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

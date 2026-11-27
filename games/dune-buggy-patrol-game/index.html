@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>צפצפית בדיונות</title>
+<style>
+html,body{margin:0;padding:0;background:#1c0a04;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#3d1c0a,#1c0a04)}
+#hud b{font-size:17px;color:#ffd08a}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(28,10,4,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:30px;margin:0 0 10px;color:#ffd08a;text-shadow:0 2px 14px #e87c1e66}
+.ovl p{font-size:15px;line-height:1.7;color:#f0dcc0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#ffd08a,#e87c1e);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#3d1f00;box-shadow:0 4px 18px #e87c1e55;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#8a5a32;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div>מהירות <b id="sp">1</b></div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">געו שמאלה לקפוץ - געו ימינה לירות</div>
+<div class="ovl" id="startOvl">
+<h1>צפצפית בדיונות</h1>
+<p>צפצפית החיפושית רוכבת על טרקטורון-הזבוב שלה במרוץ השקיעה. קפצו מעל סלעים ובורות, ירו בכאבלי-הברק המעופפים, ושרדו כמה שיותר קילומטרים של דיונות!</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),spEl=document.getElementById('sp'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+let buggy,obstacles,bolts,dist,score,lives,run,inv,speed,spawnT,droneT,gy;
+function start(){score=0;lives=3;run=true;inv=1.5;dist=0;speed=1;
+gy=H*.78;
+buggy={y:gy-20,vy:0,air:false};
+obstacles=[];bolts=[];spawnT=1.5;droneT=4;upd()}
+function upd(){scEl.textContent=score;spEl.textContent=speed.toFixed(1);livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function jump(){if(!run)return;if(!buggy.air){buggy.vy=-H*.62;buggy.air=true}}
+function shoot(){if(!run)return;if(bolts.length<3)bolts.push({x:W*.32+22,y:buggy.y-8,vx:W*1.1})}
+function lose(){if(inv>0)return;lives--;upd();inv=2;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='סוף המסע';document.getElementById('overP').textContent='צפצפית עברה '+Math.floor(dist)+' מטרים וצברה '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}}
+let shake=0;
+function step(dt){
+if(inv>0)inv-=dt;if(shake>0)shake-=dt;
+speed=Math.min(2.6,speed+dt*.02);
+const v=W*.42*speed;
+dist+=v*dt*.06;score=Math.floor(dist*10)+scoreB;upd();
+buggy.vy+=H*1.9*dt;buggy.y+=buggy.vy*dt;
+if(buggy.y>=gy-20){buggy.y=gy-20;buggy.vy=0;buggy.air=false}
+spawnT-=dt;
+if(spawnT<=0){spawnT=Math.max(.8,1.9-speed*.35)*(.7+Math.random()*.6);
+const kind=Math.random()<.55?'rock':'hole';
+obstacles.push({kind,x:W+40,w:kind==='rock'?26:44,h:kind==='rock'?24:10,hit:false})}
+droneT-=dt;
+if(droneT<=0){droneT=Math.max(2.2,5-speed);obstacles.push({kind:'drone',x:W+40,y:gy-90-Math.random()*60,w:26,h:18,ph:Math.random()*7,hit:false})}
+for(const o of obstacles){o.x-=v*dt*(o.kind==='drone'?1.25:1);
+if(o.kind==='drone')o.y+=Math.sin(dist*2+o.ph)*.8;
+const bx=W*.32,by=buggy.y;
+if(!o.hit){
+if(o.kind==='hole'){
+if(Math.abs(o.x-bx)<o.w/2+8&&by>gy-26){o.hit=true;lose()}}
+else if(Math.abs(o.x-bx)<o.w/2+14&&Math.abs((o.kind==='drone'?o.y:gy-o.h+6)-(by-6))<(o.kind==='drone'?18:22)){o.hit=true;lose()}}
+if(o.kind!=='hole'&&!o.dead){
+for(const b of bolts){if(Math.abs(b.x-o.x)<o.w/2+8&&Math.abs(b.y-(o.kind==='drone'?o.y:gy-o.h+4))<16){
+o.dead=true;b.dead=true;scoreB+=o.kind==='drone'?150:50;
+for(let i=0;i<8;i++)sparks.push({x:o.x,y:o.kind==='drone'?o.y:gy-o.h,vx:(Math.random()-.5)*220,vy:(Math.random()-.5)*220,t:.4})}}}}
+obstacles=obstacles.filter(o=>!o.dead&&o.x>-60);
+for(const b of bolts)b.x+=b.vx*dt;
+bolts=bolts.filter(b=>!b.dead&&b.x<W+30);
+for(const s of sparks){s.x+=s.vx*dt;s.y+=s.vy*dt;s.t-=dt}
+sparks=sparks.filter(s=>s.t>0);
+}
+let sparks=[],scoreB=0;
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,gy);bg.addColorStop(0,'#3d1408');bg.addColorStop(.55,'#a83d0e');bg.addColorStop(1,'#e87c1e');
+x.fillStyle=bg;x.fillRect(0,0,W,gy+2);
+x.fillStyle='#ffd08a';x.beginPath();x.arc(W*.72,gy-70,30,0,7);x.fill();
+x.fillStyle='#e87c1e';x.beginPath();x.arc(W*.72,gy-70,30,0,Math.PI,true);x.fill();
+x.fillStyle='#7a2d0c';
+const off1=(dist*8)%W;
+for(let i=-1;i<3;i++){x.beginPath();x.ellipse(i*W*.5-off1*.4+W*.25,gy+2,W*.4,44,0,Math.PI,0);x.fill()}
+x.fillStyle='#4a1c06';
+const off2=(dist*16)%W;
+for(let i=-1;i<4;i++){x.beginPath();x.ellipse(i*W*.34-off2*.7+W*.2,gy+4,W*.26,30,0,Math.PI,0);x.fill()}
+x.fillStyle='#2d1104';x.fillRect(0,gy,W,H-gy);
+x.fillStyle='#3d1a08';x.fillRect(0,gy,W,5);
+x.save();if(shake>0)x.translate((Math.random()-.5)*6,(Math.random()-.5)*6);
+for(const o of obstacles){
+if(o.kind==='rock'){
+x.save();x.translate(o.x,gy);
+const g=x.createLinearGradient(0,-o.h,0,0);g.addColorStop(0,'#8a6a4a');g.addColorStop(1,'#4a3020');
+x.fillStyle=g;x.beginPath();x.moveTo(-o.w/2,0);x.lineTo(-o.w*.3,-o.h);x.lineTo(o.w*.2,-o.h*.85);x.lineTo(o.w/2,0);x.closePath();x.fill();
+x.restore()}
+else if(o.kind==='hole'){
+x.fillStyle='#120602';x.beginPath();x.ellipse(o.x,gy+4,o.w/2+6,9,0,0,7);x.fill();
+x.strokeStyle='#1c0a04';x.lineWidth=3;x.beginPath();x.ellipse(o.x,gy+3,o.w/2+2,6,0,0,7);x.stroke()}
+else{
+x.save();x.translate(o.x,o.y);
+const g=x.createLinearGradient(0,-9,0,9);g.addColorStop(0,'#ffe89b');g.addColorStop(1,'#d8a020');
+x.fillStyle=g;x.beginPath();x.moveTo(-13,0);x.lineTo(0,-8);x.lineTo(13,0);x.lineTo(0,8);x.closePath();x.fill();
+x.strokeStyle='#fff3c4';x.lineWidth=1.4;
+x.beginPath();x.moveTo(-6,-2);x.lineTo(6,2);x.stroke();
+x.restore()}}
+for(const b of bolts){
+x.strokeStyle='#9be8ff';x.lineWidth=3.4;x.lineCap='round';
+x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x-16,b.y);x.stroke()}
+for(const s of sparks){x.globalAlpha=Math.max(0,s.t*2);x.fillStyle='#ffd08a';x.fillRect(s.x-1.5,s.y-1.5,3,3)}
+x.globalAlpha=1;
+if(!(inv>0&&Math.floor(inv*10)%2===0)){
+const bx=W*.32,by=buggy.y;
+x.save();x.translate(bx,by);
+x.fillStyle='#2a5a3a';x.beginPath();x.ellipse(0,-8,20,9,0,0,7);x.fill();
+x.fillStyle='#3fae6f';x.beginPath();x.ellipse(2,-11,13,7,0,0,7);x.fill();
+x.strokeStyle='#1d3d28';x.lineWidth=3;
+x.beginPath();x.moveTo(-8,-16);x.lineTo(-4,-24);x.lineTo(4,-20);x.stroke();
+x.fillStyle='#3fae6f';x.beginPath();x.arc(14,-14,5.4,0,7);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(15.5,-15.5,2,0,7);x.fill();
+x.fillStyle='#123';x.beginPath();x.arc(16,-15.5,1,0,7);x.fill();
+const spin=dist*14;
+x.fillStyle='#1a1a22';
+x.beginPath();x.arc(-11,4,8,0,7);x.arc(11,4,8,0,7);x.fill();
+x.strokeStyle='#555';x.lineWidth=2;
+for(const wx of[-11,11]){x.save();x.translate(wx,4);x.rotate(spin);
+x.beginPath();x.moveTo(-5,0);x.lineTo(5,0);x.moveTo(0,-5);x.lineTo(0,5);x.stroke();x.restore()}
+x.restore()}
+x.restore()}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+cv.addEventListener('touchstart',e=>{e.preventDefault();
+const r=cv.getBoundingClientRect(),t=e.changedTouches[0];
+if((t.clientX-r.left)<r.width/2)jump();else shoot()},{passive:false});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key===' ')jump();else if(e.key==='ArrowRight'||e.key==='f')shoot()});
+window.jump=jump;window.shoot=shoot;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'buggy',{get:()=>buggy});Object.defineProperty(window,'obstacles',{get:()=>obstacles});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();scoreB=0;start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');scoreB=0;start()};
+rs();buggy={y:100,vy:0,air:false};obstacles=[];bolts=[];score=0;lives=3;run=false;inv=0;speed=1;dist=0;spawnT=1;droneT=4;gy=300;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

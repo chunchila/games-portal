@@ -878,5 +878,55 @@
   "added": 90,
   "slug": "star-bar-rush-game",
   "source": "https://github.com/chunchila/star-bar-rush-game"
+ },
+ {
+  "name": "פיסטוק והפיגומים",
+  "shot": "shots/squirrel.webp",
+  "cat": "ארקייד",
+  "desc": "טפסו בסולמות וקפצו מעל גזעים בדרך לאגוז הענק",
+  "url": "games/squirrel-scaffold-game/",
+  "added": 91,
+  "slug": "squirrel-scaffold-game",
+  "source": "https://github.com/chunchila/squirrel-scaffold-game"
+ },
+ {
+  "name": "בריחה מהמעבדה",
+  "shot": "shots/lab.webp",
+  "cat": "ארקייד",
+  "desc": "ברחו מתשעה חדרי מעבדה ופוצצו את רובוטי האבטחה",
+  "url": "games/lab-escape-maze-game/",
+  "added": 92,
+  "slug": "lab-escape-maze-game",
+  "source": "https://github.com/chunchila/lab-escape-maze-game"
+ },
+ {
+  "name": "גדר הזוהר",
+  "shot": "shots/fencer.webp",
+  "cat": "ארקייד",
+  "desc": "טוו גדרות זוהר וכבשו את הלילה לפני שהניצוץ יגיע",
+  "url": "games/light-fencer-game/",
+  "added": 93,
+  "slug": "light-fencer-game",
+  "source": "https://github.com/chunchila/light-fencer-game"
+ },
+ {
+  "name": "צפצפית בדיונות",
+  "shot": "shots/buggy.webp",
+  "cat": "ארקייד",
+  "desc": "קפצו מעל סלעים ובורות במרוץ השקיעה של הדיונות",
+  "url": "games/dune-buggy-patrol-game/",
+  "added": 94,
+  "slug": "dune-buggy-patrol-game",
+  "source": "https://github.com/chunchila/dune-buggy-patrol-game"
+ },
+ {
+  "name": "שף קציצה והפיתה הענקית",
+  "shot": "shots/falafel.webp",
+  "cat": "ארקייד",
+  "desc": "הפילו מרכיבים מדף לדף לתוך הפיתה - והיזהרו מהחומוסים",
+  "url": "games/falafel-tower-game/",
+  "added": 95,
+  "slug": "falafel-tower-game",
+  "source": "https://github.com/chunchila/falafel-tower-game"
  }
 ]
