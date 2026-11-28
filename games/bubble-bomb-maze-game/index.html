@@ -26,7 +26,7 @@ button:active{transform:scale(.96)}
 <div id="hint">גררו כדי לזוז - הקישו להנחת בועת קסם והתרחקו!</div>
 <div class="ovl" id="startOvl">
 <h1>דרקוני ובועות הקסם</h1>
-<p>דרקוני הקטן איבד את מפתח הטירה בין שיחי הקסם! הניחו בועות קסם שמתפוצצות ופונחות שיחים, מצאו את המפתח וצאו בשער. היזהרו מהשדונים הסוכרים - ומהפיצוץ שלכם!</p>
+<p>דרקוני הקטן איבד את מפתח הטירה בין שיחי הקסם! הניחו בועות קסם שמתפוצצות ומפנות שיחים, מצאו את המפתח וצאו בשער. היזהרו מהשדונים המשוטטים - ומהפיצוץ שלכם!</p>
 <button id="startBtn">שחקו</button>
 </div>
 <div class="ovl hide" id="overOvl">
@@ -61,6 +61,7 @@ const kb=bushes[Math.floor(Math.random()*bushes.length)];
 grid[kb[1]][kb[0]]=3;
 let gb=bushes.filter(b=>b!==kb);
 gate=gb[Math.floor(Math.random()*gb.length)];
+grid[gate[1]][gate[0]]=4;
 imps=[];
 const n=2+stage;
 for(let i=0;i<n;i++){let c,r,tries=0;
