@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>דרקוני ובועות הקסם</title>
+<style>
+html,body{margin:0;padding:0;background:#120e1c;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#241a3a,#120e1c)}
+#hud b{font-size:17px;color:#c8a8ff}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(18,14,28,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:28px;margin:0 0 10px;color:#c8a8ff;text-shadow:0 2px 14px #6a3ac066}
+.ovl p{font-size:15px;line-height:1.7;color:#e0d4f0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#c8a8ff,#6a3ac0);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#1c0e38;box-shadow:0 4px 18px #6a3ac055;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#5a4878;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div id="ky">מפתח: ✕</div><div>שלב <b id="st">1</b>/2</div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">גררו כדי לזוז - הקישו להנחת בועת קסם והתרחקו!</div>
+<div class="ovl" id="startOvl">
+<h1>דרקוני ובועות הקסם</h1>
+<p>דרקוני הקטן איבד את מפתח הטירה בין שיחי הקסם! הניחו בועות קסם שמתפוצצות ופונחות שיחים, מצאו את המפתח וצאו בשער. היזהרו מהשדונים הסוכרים - ומהפיצוץ שלכם!</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),stEl=document.getElementById('st'),kyEl=document.getElementById('ky'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+const GW=11,GH=13;
+let grid,pl,imps,bombs,blasts,score,lives,run,inv,stage,hasKey,gate,GX,GY,CS,sparkles;
+const DIRS=[[0,-1],[0,1],[-1,0],[1,0]];
+function free(c,r){return r>=0&&r<GH&&c>=0&&c<GW&&(grid[r][c]===0||grid[r][c]===5||grid[r][c]===6)&&!bombs.some(b=>b.c===c&&b.r===r)}
+function walkable(c,r){return r>=0&&r<GH&&c>=0&&c<GW&&(grid[r][c]===0||grid[r][c]===5||grid[r][c]===6)}
+function buildLevel(){
+grid=[];bombs=[];blasts=[];sparkles=[];hasKey=false;
+for(let r=0;r<GH;r++){grid.push([]);for(let c=0;c<GW;c++){
+if(r===0||c===0||r===GH-1||c===GW-1)grid[r].push(2);
+else if(r%2===0&&c%2===0)grid[r].push(2);
+else grid[r].push(Math.random()<.42?1:0)}}
+grid[1][1]=0;grid[1][2]=0;grid[2][1]=0;
+pl={fc:1,fr:1,dir:[0,1],want:[0,0]};
+const bushes=[];
+for(let r=1;r<GH-1;r++)for(let c=1;c<GW-1;c++)if(grid[r][c]===1)bushes.push([c,r]);
+const kb=bushes[Math.floor(Math.random()*bushes.length)];
+grid[kb[1]][kb[0]]=3;
+let gb=bushes.filter(b=>b!==kb);
+gate=gb[Math.floor(Math.random()*gb.length)];
+imps=[];
+const n=2+stage;
+for(let i=0;i<n;i++){let c,r,tries=0;
+do{c=GW-2-Math.floor(Math.random()*3);r=GH-2-Math.floor(Math.random()*4);tries++}while(!walkable(c,r)&&tries<60);
+if(!walkable(c,r)){grid[r]&&(grid[r][c]=0)}
+imps.push({fc:c,fr:r,dir:DIRS[i%4],sp:1.7+stage*.35,wt:Math.random()})}
+upd()}
+function start(){score=0;lives=3;run=true;inv=1.2;stage=1;buildLevel()}
+function upd(){scEl.textContent=score;stEl.textContent=stage;kyEl.textContent='מפתח: '+(hasKey?'♦':'✕');livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function lose(){if(inv>0)return;lives--;upd();inv=2;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='הקסם נגמר';document.getElementById('overP').textContent='דרקוני צבר '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}
+else{pl.fc=1;pl.fr=1}}
+function dropBomb(){if(!run)return;
+const c=Math.round(pl.fc),r=Math.round(pl.fr);
+if(bombs.length>=2)return;
+if(bombs.some(b=>b.c===c&&b.r===r))return;
+bombs.push({c,r,t:2})}
+function explode(b){
+const cells=[[b.c,b.r]];
+for(const d of DIRS){for(let k=1;k<=2;k++){
+const c=b.c+d[0]*k,r=b.r+d[1]*k;
+if(r<0||c<0||r>=GH||c>=GW)break;
+if(grid[r][c]===2)break;
+cells.push([c,r]);
+if(grid[r][c]===1||grid[r][c]===3||grid[r][c]===4){
+if(grid[r][c]===3){grid[r][c]=5}
+else if(grid[r][c]===4){grid[r][c]=6}
+else{grid[r][c]=0;score+=10}
+upd();break}}}
+blasts.push({cells,t:.35});
+for(const b2 of bombs)if(!b2.done&&cells.some(([c,r])=>c===b2.c&&r===b2.r))b2.t=Math.min(b2.t,.05)}
+function step(dt){
+if(inv>0)inv-=dt;
+for(const b of bombs){b.t-=dt;if(b.t<=0&&!b.done){b.done=true;explode(b)}}
+bombs=bombs.filter(b=>!b.done);
+for(const bl of blasts){
+bl.t-=dt;
+for(const[c,r]of bl.cells){
+if(Math.round(pl.fc)===c&&Math.round(pl.fr)===r)lose();
+for(const m of imps)if(!m.dead&&Math.round(m.fc)===c&&Math.round(m.fr)===r){m.dead=true;score+=100;upd();
+for(let i=0;i<8;i++)sparkles.push({x:m.fc,y:m.fr,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:.4})}}}
+blasts=blasts.filter(b=>b.t>0);
+const sp=4.4;
+if(pl.want&&(pl.want[0]||pl.want[1])){
+const d=pl.want;pl.dir=d;
+const nc=pl.fc+d[0]*sp*dt,nr=pl.fr+d[1]*sp*dt;
+const bc=Math.round(nc+d[0]*.42),br=Math.round(nr+d[1]*.42);
+if(free(bc,br)){pl.fc=nc;pl.fr=nr}
+else{pl.fc=Math.round(pl.fc);pl.fr=Math.round(pl.fr)}}
+const pc=Math.round(pl.fc),pr=Math.round(pl.fr);
+if(grid[pr]&&grid[pr][pc]===5){grid[pr][pc]=0;hasKey=true;score+=150;upd()}
+if(grid[pr]&&grid[pr][pc]===6&&hasKey){
+if(stage>=2){run=false;score+=300;upd();document.getElementById('overT').textContent='כל הכבוד!';document.getElementById('overP').textContent='דרקוני פתח את שער הטירה פעמיים! ניקוד סופי: '+score;document.getElementById('overOvl').classList.remove('hide')}
+else{stage++;score+=300;buildLevel();inv=1.2}}
+for(const m of imps){
+m.wt-=dt;
+const tc=Math.round(m.fc),tr=Math.round(m.fr);
+const aligned=Math.abs(m.fc-tc)<.12&&Math.abs(m.fr-tr)<.12;
+if(aligned){m.fc=tc;m.fr=tr;
+if(m.wt<=0||!walkable(tc+m.dir[0],tr+m.dir[1])){m.wt=.5+Math.random();
+const opts=DIRS.filter(d=>walkable(tc+d[0],tr+d[1]));
+if(opts.length){
+if(Math.random()<.5){const dx=Math.sign(pl.fc-m.fc),dy=Math.sign(pl.fr-m.fr);
+const pref=Math.abs(dx)>Math.abs(dy)?[dx,0]:[0,dy];
+m.dir=opts.find(d=>d[0]===pref[0]&&d[1]===pref[1])||opts[Math.floor(Math.random()*opts.length)]}
+else m.dir=opts[Math.floor(Math.random()*opts.length)]}else m.dir=[0,0]}}
+const mv=m.sp*dt;
+const nc=m.fc+m.dir[0]*mv,nr=m.fr+m.dir[1]*mv;
+const bc=Math.round(nc+m.dir[0]*.3),br=Math.round(nr+m.dir[1]*.3);
+if(walkable(bc,br)){m.fc=nc;m.fr=nr}else{m.fc=Math.round(m.fc);m.fr=Math.round(m.fr);m.wt=0}
+if(Math.hypot(m.fc-pl.fc,m.fr-pl.fr)<.6)lose()}
+imps=imps.filter(m=>!m.dead);
+for(const s of sparkles){s.x+=s.vx*dt;s.y+=s.vy*dt;s.t-=dt}
+sparkles=sparkles.filter(s=>s.t>0);
+}
+function drawDragon(t){
+const px=GX+pl.fc*CS+CS/2,py=GY+pl.fr*CS+CS/2;
+x.save();x.translate(px,py);
+x.fillStyle='#5ac06a';x.beginPath();x.ellipse(0,0,CS*.32,CS*.3,0,0,7);x.fill();
+x.fillStyle='#8ae09a';x.beginPath();x.ellipse(0,CS*.08,CS*.18,CS*.16,0,0,7);x.fill();
+x.beginPath();x.arc(0,-CS*.24,CS*.2,0,7);x.fill();
+x.fillStyle='#f0d060';x.beginPath();x.moveTo(-CS*.1,-CS*.36);x.lineTo(-CS*.05,-CS*.5);x.lineTo(0,-CS*.36);x.fill();
+x.beginPath();x.moveTo(CS*.02,-CS*.36);x.lineTo(CS*.07,-CS*.5);x.lineTo(CS*.12,-CS*.36);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(-CS*.07,-CS*.26,CS*.05,0,7);x.arc(CS*.07,-CS*.26,CS*.05,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(-CS*.07,-CS*.26,CS*.024,0,7);x.arc(CS*.07,-CS*.26,CS*.024,0,7);x.fill();
+const fl=Math.sin(t*9)*CS*.06;
+x.fillStyle='#4aa85a';
+x.beginPath();x.ellipse(-CS*.3,-CS*.05,CS*.12,CS*.18+fl,.5,0,7);x.fill();
+x.beginPath();x.ellipse(CS*.3,-CS*.05,CS*.12,CS*.18+fl,-.5,0,7);x.fill();
+x.restore()}
+function drawImp(m,t){
+const px=GX+m.fc*CS+CS/2,py=GY+m.fr*CS+CS/2;
+x.save();x.translate(px,py);
+x.fillStyle='#c05a8a';x.beginPath();x.ellipse(0,0,CS*.3,CS*.28,0,0,7);x.fill();
+x.beginPath();x.moveTo(-CS*.14,-CS*.18);x.lineTo(-CS*.08,-CS*.4);x.lineTo(0,-CS*.2);x.fill();
+x.beginPath();x.moveTo(CS*.14,-CS*.18);x.lineTo(CS*.08,-CS*.4);x.lineTo(0,-CS*.2);x.fill();
+x.fillStyle='#ffe08a';x.beginPath();x.arc(-CS*.08,-CS*.08,CS*.055,0,7);x.arc(CS*.08,-CS*.08,CS*.055,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(-CS*.08,-CS*.08,CS*.026,0,7);x.arc(CS*.08,-CS*.08,CS*.026,0,7);x.fill();
+x.strokeStyle='#6a2a48';x.lineWidth=1.6;
+x.beginPath();x.moveTo(-CS*.08,CS*.1);x.quadraticCurveTo(0,CS*.16,CS*.08,CS*.1);x.stroke();
+x.restore()}
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#1c1430');bg.addColorStop(1,'#120e1c');
+x.fillStyle=bg;x.fillRect(0,0,W,H);
+CS=Math.min(W/GW,H/GH);GX=(W-CS*GW)/2;GY=(H-CS*GH)/2;
+x.fillStyle='#201838';x.fillRect(GX,GY,CS*GW,CS*GH);
+for(let r=0;r<GH;r++)for(let c=0;c<GW;c++){
+const v=grid[r][c];if(!v)continue;
+const px=GX+c*CS,py=GY+r*CS;
+if(v===2){
+const g=x.createLinearGradient(px,py,px,py+CS);g.addColorStop(0,'#4a3a70');g.addColorStop(1,'#2c2148');
+x.fillStyle=g;x.fillRect(px+1,py+1,CS-2,CS-2);
+x.fillStyle='#5a4a84';x.beginPath();x.arc(px+CS*.3,py+CS*.3,2,0,7);x.arc(px+CS*.7,py+CS*.65,2,0,7);x.fill()}
+else if(v===1||v===3||v===4){
+x.fillStyle='#3a7a4a';x.beginPath();x.roundRect(px+2,py+2,CS-4,CS-4,4);x.fill();
+x.fillStyle='#4a9a5c';
+x.beginPath();x.arc(px+CS*.3,py+CS*.35,CS*.14,0,7);x.arc(px+CS*.65,py+CS*.3,CS*.12,0,7);x.arc(px+CS*.5,py+CS*.6,CS*.13,0,7);x.fill();
+if(v===3){x.fillStyle='rgba(255,220,120,.9)';x.beginPath();x.arc(px+CS/2,py+CS/2,2.2+Math.sin(t*6)*1,0,7);x.fill()}
+if(v===4){x.fillStyle='rgba(140,220,255,.9)';x.beginPath();x.arc(px+CS/2,py+CS/2,2.2+Math.cos(t*6)*1,0,7);x.fill()}}
+else if(v===5){
+x.fillStyle='#ffd84a';x.beginPath();x.arc(px+CS/2,py+CS*.42,CS*.1,0,7);x.fill();
+x.fillRect(px+CS/2-2,py+CS*.42,4,CS*.3);
+x.fillRect(px+CS/2,py+CS*.58,CS*.1,3)}
+else if(v===6){
+const g=x.createLinearGradient(px,py,px,py+CS);g.addColorStop(0,'#8ad4ff');g.addColorStop(1,'#3a70b0');
+x.fillStyle=g;x.beginPath();x.roundRect(px+3,py+1,CS-6,CS-2,3);x.fill();
+x.fillStyle='#dff2ff';x.beginPath();x.arc(px+CS/2,py+CS/2,CS*.12+Math.sin(t*5)*2,0,7);x.fill()}}
+for(const b of bombs){
+const px=GX+b.c*CS+CS/2,py=GY+b.r*CS+CS/2;
+const pu=1+Math.sin(t*14)*.12;
+const g=x.createRadialGradient(px-3,py-3,2,px,py,CS*.32);g.addColorStop(0,'#a8d8ff');g.addColorStop(1,'#3a70c0');
+x.fillStyle=g;x.beginPath();x.arc(px,py,CS*.3*pu,0,7);x.fill();
+x.fillStyle='rgba(255,255,255,.6)';x.beginPath();x.ellipse(px-CS*.1,py-CS*.12,CS*.08,CS*.05,-.6,0,7);x.fill()}
+for(const bl of blasts){
+x.globalAlpha=Math.min(1,bl.t*3);
+for(const[c,r]of bl.cells){
+const px=GX+c*CS,py=GY+r*CS;
+const g=x.createRadialGradient(px+CS/2,py+CS/2,2,px+CS/2,py+CS/2,CS*.7);g.addColorStop(0,'#fff8d0');g.addColorStop(1,'#ff9a4a00');
+x.fillStyle=g;x.fillRect(px,py,CS,CS)}}
+x.globalAlpha=1;
+for(const s of sparkles){x.globalAlpha=Math.max(0,s.t*2);x.fillStyle='#e8a8ff';x.beginPath();x.arc(GX+s.x*CS+CS/2,GY+s.y*CS+CS/2,3,0,7);x.fill()}
+x.globalAlpha=1;
+for(const m of imps)drawImp(m,t);
+if(!(inv>0&&Math.floor(inv*10)%2===0))drawDragon(t);
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+let ts0=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];
+ts0={x:t.clientX,y:t.clientY,t:Date.now()}},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(!ts0)return;
+const t=e.changedTouches[0],dx=t.clientX-ts0.x,dy=t.clientY-ts0.y;
+if(Math.hypot(dx,dy)>24){
+if(Math.abs(dx)>Math.abs(dy))pl.want=[Math.sign(dx),0];else pl.want=[0,Math.sign(dy)];
+ts0.x=t.clientX;ts0.y=t.clientY}},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();
+if(ts0&&Date.now()-ts0.t<220)dropBomb();
+ts0=null},{passive:false});
+window.addEventListener('keydown',e=>{const k=e.key;
+if(k==='ArrowLeft')pl.want=[-1,0];else if(k==='ArrowRight')pl.want=[1,0];
+else if(k==='ArrowUp')pl.want=[0,-1];else if(k==='ArrowDown')pl.want=[0,1];else if(k===' ')dropBomb()});
+window.dropBomb=dropBomb;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'pl',{get:()=>pl});Object.defineProperty(window,'imps',{get:()=>imps});
+Object.defineProperty(window,'bombs',{get:()=>bombs});Object.defineProperty(window,'hasKey',{get:()=>hasKey});
+Object.defineProperty(window,'stage',{get:()=>stage});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();grid=[];for(let r=0;r<GH;r++)grid.push(new Array(GW).fill(0));
+pl={fc:1,fr:1,dir:[0,1],want:[0,0]};imps=[];bombs=[];blasts=[];sparkles=[];score=0;lives=3;run=false;inv=0;stage=1;hasKey=false;gate=null;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

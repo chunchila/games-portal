@@ -928,5 +928,55 @@
   "added": 95,
   "slug": "cake-stack-bakery-game",
   "source": "https://github.com/chunchila/cake-stack-bakery-game"
+ },
+ {
+  "name": "קוקו ומלחמת הבלונים",
+  "shot": "shots/balloon.webp",
+  "cat": "ארקייד",
+  "desc": "ירו חצים ופצלו בלונים קופצים עד שהאחרון מתפוצץ - בלי לגעת!",
+  "url": "games/balloon-dart-split-game/",
+  "added": 96,
+  "slug": "balloon-dart-split-game",
+  "source": "https://github.com/chunchila/balloon-dart-split-game"
+ },
+ {
+  "name": "פינגו וטיפוס הקרח",
+  "shot": "shots/penguin.webp",
+  "cat": "ארקייד",
+  "desc": "קפצו בין מדפי הקרח, שברו בלוקים מנצנצים והגיעו לדגל בפסגה",
+  "url": "games/penguin-peak-climb-game/",
+  "added": 97,
+  "slug": "penguin-peak-climb-game",
+  "source": "https://github.com/chunchila/penguin-peak-climb-game"
+ },
+ {
+  "name": "ביבי וארגזי היער",
+  "shot": "shots/beaver.webp",
+  "cat": "ארקייד",
+  "desc": "דחפו ארגזי עץ מתגלגלים וחסלו את הזאבים הרעבים בסבך",
+  "url": "games/beaver-log-maze-game/",
+  "added": 98,
+  "slug": "beaver-log-maze-game",
+  "source": "https://github.com/chunchila/beaver-log-maze-game"
+ },
+ {
+  "name": "דרקוני ובועות הקסם",
+  "shot": "shots/bubble.webp",
+  "cat": "ארקייד",
+  "desc": "הניחו בועות קסם, פנחו שיחים, מצאו את המפתח וצאו בשער הטירה",
+  "url": "games/bubble-bomb-maze-game/",
+  "added": 99,
+  "slug": "bubble-bomb-maze-game",
+  "source": "https://github.com/chunchila/bubble-bomb-maze-game"
+ },
+ {
+  "name": "יויו יונת הדואר",
+  "shot": "shots/pigeon.webp",
+  "cat": "ארקייד",
+  "desc": "עפו לאורך הרחוב, התחמקו ממכשולים והשליכו מכתבים לתיבות הזוהרות",
+  "url": "games/pigeon-post-delivery-game/",
+  "added": 100,
+  "slug": "pigeon-post-delivery-game",
+  "source": "https://github.com/chunchila/pigeon-post-delivery-game"
  }
 ]

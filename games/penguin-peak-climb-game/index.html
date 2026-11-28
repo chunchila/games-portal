@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>פינגו וטיפוס הקרח</title>
+<style>
+html,body{margin:0;padding:0;background:#0b1622;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#14263c,#0b1622)}
+#hud b{font-size:17px;color:#a8e0ff}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,22,34,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:28px;margin:0 0 10px;color:#a8e0ff;text-shadow:0 2px 14px #3a90c066}
+.ovl p{font-size:15px;line-height:1.7;color:#d0e4f0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#a8e0ff,#3a90c0);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#06283a;box-shadow:0 4px 18px #3a90c055;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#44688a;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div>גובה: <b id="hg">0</b>מ'</div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">החזיקו את הצדדים לריצה - הקישו לקפיצה, שברו קרח מלמטה</div>
+<div class="ovl" id="startOvl">
+<h1>פינגו וטיפוס הקרח</h1>
+<p>פינגו הפינגווין מטפס להר הקרח: קפצו בין מדפי הקרח, שברו בראש בלוקים מנצנצים כדי לפתוח מעבר, והיזהרו מקרחונים נופלים! מי שמגיע לדגל בפסגה - מנצח.</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),hgEl=document.getElementById('hg'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+let pl,floors,icles,score,lives,run,inv,camY,maxH,flakes;
+const keys={l:0,r:0};
+const GOAL=1600,FH=92;
+function buildWorld(){
+floors=[];icles=[];flakes=[];
+for(let i=0;i<60;i++)flakes.push({x:Math.random()*W,y:Math.random()*H,s:1+Math.random()*2,v:14+Math.random()*22});
+floors.push({y:0,holes:[],seed:1});
+for(let f=1;f*FH<=GOAL+200;f++){
+const holes=[];const nh=1+Math.floor(Math.random()*2);
+for(let i=0;i<nh;i++)holes.push({x:.15+Math.random()*.7,w:.16+Math.random()*.1});
+floors.push({y:-f*FH,holes,brk:Math.random()<.7?[{x:.1+Math.random()*.8,w:.12,on:true}]:[]})}
+}
+function start(){score=0;lives=3;run=true;inv=1.2;camY=0;maxH=0;
+buildWorld();
+pl={x:W/2,y:-20,vx:0,vy:0,face:1,ground:true};
+upd()}
+function upd(){scEl.textContent=score;hgEl.textContent=Math.max(0,Math.round(-maxH/FH*3));livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function jump(){if(!run)return;if(pl.ground){pl.vy=-430;pl.ground=false}}
+function lose(){if(inv>0)return;lives--;upd();inv=2;
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='פינגו החליק';document.getElementById('overP').textContent='פינגו הגיע לגובה '+Math.round(-maxH/FH*3)+' מטרים וצבר '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}
+else{pl.x=W/2;pl.y=camY+H*.4;pl.vy=0;pl.vx=0}}
+function solidAt(fl,px){
+const u=px/W;
+for(const h of fl.holes)if(u>h.x&&u<h.x+h.w)return false;
+return true}
+function step(dt){
+if(inv>0)inv-=dt;
+pl.vx=((keys.r?1:0)-(keys.l?1:0))*190;
+if(pl.vx)pl.face=Math.sign(pl.vx);
+pl.x+=pl.vx*dt;pl.x=Math.max(10,Math.min(W-10,pl.x));
+pl.vy+=1050*dt;pl.y+=pl.vy*dt;
+pl.ground=false;
+const fi=Math.round(-pl.y/FH);
+for(const fl of floors){
+const fy=fl.y;
+if(pl.vy>=0&&pl.y>=fy-2&&pl.y<=fy+16&&pl.vy*dt>=0){
+const prevY=pl.y-pl.vy*dt;
+if(prevY<=fy&&solidAt(fl,pl.x)){pl.y=fy;pl.vy=0;pl.ground=true}}
+if(pl.vy<0&&pl.y-22<=fy+10&&pl.y-22>=fy-6){
+const prevTop=(pl.y-pl.vy*dt)-22;
+if(prevTop>=fy+8){
+if(fl.brk){for(const b of fl.brk){if(b.on&&pl.x>b.x*W&&pl.x<(b.x+b.w)*W){b.on=false;score+=50;upd();pl.vy=40;
+for(let i=0;i<8;i++)flakes.push({x:pl.x,y:fy,s:2,v:0,sh:1,t:.4});break}}}
+if(solidAt(fl,pl.x)&&pl.vy<0){pl.vy=0}}}}
+for(const f of flakes){if(f.sh){f.t=(f.t||0)-dt;f.y+=60*dt;continue}
+f.y+=f.v*dt;if(f.y>H){f.y=-4;f.x=Math.random()*W}}
+flakes=flakes.filter(f=>!f.sh||f.t>0);
+if(Math.random()<dt*.5&&-camY>200){
+const fx=W*(.1+Math.random()*.8);
+icles.push({x:fx,y:camY-20,vy:0})}
+for(const c of icles){c.vy+=900*dt;c.y+=c.vy*dt;
+if(Math.abs(c.x-pl.x)<13&&Math.abs(c.y-(pl.y-10))<20)lose()}
+icles=icles.filter(c=>c.y<camY+H+40);
+if(pl.y<camY+H*.35){camY=pl.y-H*.35}
+if(pl.y<maxH){maxH=pl.y;score+=Math.ceil(-pl.vy*dt*0);score+=1;upd()}
+if(pl.y>camY+H+30)lose();
+if(-pl.y>=GOAL){run=false;score+=500;upd();
+document.getElementById('overT').textContent='לפסגה!';
+document.getElementById('overP').textContent='פינגו כבש את פסגת הקרח! ניקוד סופי: '+score;
+document.getElementById('overOvl').classList.remove('hide')}
+}
+function drawPenguin(t){
+x.save();x.translate(pl.x,pl.y-camY);x.scale(pl.face,1);
+x.fillStyle='#22303e';x.beginPath();x.ellipse(0,-11,8,10.4,0,0,7);x.fill();
+x.fillStyle='#f4f8fa';x.beginPath();x.ellipse(1,-9,5,7,0,0,7);x.fill();
+x.fillStyle='#22303e';x.beginPath();x.arc(1,-21,5.6,0,7);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(3,-22,1.8,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(3.4,-22,.9,0,7);x.fill();
+x.fillStyle='#f0a030';x.beginPath();x.moveTo(6,-20);x.lineTo(10,-19);x.lineTo(6,-17.6);x.fill();
+const w=pl.ground?Math.sin(t*14)*2.4:1;
+x.fillStyle='#f0a030';x.fillRect(-5,-2+w,4,2.6);x.fillRect(1,-2-w,4,2.6);
+x.restore()}
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#12283f');bg.addColorStop(1,'#0b1622');
+x.fillStyle=bg;x.fillRect(0,0,W,H);
+x.fillStyle='#dfeef8';
+for(const f of flakes){if(f.sh)continue;x.globalAlpha=.7;x.fillRect(f.x,f.y,f.s,f.s)}
+x.globalAlpha=1;
+x.fillStyle='#1a324c';
+x.beginPath();x.moveTo(-20,H);x.lineTo(W*.2,H*.42);x.lineTo(W*.42,H);x.fill();
+x.beginPath();x.moveTo(W*.5,H);x.lineTo(W*.78,H*.36);x.lineTo(W+20,H);x.fill();
+for(const fl of floors){
+const fy=fl.y-camY;if(fy<-30||fy>H+30)continue;
+let sx=0;
+const spans=[];
+const hs=[...fl.holes].sort((a,b)=>a.x-b.x);
+let cur=0;
+for(const h of hs){spans.push([cur,h.x]);cur=h.x+h.w}
+spans.push([cur,1]);
+for(const[a,b]of spans){if(b-a<.02)continue;
+const g=x.createLinearGradient(0,fy,0,fy+12);g.addColorStop(0,'#bfe4f8');g.addColorStop(1,'#5a94bc');
+x.fillStyle=g;x.fillRect(a*W,fy,(b-a)*W,11);
+x.fillStyle='#e8f6ff';x.fillRect(a*W,fy,(b-a)*W,3)}
+if(fl.brk)for(const b of fl.brk){if(!b.on)continue;
+x.fillStyle='#8ad0f0';x.fillRect(b.x*W,fy,b.w*W,11);
+x.fillStyle='#fff';
+x.fillRect(b.x*W+3,fy+3,3,3);x.fillRect(b.x*W+b.w*W-7,fy+5,3,3);x.fillRect(b.x*W+b.w*W/2,fy+2,2.6,2.6)}}
+const gy=-GOAL-camY;
+if(gy>-60&&gy<H+60){
+x.strokeStyle='#8a6a3a';x.lineWidth=3;x.beginPath();x.moveTo(W/2,gy);x.lineTo(W/2,gy-34);x.stroke();
+x.fillStyle='#ff5a6a';x.beginPath();x.moveTo(W/2,gy-34);x.lineTo(W/2+22,gy-28);x.lineTo(W/2,gy-22);x.fill()}
+for(const c of icles){
+const cy=c.y-camY;
+x.fillStyle='#bfe4f8';x.beginPath();x.moveTo(c.x-5,cy);x.lineTo(c.x+5,cy);x.lineTo(c.x,cy+16);x.fill();
+x.fillStyle='#e8f6ff';x.beginPath();x.moveTo(c.x-5,cy);x.lineTo(c.x,cy);x.lineTo(c.x-1,cy+10);x.fill()}
+if(!(inv>0&&Math.floor(inv*10)%2===0))drawPenguin(t);
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+let hold=null,ts0=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();
+const r=cv.getBoundingClientRect(),t=e.changedTouches[0];
+ts0={x:t.clientX,y:t.clientY,t:Date.now()};
+const rx=t.clientX-r.left;
+if(rx<r.width*.35){keys.l=1;hold='l'}else if(rx>r.width*.65){keys.r=1;hold='r'}else hold=null},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();
+if(hold==='l')keys.l=0;if(hold==='r')keys.r=0;hold=null;
+if(ts0&&Date.now()-ts0.t<250)jump();ts0=null},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault()},{passive:false});
+window.addEventListener('keydown',e=>{const k=e.key;
+if(k==='ArrowLeft')keys.l=1;else if(k==='ArrowRight')keys.r=1;else if(k===' ')jump()});
+window.addEventListener('keyup',e=>{const k=e.key;
+if(k==='ArrowLeft')keys.l=0;else if(k==='ArrowRight')keys.r=0});
+window.keys=keys;window.jump=jump;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'pl',{get:()=>pl});Object.defineProperty(window,'camY',{get:()=>camY});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();pl={x:100,y:0,vx:0,vy:0,face:1,ground:true};floors=[];icles=[];flakes=[];score=0;lives=3;run=false;inv=0;camY=0;maxH=0;
+buildWorld();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

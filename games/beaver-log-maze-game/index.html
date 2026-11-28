@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ביבי וארגזי היער</title>
+<style>
+html,body{margin:0;padding:0;background:#0e1410;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100%;-webkit-user-select:none;user-select:none;touch-action:none}
+#wrap{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:15px;background:linear-gradient(180deg,#1c2c1c,#0e1410)}
+#hud b{font-size:17px;color:#b0e08a}
+#cv{flex:1;display:block;width:100%;touch-action:none}
+.ovl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(14,20,16,.93);text-align:center;padding:24px;z-index:5}
+.ovl h1{font-size:28px;margin:0 0 10px;color:#b0e08a;text-shadow:0 2px 14px #4a8a3a66}
+.ovl p{font-size:15px;line-height:1.7;color:#d8ecd0;margin:0 0 22px;max-width:330px}
+button{background:linear-gradient(180deg,#b0e08a,#4a8a3a);border:0;border-radius:999px;padding:14px 42px;font-size:19px;font-weight:700;color:#0e2a08;box-shadow:0 4px 18px #4a8a3a55;cursor:pointer}
+button:active{transform:scale(.96)}
+.hide{display:none!important}
+#hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#4a6a44;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="hud"><div>ניקוד: <b id="sc">0</b></div><div>שלב <b id="st">1</b>/2</div><div id="lives">♥♥♥</div></div>
+<canvas id="cv"></canvas>
+<div id="hint">גררו כדי לזוז - הקישו כדי לדחוף ארגז אל הזאבים</div>
+<div class="ovl" id="startOvl">
+<h1>ביבי וארגזי היער</h1>
+<p>זאבים רעבים נכנסו לסבך! ביבי הבונה דוחף ארגזי עץ: ארגז נדחף מחליק עד שהוא נעצר ומחסל כל זאב בדרכו. גררו כדי לזוז, הקישו כדי לדחוף. חסלו את כל הזאבים!</p>
+<button id="startBtn">שחקו</button>
+</div>
+<div class="ovl hide" id="overOvl">
+<h1 id="overT">נגמר המשחק</h1>
+<p id="overP"></p>
+<button id="againBtn">שחקו שוב</button>
+</div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const scEl=document.getElementById('sc'),stEl=document.getElementById('st'),livesEl=document.getElementById('lives');
+let W=0,H=0,DPR=1;
+function rs(){DPR=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);x.direction='ltr'}
+window.addEventListener('resize',rs);
+const GW=11,GH=14;
+let grid,pl,wolves,slides,score,lives,run,inv,stage,puffs,GX,GY,CS;
+const DIRS=[[0,-1],[0,1],[-1,0],[1,0]];
+function free(c,r){return r>=0&&r<GH&&c>=0&&c<GW&&grid[r][c]===0}
+function buildLevel(){
+grid=[];slides=[];puffs=[];
+for(let r=0;r<GH;r++){grid.push([]);for(let c=0;c<GW;c++){
+if(r===0||c===0||r===GH-1||c===GW-1)grid[r].push(2);
+else if((r%2===0&&c%2===0))grid[r].push(2);
+else grid[r].push(Math.random()<.30?1:0)}}
+grid[GH-2][1]=0;grid[GH-2][2]=0;grid[GH-3][1]=0;
+pl={c:1,r:GH-2,fc:1,fr:GH-2,dir:[0,-1],moving:false};
+wolves=[];
+const n=2+stage;
+for(let i=0;i<n;i++){let c,r,tries=0;
+do{c=1+Math.floor(Math.random()*(GW-2));r=1+Math.floor(Math.random()*3);tries++}while(!free(c,r)&&tries<40);
+if(free(c,r))grid[r][c]=0;
+wolves.push({c,r,fc:c,fr:r,dir:DIRS[Math.floor(Math.random()*4)],sp:1.6+stage*.3,wt:Math.random()})}}
+function start(){score=0;lives=3;run=true;inv=1.2;stage=1;buildLevel();upd()}
+function upd(){scEl.textContent=score;stEl.textContent=stage;livesEl.textContent='♥'.repeat(Math.max(0,lives))}
+function lose(){if(inv>0)return;lives--;upd();inv=2;
+for(let i=0;i<10;i++)puffs.push({x:pl.fc,y:pl.fr,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:.4,c:'#e08a6a'});
+if(lives<=0){run=false;setTimeout(()=>{document.getElementById('overT').textContent='הזאבים תפסו';document.getElementById('overP').textContent='ביבי צבר '+score+' נקודות.';document.getElementById('overOvl').classList.remove('hide')},600)}
+else{pl.fc=1;pl.fr=GH-2}}
+function push(){
+if(!run)return;
+const dc=pl.dir[0],dr=pl.dir[1];
+if(!dc&&!dr)return;
+const bc=Math.round(pl.fc)+dc,br=Math.round(pl.fr)+dr;
+if(bc<0||br<0||bc>=GW||br>=GH)return;
+if(grid[br][bc]!==1)return;
+const nc=bc+dc,nr=br+dr;
+if(!free(nc,nr))return;
+grid[br][bc]=0;
+slides.push({c:bc,r:br,dc,dr});
+}
+function step(dt){
+if(inv>0)inv-=dt;
+const sp=4.2;
+if(pl.want&&(pl.want[0]||pl.want[1])){
+const d=pl.want;
+pl.dir=d;
+const nc=pl.fc+d[0]*sp*dt,nr=pl.fr+d[1]*sp*dt;
+const bc=Math.round(nc+d[0]*.42),br=Math.round(nr+d[1]*.42);
+if(free(bc,br)){pl.fc=nc;pl.fr=nr}
+else{pl.fc=Math.round(pl.fc);pl.fr=Math.round(pl.fr)}}
+for(const w of wolves){
+w.wt-=dt;
+const twc=Math.round(w.fc),twr=Math.round(w.fr);
+const aligned=Math.abs(w.fc-twc)<.12&&Math.abs(w.fr-twr)<.12;
+if(aligned){w.fc=twc;w.fr=twr;
+if(w.wt<=0){w.wt=.5+Math.random()*.9;
+const opts=DIRS.filter(d=>free(twc+d[0],twr+d[1]));
+if(opts.length){
+const chase=Math.random()<.55;
+if(chase){const dx=Math.sign(pl.fc-w.fc),dy=Math.sign(pl.fr-w.fr);
+const pref=Math.abs(dx)>Math.abs(dy)?[dx,0]:[0,dy];
+const ok=opts.find(d=>d[0]===pref[0]&&d[1]===pref[1]);
+w.dir=ok||opts[Math.floor(Math.random()*opts.length)]}
+else w.dir=opts[Math.floor(Math.random()*opts.length)]}}
+if(!free(twc+w.dir[0],twr+w.dir[1])){
+const opts=DIRS.filter(d=>free(twc+d[0],twr+d[1]));
+if(opts.length)w.dir=opts[Math.floor(Math.random()*opts.length)];else w.dir=[0,0]}}
+const mv=w.sp*dt;
+const nc=w.fc+w.dir[0]*mv,nr=w.fr+w.dir[1]*mv;
+const bc=Math.round(nc+w.dir[0]*.3),br=Math.round(nr+w.dir[1]*.3);
+if(free(bc,br)){w.fc=nc;w.fr=nr}else{w.fc=Math.round(w.fc);w.fr=Math.round(w.fr);w.wt=0}
+if(Math.hypot(w.fc-pl.fc,w.fr-pl.fr)<.62)lose()}
+for(const s of slides){
+const ns=.001+dt*8;
+s.prog=(s.prog||0)+dt*8;
+const steps=Math.floor(s.prog);
+for(let i=0;i<steps;i++){s.prog-=1;
+const nc2=s.c+s.dc,nr2=s.r+s.dr;
+for(const w of wolves){if(Math.round(w.fc)===nc2&&Math.round(w.fr)===nr2&&Math.abs(w.fc-nc2)<.7&&Math.abs(w.fr-nr2)<.7){
+w.dead=true;score+=150;upd();
+for(let k=0;k<8;k++)puffs.push({x:w.fc,y:w.fr,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:.4,c:'#b0e08a'})}}
+if(!free(nc2,nr2)){grid[s.r][s.c]=1;s.done=true;break}
+s.c=nc2;s.r=nr2}}
+slides=slides.filter(s=>!s.done);
+wolves=wolves.filter(w=>!w.dead);
+for(const p of puffs){p.x+=p.vx*dt;p.y+=p.vy*dt;p.t-=dt}
+puffs=puffs.filter(p=>p.t>0);
+if(run&&wolves.length===0){
+if(stage>=2){run=false;document.getElementById('overT').textContent='כל הכבוד!';document.getElementById('overP').textContent='ביבי ניקה את הסבך מכל הזאבים! ניקוד סופי: '+score;document.getElementById('overOvl').classList.remove('hide')}
+else{stage++;upd();buildLevel();inv=1.2}}
+}
+function drawBeaver(t){
+const px=GX+pl.fc*CS+CS/2,py=GY+pl.fr*CS+CS/2;
+x.save();x.translate(px,py);
+x.fillStyle='#8a5a34';x.beginPath();x.ellipse(0,0,CS*.34,CS*.3,0,0,7);x.fill();
+x.fillStyle='#a87148';x.beginPath();x.ellipse(0,CS*.1,CS*.2,CS*.16,0,0,7);x.fill();
+x.fillStyle='#8a5a34';x.beginPath();x.arc(0,-CS*.26,CS*.22,0,7);x.fill();
+x.fillStyle='#5a3a20';x.beginPath();x.arc(-CS*.12,-CS*.4,CS*.07,0,7);x.arc(CS*.12,-CS*.4,CS*.07,0,7);x.fill();
+x.fillStyle='#fff';x.fillRect(-CS*.05,-CS*.24,CS*.045,CS*.1);x.fillRect(CS*.008,-CS*.24,CS*.045,CS*.1);
+x.fillStyle='#221';x.beginPath();x.arc(-CS*.07,-CS*.3,CS*.028,0,7);x.arc(CS*.07,-CS*.3,CS*.028,0,7);x.fill();
+x.fillStyle='#4a2c14';x.beginPath();x.ellipse(0,CS*.34,CS*.16,CS*.09,0,0,7);x.fill();
+x.restore()}
+function drawWolf(w,t){
+const px=GX+w.fc*CS+CS/2,py=GY+w.fr*CS+CS/2;
+x.save();x.translate(px,py);
+x.fillStyle='#7a7f8c';x.beginPath();x.ellipse(0,0,CS*.34,CS*.28,0,0,7);x.fill();
+x.beginPath();x.moveTo(-CS*.16,-CS*.2);x.lineTo(-CS*.1,-CS*.42);x.lineTo(-CS*.02,-CS*.22);x.fill();
+x.beginPath();x.moveTo(CS*.16,-CS*.2);x.lineTo(CS*.1,-CS*.42);x.lineTo(CS*.02,-CS*.22);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(-CS*.09,-CS*.16,CS*.06,0,7);x.arc(CS*.09,-CS*.16,CS*.06,0,7);x.fill();
+x.fillStyle='#221';x.beginPath();x.arc(-CS*.09+Math.sign(pl.fc-w.fc)*CS*.02,-CS*.16,CS*.03,0,7);x.arc(CS*.09+Math.sign(pl.fc-w.fc)*CS*.02,-CS*.16,CS*.03,0,7);x.fill();
+x.fillStyle='#3a3f4a';x.beginPath();x.ellipse(0,-CS*.02,CS*.07,CS*.05,0,0,7);x.fill();
+x.strokeStyle='#5a5f6c';x.lineWidth=2;
+const wag=Math.sin(t*8+w.fc)*3;
+x.beginPath();x.moveTo(0,CS*.24);x.quadraticCurveTo(CS*.2,CS*.3+wag,CS*.26,CS*.16+wag);x.stroke();
+x.restore()}
+function draw(t){
+x.clearRect(0,0,W,H);
+const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#16241a');bg.addColorStop(1,'#0e1410');
+x.fillStyle=bg;x.fillRect(0,0,W,H);
+CS=Math.min(W/GW,H/GH);GX=(W-CS*GW)/2;GY=(H-CS*GH)/2;
+x.fillStyle='#1c3020';x.fillRect(GX,GY,CS*GW,CS*GH);
+for(let r=0;r<GH;r++)for(let c=0;c<GW;c++){
+const v=grid[r][c];if(!v)continue;
+const px=GX+c*CS,py=GY+r*CS;
+if(v===2){
+const g=x.createLinearGradient(px,py,px,py+CS);g.addColorStop(0,'#3a5a3c');g.addColorStop(1,'#223a24');
+x.fillStyle=g;x.fillRect(px+1,py+1,CS-2,CS-2);
+x.fillStyle='#4a7048';x.beginPath();x.arc(px+CS/2,py+CS/2,CS*.22,0,7);x.fill()}
+else{
+x.fillStyle='#8a6a42';x.beginPath();x.roundRect(px+2,py+2,CS-4,CS-4,3);x.fill();
+x.strokeStyle='#5a4426';x.lineWidth=1.4;
+x.beginPath();x.moveTo(px+2,py+CS/2);x.lineTo(px+CS-2,py+CS/2);x.stroke();
+x.beginPath();x.arc(px+CS/2,py+CS/2,CS*.2,0,7);x.stroke()}}
+for(const s of slides){
+const px=GX+s.c*CS,py=GY+s.r*CS;
+x.fillStyle='#a87e52';x.beginPath();x.roundRect(px+2,py+2,CS-4,CS-4,3);x.fill();
+x.strokeStyle='#5a4426';x.lineWidth=1.4;x.beginPath();x.moveTo(px+2,py+CS/2);x.lineTo(px+CS-2,py+CS/2);x.stroke()}
+for(const p of puffs){x.globalAlpha=Math.max(0,p.t*2);x.fillStyle=p.c;x.beginPath();x.arc(GX+p.x*CS+CS/2,GY+p.y*CS+CS/2,3,0,7);x.fill()}
+x.globalAlpha=1;
+for(const w of wolves)drawWolf(w,t);
+if(!(inv>0&&Math.floor(inv*10)%2===0))drawBeaver(t);
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);draw(ts/1000);requestAnimationFrame(loop)}
+let ts0=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];
+ts0={x:t.clientX,y:t.clientY,t:Date.now()}},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(!ts0)return;
+const t=e.changedTouches[0],dx=t.clientX-ts0.x,dy=t.clientY-ts0.y;
+if(Math.hypot(dx,dy)>24){
+if(Math.abs(dx)>Math.abs(dy))pl.want=[Math.sign(dx),0];else pl.want=[0,Math.sign(dy)];
+ts0.x=t.clientX;ts0.y=t.clientY}},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();
+if(ts0&&Date.now()-ts0.t<220)push();
+ts0=null},{passive:false});
+window.addEventListener('keydown',e=>{const k=e.key;
+if(k==='ArrowLeft')pl.want=[-1,0];else if(k==='ArrowRight')pl.want=[1,0];
+else if(k==='ArrowUp')pl.want=[0,-1];else if(k==='ArrowDown')pl.want=[0,1];else if(k===' ')push()});
+window.push=push;
+Object.defineProperty(window,'score',{get:()=>score});Object.defineProperty(window,'run',{get:()=>run});
+Object.defineProperty(window,'pl',{get:()=>pl});Object.defineProperty(window,'wolves',{get:()=>wolves});
+Object.defineProperty(window,'stage',{get:()=>stage});
+document.getElementById('startBtn').onclick=()=>{document.getElementById('startOvl').classList.add('hide');rs();start()};
+document.getElementById('againBtn').onclick=()=>{document.getElementById('overOvl').classList.add('hide');start()};
+rs();grid=[];for(let r=0;r<GH;r++)grid.push(new Array(GW).fill(0));
+pl={c:1,r:1,fc:1,fr:1,dir:[0,1],want:[0,0]};wolves=[];slides=[];puffs=[];score=0;lives=3;run=false;inv=0;stage=1;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
